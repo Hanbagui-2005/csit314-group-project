@@ -30,8 +30,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
-        <!-- Role 3: add spring-boot-starter-data-jpa + com.mysql:mysql-connector-j back in
-             once there's a real MySQL database and JPA entities to connect to -->
+        <!-- add JPA + mysql-connector-j back once there's a real DB and entities -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>

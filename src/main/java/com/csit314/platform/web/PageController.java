@@ -13,11 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
-/**
- * Serves the main customer- and designer-facing pages with placeholder data.
- * Once Role 3's persistence layer is ready, swap the hardcoded lists below
- * for calls into real services.
- */
+// serves the main pages with hardcoded data until the backend/DB is ready
 @Controller
 public class PageController {
 
