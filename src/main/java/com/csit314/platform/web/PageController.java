@@ -4,6 +4,7 @@ import com.csit314.platform.web.dto.DesignerProjectStat;
 import com.csit314.platform.web.dto.FavouriteItem;
 import com.csit314.platform.web.dto.ProjectCard;
 import com.csit314.platform.web.dto.ProjectDetail;
+import com.csit314.platform.web.dto.UserSummary;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,7 +71,7 @@ public class PageController {
     public String designerDashboard(Model model) {
         List<DesignerProjectStat> myProjects = List.of(
                 new DesignerProjectStat(1L, "Modern minimalist kitchen", "/images/placeholder.svg", 42, 8),
-                new DesignerProjectStat(2L, "Cosy reading nook", "/images/placeholder.svg", 19, 3)
+                new DesignerProjectStat(2L, "Cozy reading nook", "/images/placeholder.svg", 19, 3)
         );
         model.addAttribute("projects", myProjects);
         return "designer-dashboard";
@@ -89,6 +90,19 @@ public class PageController {
         model.addAttribute("isEdit", true);
         model.addAttribute("projectId", id);
         return "project-form";
+    }
+
+    @GetMapping("/admin/users")
+    public String adminUsers(Model model) {
+        List<UserSummary> users = List.of(
+                new UserSummary(1L, "Alex Tan", "alex.tan@example.com", "Customer", "Active"),
+                new UserSummary(2L, "Studio Lume", "contact@studiolume.com", "Interior Designer", "Active"),
+                new UserSummary(3L, "North & Pine", "hello@northandpine.com", "Interior Designer", "Pending"),
+                new UserSummary(4L, "Priya Shah", "priya.shah@example.com", "Customer", "Active"),
+                new UserSummary(5L, "Dev House Studio", "team@devhousestudio.com", "Interior Designer", "Suspended")
+        );
+        model.addAttribute("users", users);
+        return "admin-users";
     }
 
 }

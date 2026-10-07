@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('All users')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <h4 class="mb-3">All registered users</h4>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="user : ${users}">
+            <td th:text="${user.name}">Name</td>
+            <td th:text="${user.email}">Email</td>
+            <td th:text="${user.role}">Role</td>
+            <td>
+                <span class="badge"
+                      th:text="${user.status}"
+                      th:classappend="${user.status == 'Active'} ? 'bg-success' : (${user.status == 'Pending'} ? 'bg-warning text-dark' : 'bg-secondary')">
+                    Status
+                </span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p th:if="${#lists.isEmpty(users)}" class="text-muted">No users found.</p>
+
+</div>
+</body>
+</html>
