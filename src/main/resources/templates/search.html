@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Browse')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <form class="row g-2 mb-3" method="get" th:action="@{/search}">
+        <div class="col-8">
+            <input type="text" name="q" class="form-control" placeholder="Search by keyword"
+                   th:value="${query}"/>
+        </div>
+        <div class="col-4">
+            <button type="submit" class="btn btn-dark w-100">Search</button>
+        </div>
+    </form>
+
+    <div class="mb-4">
+        <a th:each="cat : ${categories}"
+           th:href="@{/search(q=${query}, category=${cat})}"
+           th:text="${cat}"
+           class="btn btn-sm me-2 mb-2"
+           th:classappend="${cat == selectedCategory} ? 'btn-dark' : 'btn-outline-secondary'">Category</a>
+    </div>
+
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        <div class="col" th:each="project : ${projects}">
+            <div class="card h-100">
+                <img th:src="${project.imageUrl}" class="card-img-top" alt="Project photo"/>
+                <div class="card-body">
+                    <h6 class="card-title mb-1" th:text="${project.title}">Project title</h6>
+                    <p class="card-text text-muted small mb-2" th:text="${project.designerName}">Designer name</p>
+                    <a th:href="@{/projects/{id}(id=${project.id})}" class="btn btn-sm btn-outline-dark">View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(projects)}" class="text-muted">No projects found.</p>
+
+</div>
+</body>
+</html>

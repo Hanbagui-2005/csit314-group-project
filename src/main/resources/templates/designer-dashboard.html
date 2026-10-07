@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Designer dashboard')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 720px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">My portfolio</h4>
+        <a href="/designer/projects/new" class="btn btn-dark btn-sm">+ New project</a>
+    </div>
+
+    <div class="list-group">
+        <div class="list-group-item d-flex align-items-center gap-3" th:each="project : ${projects}">
+            <img th:src="${project.imageUrl}" alt="Project photo"
+                 style="width:48px;height:48px;object-fit:cover;border-radius:6px;"/>
+            <div class="flex-grow-1" th:text="${project.title}">Project title</div>
+            <div class="text-muted small d-flex gap-3">
+                <span th:text="'Views: ' + ${project.views}">Views</span>
+                <span th:text="'Shortlists: ' + ${project.shortlists}">Shortlists</span>
+            </div>
+            <a th:href="@{/designer/projects/{id}/edit(id=${project.id})}"
+               class="btn btn-sm btn-outline-dark">Edit</a>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(projects)}" class="text-muted">You haven't added any projects yet.</p>
+
+</div>
+</body>
+</html>

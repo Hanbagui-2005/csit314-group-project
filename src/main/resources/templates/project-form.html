@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${isEdit} ? 'Edit project' : 'New project')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 560px;">
+
+    <h4 class="mb-3" th:text="${isEdit} ? 'Edit project' : 'New project'">New project</h4>
+
+    <form method="post" th:action="${isEdit} ? @{/designer/projects/{id}(id=${projectId})} : @{/designer/projects}">
+
+        <div class="mb-3">
+            <label class="form-label">Photos</label>
+            <input type="file" name="photos" class="form-control" multiple/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" name="title" class="form-control" placeholder="e.g. Modern minimalist kitchen"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="4"
+                      placeholder="Describe the project"></textarea>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-select">
+                    <option th:each="cat : ${categories}" th:value="${cat}" th:text="${cat}">Category</option>
+                </select>
+            </div>
+            <div class="col">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="current">Current</option>
+                    <option value="past">Past</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-dark">Save</button>
+        <a href="/designer/dashboard" class="btn btn-outline-secondary">Cancel</a>
+
+    </form>
+
+</div>
+</body>
+</html>
