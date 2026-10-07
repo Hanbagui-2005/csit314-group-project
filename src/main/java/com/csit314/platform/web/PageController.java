@@ -88,6 +88,11 @@ public class PageController {
         return "project-form";
     }
 
+    @GetMapping("/register")
+    public String registerForm() {
+        return "register";
+    }
+
     @GetMapping("/admin/users")
     public String adminUsers(Model model) {
         List<UserSummary> users = List.of(

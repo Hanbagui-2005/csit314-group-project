@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Register')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 420px;">
+
+    <h4 class="mb-3">Create your account</h4>
+
+    <form method="post" th:action="@{/register}">
+
+        <div class="mb-3">
+            <label class="form-label">Full name</label>
+            <input type="text" name="name" class="form-control" placeholder="Jordan Lee"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" placeholder="name@example.com"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-control"/>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Confirm password</label>
+            <input type="password" name="confirmPassword" class="form-control"/>
+        </div>
+
+        <button type="submit" class="btn btn-dark w-100">Register</button>
+
+    </form>
+
+    <p class="text-center text-muted small mt-3">Already have an account? <a href="/login">Log in</a></p>
+
+</div>
+</body>
+</html>
