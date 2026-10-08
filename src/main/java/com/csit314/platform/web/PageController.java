@@ -98,6 +98,11 @@ public class PageController {
         return "designer-register";
     }
 
+    @GetMapping("/designer/login")
+    public String designerLoginForm() {
+        return "designer-login";
+    }
+
     @GetMapping("/admin/login")
     public String adminLoginForm() {
         return "admin-login";
