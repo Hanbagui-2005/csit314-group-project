@@ -93,6 +93,16 @@ public class PageController {
         return "register";
     }
 
+    @GetMapping("/designer/register")
+    public String designerRegisterForm() {
+        return "designer-register";
+    }
+
+    @GetMapping("/admin/login")
+    public String adminLoginForm() {
+        return "admin-login";
+    }
+
     @GetMapping("/admin/users")
     public String adminUsers(Model model) {
         List<UserSummary> users = List.of(

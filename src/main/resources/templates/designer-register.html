@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Designer registration')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 480px;">
+
+    <h4 class="mb-1">Register as an Interior Designer</h4>
+    <p class="text-muted small mb-4">Your account will be reviewed before you can start listing projects.</p>
+
+    <form method="post" th:action="@{/designer/register}">
+
+        <div class="mb-3">
+            <label class="form-label">Contact name</label>
+            <input type="text" name="contactName" class="form-control" placeholder="Jordan Lee"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" placeholder="name@example.com"/>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control"/>
+            </div>
+            <div class="col">
+                <label class="form-label">Confirm password</label>
+                <input type="password" name="confirmPassword" class="form-control"/>
+            </div>
+        </div>
+
+        <hr class="my-4"/>
+
+        <div class="mb-3">
+            <label class="form-label">Company name</label>
+            <input type="text" name="companyName" class="form-control" placeholder="Studio Lume"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Company description</label>
+            <textarea name="companyDescription" class="form-control" rows="3"
+                      placeholder="Tell customers what your studio specialises in"></textarea>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Contact phone</label>
+            <input type="tel" name="companyPhone" class="form-control" placeholder="+61 400 000 000"/>
+        </div>
+
+        <button type="submit" class="btn btn-dark w-100">Submit for review</button>
+
+    </form>
+
+</div>
+</body>
+</html>
