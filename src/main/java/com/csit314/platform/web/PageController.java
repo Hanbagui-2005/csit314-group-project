@@ -98,6 +98,11 @@ public class PageController {
         return "designer-register";
     }
 
+    @GetMapping("/forgot-password")
+    public String forgotPasswordForm() {
+        return "forgot-password";
+    }
+
     @GetMapping("/designer/login")
     public String designerLoginForm() {
         return "designer-login";
