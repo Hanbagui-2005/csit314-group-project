@@ -14,6 +14,7 @@
             <th>Email</th>
             <th>Role</th>
             <th>Status</th>
+            <th>Actions</th>
         </tr>
         </thead>
         <tbody>
@@ -28,11 +29,42 @@
                     Status
                 </span>
             </td>
+            <td>
+                <div th:if="${user.status == 'Pending'}" class="d-flex gap-2">
+                    <form method="post" th:action="@{'/admin/users/' + ${user.id} + '/approve'}">
+                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                    </form>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            data-bs-toggle="modal" th:attr="data-bs-target='#rejectModal-' + ${user.id}">
+                        Reject
+                    </button>
+                </div>
+            </td>
         </tr>
         </tbody>
     </table>
 
     <p th:if="${#lists.isEmpty(users)}" class="text-muted">No users found.</p>
+
+    <div th:each="user : ${users}" th:if="${user.status == 'Pending'}"
+         class="modal fade" th:id="'rejectModal-' + ${user.id}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reject <span th:text="${user.name}">name</span>'s registration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="post" th:action="@{'/admin/users/' + ${user.id} + '/reject'}">
+                        <label class="form-label">Reason</label>
+                        <textarea name="reason" class="form-control mb-3" rows="3"
+                                  placeholder="Let them know why their application wasn't approved"></textarea>
+                        <button type="submit" class="btn btn-danger w-100">Confirm rejection</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </div>
 </body>
