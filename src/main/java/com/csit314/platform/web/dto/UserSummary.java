@@ -1,5 +1,5 @@
 package com.csit314.platform.web.dto;
 
-// ADM-02 data, hardcoded for now
+// one row in the admin user list (ADM-02)
 public record UserSummary(Long id, String name, String email, String role, String status) {
 }
