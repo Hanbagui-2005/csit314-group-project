@@ -17,10 +17,19 @@
             <a class="nav-link" href="/favourites">Favourites</a>
             <a class="nav-link" href="/designer/dashboard">Designer dashboard</a>
             <a class="nav-link" href="/admin/users">Admin: users</a>
-            <button type="button" class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">Log in</button>
+            <button th:if="${currentUser == null}" type="button" class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">Log in</button>
+            <form th:if="${currentUser != null}" method="post" th:action="@{/logout}" class="d-flex gap-2 align-items-center mb-0">
+                <span class="text-muted small" th:text="${currentUser.name}">Name</span>
+                <button type="submit" class="btn btn-outline-dark btn-sm">Log out</button>
+            </form>
         </div>
     </div>
 </nav>
+
+<div class="container" th:if="${errorMessage != null or successMessage != null}">
+    <div th:if="${errorMessage != null}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+    <div th:if="${successMessage != null}" class="alert alert-success" th:text="${successMessage}">Success</div>
+</div>
 
 <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
     <div class="modal-dialog">

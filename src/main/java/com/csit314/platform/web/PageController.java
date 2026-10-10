@@ -4,7 +4,6 @@ import com.csit314.platform.web.dto.DesignerProjectStat;
 import com.csit314.platform.web.dto.FavouriteItem;
 import com.csit314.platform.web.dto.ProjectCard;
 import com.csit314.platform.web.dto.ProjectDetail;
-import com.csit314.platform.web.dto.UserSummary;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -111,19 +110,6 @@ public class PageController {
     @GetMapping("/admin/login")
     public String adminLoginForm() {
         return "admin-login";
-    }
-
-    @GetMapping("/admin/users")
-    public String adminUsers(Model model) {
-        List<UserSummary> users = List.of(
-                new UserSummary(1L, "Alex Tan", "alex.tan@example.com", "Customer", "Active"),
-                new UserSummary(2L, "Studio Lume", "contact@studiolume.com", "Interior Designer", "Active"),
-                new UserSummary(3L, "North & Pine", "hello@northandpine.com", "Interior Designer", "Pending"),
-                new UserSummary(4L, "Priya Shah", "priya.shah@example.com", "Customer", "Active"),
-                new UserSummary(5L, "Dev House Studio", "team@devhousestudio.com", "Interior Designer", "Suspended")
-        );
-        model.addAttribute("users", users);
-        return "admin-users";
     }
 
 }
