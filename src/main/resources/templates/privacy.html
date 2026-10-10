@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Privacy and data use')}"></head>
+<body class="bg-light">
+<div th:replace="~{fragments/layout :: navbar}"></div>
+<main class="container pb-5" style="max-width: 900px;">
+    <h1>Privacy and data use</h1>
+    <p class="lead">Understand how this coursework prototype uses information before creating an account.</p>
+    <section class="card card-body mb-3" aria-labelledby="account-data">
+        <h2 id="account-data" class="h4">Account information</h2>
+        <p>Registration stores your name, email address and a password hash. Designer registration also stores company details and contact information for administrator review. Do not submit real personal information or private client material to this demonstration.</p>
+        <p class="mb-0">Passwords are hashed with BCrypt. Login sessions expire after 30 minutes of inactivity. This prototype currently prints password-reset links to application logs; those logs must be restricted to the development team.</p>
+    </section>
+    <section class="card card-body mb-3" aria-labelledby="prototype-data">
+        <h2 id="prototype-data" class="h4">Demonstration content</h2>
+        <p class="mb-0">Project cards, favourites and dashboard counts currently use sample data. The displayed view and save counts are illustrative, not measurements of real visitor activity.</p>
+    </section>
+    <section class="card card-body mb-3" aria-labelledby="planned-analytics">
+        <h2 id="planned-analytics" class="h4">Planned analytics</h2>
+        <p>Visitor analytics and personalised recommendations are not implemented. Before introducing optional analytics, the team plans to provide an explicit opt-in choice, an equally accessible opt-out, and a clear explanation of the data collected.</p>
+        <p class="mb-0">The proposed design uses minimal event data and aggregate reports, excludes passwords and contact details, sets a retention period, and reviews whether recommendations unfairly favour already popular designers.</p>
+    </section>
+    <section class="card card-body" aria-labelledby="choices">
+        <h2 id="choices" class="h4">Questions and corrections</h2>
+        <p class="mb-0">Contact the project team through your course group channel for questions or to request correction or removal of demonstration account data. Self-service data export and deletion are not implemented.</p>
+    </section>
+</main>
+</body>
+</html>

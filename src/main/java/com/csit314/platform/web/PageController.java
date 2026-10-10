@@ -25,6 +25,11 @@ public class PageController {
             new ProjectCard(4L, "Open-plan living and dining", "North & Pine", "/images/placeholder.svg", "Living Room")
     );
 
+    @GetMapping("/privacy")
+    public String privacy() {
+        return "privacy";
+    }
+
     @GetMapping("/search")
     public String search(@RequestParam(required = false) String q,
                           @RequestParam(required = false) String category,
