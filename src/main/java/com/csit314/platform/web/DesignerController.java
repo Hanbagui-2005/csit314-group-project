@@ -1,0 +1,83 @@
+package com.csit314.platform.web;
+
+import com.csit314.platform.model.InteriorDesigner;
+import com.csit314.platform.model.Project;
+import com.csit314.platform.repository.CategoryRepository;
+import com.csit314.platform.repository.InteriorDesignerRepository;
+import com.csit314.platform.repository.ProjectRepository;
+import com.csit314.platform.service.ProjectService;
+import com.csit314.platform.service.ServiceException;
+import com.csit314.platform.web.dto.ProjectForm;
+import com.csit314.platform.web.session.LoginSession;
+import com.csit314.platform.web.session.SessionUser;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
+
+// designer-facing pages that need a logged-in designer (auth already enforced by AuthInterceptor)
+@Controller
+@RequestMapping("/designer")
+public class DesignerController {
+
+    private final ProjectRepository projectRepository;
+    private final CategoryRepository categoryRepository;
+    private final InteriorDesignerRepository designerRepository;
+    private final ProjectService projectService;
+    private final LoginSession loginSession;
+
+    public DesignerController(ProjectRepository projectRepository,
+                              CategoryRepository categoryRepository,
+                              InteriorDesignerRepository designerRepository,
+                              ProjectService projectService,
+                              LoginSession loginSession) {
+        this.projectRepository = projectRepository;
+        this.categoryRepository = categoryRepository;
+        this.designerRepository = designerRepository;
+        this.projectService = projectService;
+        this.loginSession = loginSession;
+    }
+
+    @GetMapping("/dashboard")
+    public String dashboard(HttpServletRequest request, Model model) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        model.addAttribute("projects", projectRepository.findByDesignerIdOrderByCreatedAtDesc(current.id()));
+        return "designer-dashboard";
+    }
+
+    // IDR-04
+    @GetMapping("/projects/new")
+    public String newProjectForm(Model model) {
+        model.addAttribute("categories", categoryRepository.findAll());
+        model.addAttribute("isEdit", false);
+        return "project-form";
+    }
+
+    // IDR-04 / IDR-05
+    @PostMapping("/projects")
+    public String createProject(@ModelAttribute ProjectForm form,
+                                @RequestParam(value = "photos", required = false) List<MultipartFile> photos,
+                                HttpServletRequest request,
+                                RedirectAttributes redirect) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        try {
+            InteriorDesigner designer = designerRepository.findById(current.id())
+                    .orElseThrow(() -> new ServiceException("Designer account not found."));
+            Project project = projectService.createProject(designer, form, photos);
+            redirect.addFlashAttribute("successMessage",
+                    "\"" + project.getTitle() + "\" has been added to your portfolio.");
+            return "redirect:/designer/dashboard";
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/designer/projects/new";
+        }
+    }
+}

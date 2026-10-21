@@ -1,6 +1,5 @@
 package com.csit314.platform.web;
 
-import com.csit314.platform.web.dto.DesignerProjectStat;
 import com.csit314.platform.web.dto.FavouriteItem;
 import com.csit314.platform.web.dto.ProjectCard;
 import com.csit314.platform.web.dto.ProjectDetail;
@@ -67,22 +66,7 @@ public class PageController {
         return "favourites";
     }
 
-    @GetMapping("/designer/dashboard")
-    public String designerDashboard(Model model) {
-        List<DesignerProjectStat> myProjects = List.of(
-                new DesignerProjectStat(1L, "Modern minimalist kitchen", "/images/placeholder.svg", 42, 8),
-                new DesignerProjectStat(2L, "Cozy reading nook", "/images/placeholder.svg", 19, 3)
-        );
-        model.addAttribute("projects", myProjects);
-        return "designer-dashboard";
-    }
-
-    @GetMapping("/designer/projects/new")
-    public String newProjectForm(Model model) {
-        model.addAttribute("categories", CATEGORIES);
-        model.addAttribute("isEdit", false);
-        return "project-form";
-    }
+    // IDR-04/05 real dashboard and new-project form now live in DesignerController
 
     @GetMapping("/designer/projects/{id}/edit")
     public String editProjectForm(@PathVariable Long id, Model model) {

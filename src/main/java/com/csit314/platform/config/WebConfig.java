@@ -3,17 +3,28 @@ package com.csit314.platform.config;
 import com.csit314.platform.model.Role;
 import com.csit314.platform.web.session.AuthInterceptor;
 import com.csit314.platform.web.session.LoginSession;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
     private final LoginSession loginSession;
+    private final String uploadDir;
 
-    public WebConfig(LoginSession loginSession) {
+    public WebConfig(LoginSession loginSession, @Value("${app.upload-dir:uploads}") String uploadDir) {
         this.loginSession = loginSession;
+        this.uploadDir = uploadDir;
+    }
+
+    // serves IDR-05 photo uploads, which are saved outside the classpath so they survive a rebuild
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:" + uploadDir + "/");
     }
 
     @Override
