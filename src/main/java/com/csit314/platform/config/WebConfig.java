@@ -20,7 +20,7 @@ public class WebConfig implements WebMvcConfigurer {
         this.uploadDir = uploadDir;
     }
 
-    // serves IDR-05 photo uploads, which are saved outside the classpath so they survive a rebuild
+    // serves IDR-05 photo uploads - saved outside the classpath so a rebuild doesn't wipe them
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**")

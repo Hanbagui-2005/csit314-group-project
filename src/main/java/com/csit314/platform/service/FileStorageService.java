@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
-// saves uploaded photos to a local folder and hands back the web-facing URL to store on the entity
+// saves the uploaded photo locally and gives back the url to save on the project
 @Service
 public class FileStorageService {
 

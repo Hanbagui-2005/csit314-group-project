@@ -23,7 +23,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
-// designer-facing pages that need a logged-in designer (auth already enforced by AuthInterceptor)
+// designer pages, AuthInterceptor already makes sure they're logged in
 @Controller
 @RequestMapping("/designer")
 public class DesignerController {

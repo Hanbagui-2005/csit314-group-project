@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-// PM-01 covers category management going forward; this just seeds a starter list
-// so the designer project form has options before Platform Management builds that feature
+// just seeding some default categories so the project form has options for now
+// PM-01 will handle real category management later
 @Component
 public class CategoryInitializer implements ApplicationRunner {
 

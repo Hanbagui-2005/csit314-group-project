@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// IDR-04 / IDR-05: a designer's portfolio project, with one or more photos
+// IDR-04/05 - a project in a designer's portfolio, can have multiple photos
 @Entity
 @Table(name = "projects")
 public class Project {
@@ -47,7 +47,7 @@ public class Project {
     @Column(nullable = false, length = 10)
     private ProjectStatus status = ProjectStatus.CURRENT;
 
-    // eager: every page that shows a project needs its photos, and the list is always small (max 10)
+    // had to make this eager, kept getting a LazyInitializationException when the page tried to render
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "project_photos", joinColumns = @JoinColumn(name = "project_id"))
     @OrderColumn(name = "photo_order")
