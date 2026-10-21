@@ -7,11 +7,13 @@
 
     <h4 class="mb-3" th:text="${isEdit} ? 'Edit project' : 'New project'">New project</h4>
 
-    <form method="post" th:action="${isEdit} ? @{/designer/projects/{id}(id=${projectId})} : @{/designer/projects}">
+    <form method="post" enctype="multipart/form-data"
+          th:action="${isEdit} ? @{/designer/projects/{id}(id=${projectId})} : @{/designer/projects}">
 
         <div class="mb-3">
             <label class="form-label">Photos</label>
-            <input type="file" name="photos" class="form-control" multiple/>
+            <input type="file" name="photos" class="form-control" accept="image/*" multiple/>
+            <div class="form-text">Add at least one photo, up to 10.</div>
         </div>
 
         <div class="mb-3">
@@ -25,20 +27,11 @@
                       placeholder="Describe the project"></textarea>
         </div>
 
-        <div class="row mb-4">
-            <div class="col">
-                <label class="form-label">Category</label>
-                <select name="category" class="form-select">
-                    <option th:each="cat : ${categories}" th:value="${cat}" th:text="${cat}">Category</option>
-                </select>
-            </div>
-            <div class="col">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select">
-                    <option value="current">Current</option>
-                    <option value="past">Past</option>
-                </select>
-            </div>
+        <div class="mb-4">
+            <label class="form-label">Category</label>
+            <select name="categoryId" class="form-select">
+                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Category</option>
+            </select>
         </div>
 
         <button type="submit" class="btn btn-dark">Save</button>
