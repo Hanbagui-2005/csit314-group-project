@@ -18,20 +18,25 @@
 
         <div class="mb-3">
             <label class="form-label">Title</label>
-            <input type="text" name="title" class="form-control" placeholder="e.g. Modern minimalist kitchen"/>
+            <input type="text" id="title" name="title" class="form-control" placeholder="e.g. Modern minimalist kitchen"/>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Description</label>
-            <textarea name="description" class="form-control" rows="4"
+            <textarea id="description" name="description" class="form-control" rows="4"
                       placeholder="Describe the project"></textarea>
         </div>
 
         <div class="mb-4">
             <label class="form-label">Category</label>
-            <select name="categoryId" class="form-select">
+            <select id="categoryId" name="categoryId" class="form-select">
                 <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Category</option>
             </select>
+            <!-- IDR-06 - shown once we get a suggestion back, hidden otherwise -->
+            <div id="categorySuggestion" class="form-text" style="display: none;">
+                Looks like this could be <strong id="categorySuggestionName"></strong> —
+                <a href="#" id="applyCategorySuggestion">use this category</a>?
+            </div>
         </div>
 
         <button type="submit" class="btn btn-dark">Save</button>
@@ -40,5 +45,60 @@
     </form>
 
 </div>
+
+<script th:inline="javascript">
+    // IDR-06 - as the designer types the title/description, ask the server for a
+    // category suggestion and show it as a hint they can click to apply
+    (function () {
+        const titleInput = document.getElementById('title');
+        const descriptionInput = document.getElementById('description');
+        const categorySelect = document.getElementById('categoryId');
+        const suggestionBox = document.getElementById('categorySuggestion');
+        const suggestionName = document.getElementById('categorySuggestionName');
+        const applyLink = document.getElementById('applyCategorySuggestion');
+
+        let suggestedCategoryId = null;
+        let debounceTimer = null;
+
+        function fetchSuggestion() {
+            const title = titleInput.value.trim();
+            const description = descriptionInput.value.trim();
+            if (!title && !description) {
+                suggestionBox.style.display = 'none';
+                return;
+            }
+            const params = new URLSearchParams({title: title, description: description});
+            fetch('/designer/projects/suggest-category?' + params.toString())
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.categoryId) {
+                        suggestionBox.style.display = 'none';
+                        return;
+                    }
+                    suggestedCategoryId = data.categoryId;
+                    suggestionName.textContent = data.categoryName;
+                    suggestionBox.style.display = 'block';
+                })
+                .catch(() => suggestionBox.style.display = 'none');
+        }
+
+        function onInputChanged() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchSuggestion, 500);
+        }
+
+        titleInput.addEventListener('input', onInputChanged);
+        descriptionInput.addEventListener('input', onInputChanged);
+
+        applyLink.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (suggestedCategoryId) {
+                categorySelect.value = suggestedCategoryId;
+            }
+            suggestionBox.style.display = 'none';
+        });
+    })();
+</script>
+
 </body>
 </html>
