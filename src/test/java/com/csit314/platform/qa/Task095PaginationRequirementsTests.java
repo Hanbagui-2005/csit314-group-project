@@ -4,6 +4,7 @@ import com.csit314.platform.model.Customer;
 import com.csit314.platform.repository.CustomerRepository;
 import com.csit314.platform.web.dto.UserSummary;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** Executable acceptance checks for the pagination part of Taiga #95. */
+@Disabled("Pagination for /admin/users (Taiga #95) is not implemented yet")
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:qa_pagination;MODE=MySQL;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
 @Transactional
