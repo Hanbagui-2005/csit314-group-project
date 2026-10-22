@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Portfolio analytics')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 720px;">
+
+    <h4 class="mb-1">Portfolio analytics</h4>
+    <p class="text-muted small mb-4">
+        Breakdown of your portfolio by category. View/shortlist engagement isn't tracked yet
+        (browse and favourites are still placeholder pages), so this is based on project count for now.
+    </p>
+
+    <div th:if="${#lists.isEmpty(breakdown)}" class="text-muted">
+        Add a project to see your category breakdown here.
+    </div>
+
+    <div th:each="row : ${breakdown}" class="mb-3">
+        <div class="d-flex justify-content-between small mb-1">
+            <span th:text="${row.categoryName}">Category</span>
+            <span th:text="${row.projectCount} + ' project(s) — ' + ${row.percentage} + '%'">0 — 0%</span>
+        </div>
+        <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-dark" th:style="'width: ' + ${row.percentage} + '%'"></div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>
