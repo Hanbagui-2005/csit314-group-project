@@ -10,27 +10,57 @@
     <form method="post" enctype="multipart/form-data"
           th:action="${isEdit} ? @{/designer/projects/{id}(id=${projectId})} : @{/designer/projects}">
 
+        <!-- IDR-07 - existing photos are shown read-only; new uploads get appended to them -->
+        <div class="mb-3" th:if="${isEdit}">
+            <label class="form-label">Current photos</label>
+            <div class="d-flex flex-wrap gap-2">
+                <img th:each="url : ${project.photoUrls}" th:src="${url}" alt="Existing photo"
+                     style="width:64px;height:64px;object-fit:cover;border-radius:6px;"/>
+            </div>
+        </div>
+
         <div class="mb-3">
-            <label class="form-label">Photos</label>
+            <label class="form-label" th:text="${isEdit} ? 'Add more photos' : 'Photos'">Photos</label>
             <input type="file" name="photos" class="form-control" accept="image/*" multiple/>
-            <div class="form-text">Add at least one photo, up to 10.</div>
+            <div class="form-text" th:text="${isEdit} ? 'Optional, up to 10 total.' : 'Add at least one photo, up to 10.'">
+                Add at least one photo, up to 10.
+            </div>
+        </div>
+
+        <div class="mb-3" th:if="${isEdit and not #lists.isEmpty(project.beforePhotoUrls)}">
+            <label class="form-label">Current before-photos</label>
+            <div class="d-flex flex-wrap gap-2">
+                <img th:each="url : ${project.beforePhotoUrls}" th:src="${url}" alt="Existing before-photo"
+                     style="width:64px;height:64px;object-fit:cover;border-radius:6px;"/>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Before photos</label>
+            <input type="file" name="beforePhotos" class="form-control" accept="image/*" multiple/>
+            <div class="form-text">
+                Optional - the "before" shots, so customers can see the actual transformation, up to 10.
+            </div>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Title</label>
-            <input type="text" id="title" name="title" class="form-control" placeholder="e.g. Modern minimalist kitchen"/>
+            <input type="text" id="title" name="title" class="form-control"
+                   th:value="${isEdit} ? ${project.title} : null" placeholder="e.g. Modern minimalist kitchen"/>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Description</label>
             <textarea id="description" name="description" class="form-control" rows="4"
+                      th:text="${isEdit} ? ${project.description} : null"
                       placeholder="Describe the project"></textarea>
         </div>
 
         <div class="mb-4">
             <label class="form-label">Category</label>
             <select id="categoryId" name="categoryId" class="form-select">
-                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Category</option>
+                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"
+                        th:selected="${isEdit and project.category.id == cat.id}">Category</option>
             </select>
             <!-- IDR-06 - shown once we get a suggestion back, hidden otherwise -->
             <div id="categorySuggestion" class="form-text" style="display: none;">
