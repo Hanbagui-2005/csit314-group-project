@@ -1,0 +1,163 @@
+/* Shared visual theme for the whole app - loaded after Bootstrap so these override it.
+   Keep this static (no hover/transition effects yet - that's a separate pass). */
+
+:root {
+    --color-bg: #FAF6EF;
+    --color-surface: #FFFFFF;
+    --color-surface-alt: #F2EADD;
+    --color-border: #E6DCC9;
+    --color-text: #2E2822;
+    --color-text-muted: #8A8075;
+    --color-primary: #C1693E;
+    --color-primary-dark: #A14F2C;
+    --color-accent: #6B7F5E;
+    --color-accent-bg: #E8EDE3;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-pill: 999px;
+}
+
+body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fraunces', Georgia, serif;
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+a {
+    color: var(--color-primary-dark);
+}
+
+/* Navbar */
+.navbar {
+    background-color: var(--color-surface) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+}
+
+.navbar-brand {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    color: var(--color-primary-dark) !important;
+    font-size: 1.3rem;
+}
+
+.navbar .nav-link {
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+/* Buttons */
+.btn {
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+}
+
+.btn-dark {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+
+.btn-outline-dark {
+    color: var(--color-primary-dark);
+    border-color: var(--color-primary);
+}
+
+.btn-outline-secondary {
+    color: var(--color-text-muted);
+    border-color: var(--color-border);
+}
+
+/* Category filter chips on Browse use the same btn classes but smaller/pill-shaped */
+.btn-sm {
+    border-radius: var(--radius-pill);
+}
+
+/* Cards and list rows */
+.card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.list-group-item {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: 0.65rem;
+}
+
+/* Forms */
+.form-control, .form-select {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.form-text {
+    color: var(--color-text-muted);
+}
+
+/* Alerts */
+.alert {
+    border-radius: var(--radius-sm);
+    border: none;
+}
+
+/* Progress bars (portfolio analytics) */
+.progress {
+    background-color: var(--color-surface-alt);
+    border-radius: var(--radius-pill);
+}
+
+.progress-bar {
+    background-color: var(--color-primary) !important;
+    border-radius: var(--radius-pill);
+}
+
+/* Badges (category tag on project detail, status pills on admin users) */
+.badge {
+    border-radius: var(--radius-pill);
+    font-weight: 500;
+    padding: 0.4em 0.85em;
+}
+
+.badge.bg-light {
+    background-color: var(--color-accent-bg) !important;
+    color: var(--color-accent) !important;
+    border: none !important;
+}
+
+/* Tables */
+.table {
+    background-color: var(--color-surface);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.table thead th {
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: none;
+}
+
+/* Modal */
+.modal-content {
+    border-radius: var(--radius-md);
+    border: none;
+}
