@@ -7,6 +7,7 @@ import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.service.CategorySuggestionService;
+import com.csit314.platform.service.PortfolioAnalyticsService;
 import com.csit314.platform.service.ProjectService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.web.dto.CategorySuggestionResponse;
@@ -37,6 +38,7 @@ public class DesignerController {
     private final InteriorDesignerRepository designerRepository;
     private final ProjectService projectService;
     private final CategorySuggestionService categorySuggestionService;
+    private final PortfolioAnalyticsService portfolioAnalyticsService;
     private final LoginSession loginSession;
 
     public DesignerController(ProjectRepository projectRepository,
@@ -44,12 +46,14 @@ public class DesignerController {
                               InteriorDesignerRepository designerRepository,
                               ProjectService projectService,
                               CategorySuggestionService categorySuggestionService,
+                              PortfolioAnalyticsService portfolioAnalyticsService,
                               LoginSession loginSession) {
         this.projectRepository = projectRepository;
         this.categoryRepository = categoryRepository;
         this.designerRepository = designerRepository;
         this.projectService = projectService;
         this.categorySuggestionService = categorySuggestionService;
+        this.portfolioAnalyticsService = portfolioAnalyticsService;
         this.loginSession = loginSession;
     }
 
@@ -66,6 +70,14 @@ public class DesignerController {
         model.addAttribute("categories", categoryRepository.findAll());
         model.addAttribute("isEdit", false);
         return "project-form";
+    }
+
+    // IDR-03
+    @GetMapping("/analytics")
+    public String analytics(HttpServletRequest request, Model model) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        model.addAttribute("breakdown", portfolioAnalyticsService.categoryBreakdown(current.id()));
+        return "designer-analytics";
     }
 
     // IDR-06 - called from the new-project form while the designer is typing
