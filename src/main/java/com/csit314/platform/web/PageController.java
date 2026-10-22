@@ -66,15 +66,7 @@ public class PageController {
         return "favourites";
     }
 
-    // IDR-04/05 real dashboard and new-project form now live in DesignerController
-
-    @GetMapping("/designer/projects/{id}/edit")
-    public String editProjectForm(@PathVariable Long id, Model model) {
-        model.addAttribute("categories", CATEGORIES);
-        model.addAttribute("isEdit", true);
-        model.addAttribute("projectId", id);
-        return "project-form";
-    }
+    // IDR-04/05/07 - real dashboard, new-project form and edit form now live in DesignerController
 
     @GetMapping("/register")
     public String registerForm() {

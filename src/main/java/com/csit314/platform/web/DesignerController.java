@@ -19,6 +19,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -72,6 +73,44 @@ public class DesignerController {
         return "project-form";
     }
 
+    // IDR-07 - was a mock stub in PageController, now loads the real project
+    @GetMapping("/projects/{id}/edit")
+    public String editProjectForm(@PathVariable Long id, HttpServletRequest request, Model model,
+                                  RedirectAttributes redirect) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        Project project = projectRepository.findById(id).orElse(null);
+        if (project == null || !project.getDesigner().getId().equals(current.id())) {
+            redirect.addFlashAttribute("errorMessage", "That project couldn't be found.");
+            return "redirect:/designer/dashboard";
+        }
+        model.addAttribute("categories", categoryRepository.findAll());
+        model.addAttribute("isEdit", true);
+        model.addAttribute("projectId", id);
+        model.addAttribute("project", project);
+        return "project-form";
+    }
+
+    // IDR-07
+    @PostMapping("/projects/{id}")
+    public String updateProject(@PathVariable Long id,
+                                @ModelAttribute ProjectForm form,
+                                @RequestParam(value = "photos", required = false) List<MultipartFile> photos,
+                                @RequestParam(value = "beforePhotos", required = false) List<MultipartFile> beforePhotos,
+                                HttpServletRequest request,
+                                RedirectAttributes redirect) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        try {
+            InteriorDesigner designer = designerRepository.findById(current.id())
+                    .orElseThrow(() -> new ServiceException("Designer account not found."));
+            Project project = projectService.updateProject(designer, id, form, photos, beforePhotos);
+            redirect.addFlashAttribute("successMessage", "\"" + project.getTitle() + "\" has been updated.");
+            return "redirect:/designer/dashboard";
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/designer/projects/{id}/edit";
+        }
+    }
+
     // IDR-03
     @GetMapping("/analytics")
     public String analytics(HttpServletRequest request, Model model) {
@@ -96,13 +135,14 @@ public class DesignerController {
     @PostMapping("/projects")
     public String createProject(@ModelAttribute ProjectForm form,
                                 @RequestParam(value = "photos", required = false) List<MultipartFile> photos,
+                                @RequestParam(value = "beforePhotos", required = false) List<MultipartFile> beforePhotos,
                                 HttpServletRequest request,
                                 RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
             InteriorDesigner designer = designerRepository.findById(current.id())
                     .orElseThrow(() -> new ServiceException("Designer account not found."));
-            Project project = projectService.createProject(designer, form, photos);
+            Project project = projectService.createProject(designer, form, photos, beforePhotos);
             redirect.addFlashAttribute("successMessage",
                     "\"" + project.getTitle() + "\" has been added to your portfolio.");
             return "redirect:/designer/dashboard";

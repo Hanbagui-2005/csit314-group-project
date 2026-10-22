@@ -54,6 +54,14 @@ public class Project {
     @Column(name = "photo_url", nullable = false)
     private List<String> photoUrls = new ArrayList<>();
 
+    // IDR-07 - the "staged final shot" photos above are what customers see by default,
+    // these are the optional before shots that go with them on the project edit page
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "project_before_photos", joinColumns = @JoinColumn(name = "project_id"))
+    @OrderColumn(name = "photo_order")
+    @Column(name = "photo_url", nullable = false)
+    private List<String> beforePhotoUrls = new ArrayList<>();
+
     @Column(nullable = false)
     private int viewCount = 0;
 
@@ -84,6 +92,16 @@ public class Project {
         photoUrls.add(url);
     }
 
+    public void addBeforePhoto(String url) {
+        beforePhotoUrls.add(url);
+    }
+
+    public void updateDetails(String title, String description, Category category) {
+        this.title = title;
+        this.description = description;
+        this.category = category;
+    }
+
     public Long getId() {
         return id;
     }
@@ -110,6 +128,10 @@ public class Project {
 
     public List<String> getPhotoUrls() {
         return photoUrls;
+    }
+
+    public List<String> getBeforePhotoUrls() {
+        return beforePhotoUrls;
     }
 
     public int getViewCount() {
