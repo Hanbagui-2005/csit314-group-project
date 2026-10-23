@@ -68,11 +68,7 @@ public class ProjectService {
     @Transactional
     public Project updateProject(InteriorDesigner designer, Long projectId, ProjectForm form,
                                  List<MultipartFile> afterPhotos, List<MultipartFile> beforePhotos) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ServiceException("Project not found."));
-        if (!project.getDesigner().getId().equals(designer.getId())) {
-            throw new ServiceException("You can only edit your own projects.");
-        }
+        Project project = findOwnedProject(designer, projectId);
 
         String title = InputRules.requireText(form.title(), "Title", 150);
         String description = InputRules.requireText(form.description(), "Description", 5000);
@@ -97,6 +93,27 @@ public class ProjectService {
         newAfterPhotos.forEach(file -> project.addPhoto(fileStorageService.store(file)));
         newBeforePhotos.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 
+        return project;
+    }
+
+    // IDR-09
+    @Transactional
+    public Project advanceMilestone(InteriorDesigner designer, Long projectId) {
+        Project project = findOwnedProject(designer, projectId);
+        try {
+            project.advanceMilestone();
+        } catch (IllegalStateException e) {
+            throw new ServiceException(e.getMessage());
+        }
+        return project;
+    }
+
+    private Project findOwnedProject(InteriorDesigner designer, Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ServiceException("Project not found."));
+        if (!project.getDesigner().getId().equals(designer.getId())) {
+            throw new ServiceException("You can only manage your own projects.");
+        }
         return project;
     }
 
