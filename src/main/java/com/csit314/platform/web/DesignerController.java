@@ -111,6 +111,22 @@ public class DesignerController {
         }
     }
 
+    // IDR-09
+    @PostMapping("/projects/{id}/milestone/advance")
+    public String advanceMilestone(@PathVariable Long id, HttpServletRequest request, RedirectAttributes redirect) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        try {
+            InteriorDesigner designer = designerRepository.findById(current.id())
+                    .orElseThrow(() -> new ServiceException("Designer account not found."));
+            Project project = projectService.advanceMilestone(designer, id);
+            redirect.addFlashAttribute("successMessage",
+                    "\"" + project.getTitle() + "\" moved to " + project.getMilestoneStage().getLabel() + ".");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/designer/dashboard";
+    }
+
     // IDR-03
     @GetMapping("/analytics")
     public String analytics(HttpServletRequest request, Model model) {

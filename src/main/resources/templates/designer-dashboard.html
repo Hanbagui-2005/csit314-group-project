@@ -17,11 +17,18 @@
         <div class="list-group-item d-flex align-items-center gap-3" th:each="project : ${projects}">
             <img th:src="${project.photoUrls[0]}" alt="Project photo"
                  style="width:48px;height:48px;object-fit:cover;border-radius:6px;"/>
-            <div class="flex-grow-1" th:text="${project.title}">Project title</div>
-            <div class="text-muted small d-flex gap-3">
-                <span th:text="'Views: ' + ${project.viewCount}">Views</span>
-                <span th:text="'Shortlists: ' + ${project.shortlistCount}">Shortlists</span>
+            <div class="flex-grow-1">
+                <div th:text="${project.title}">Project title</div>
+                <div class="text-muted small d-flex align-items-center gap-3 mt-1">
+                    <span th:text="'Views: ' + ${project.viewCount}">Views</span>
+                    <span th:text="'Shortlists: ' + ${project.shortlistCount}">Shortlists</span>
+                    <span class="badge bg-light" th:text="${project.milestoneStage.label}">Milestone</span>
+                </div>
             </div>
+            <form th:if="${not project.milestoneStage.lastStage}" method="post"
+                  th:action="@{/designer/projects/{id}/milestone/advance(id=${project.id})}" class="mb-0">
+                <button type="submit" class="btn btn-sm btn-outline-dark">Advance milestone</button>
+            </form>
             <a th:href="@{/designer/projects/{id}/edit(id=${project.id})}"
                class="btn btn-sm btn-outline-dark">Edit</a>
         </div>

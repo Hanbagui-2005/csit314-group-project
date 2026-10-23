@@ -62,6 +62,11 @@ public class Project {
     @Column(name = "photo_url", nullable = false)
     private List<String> beforePhotoUrls = new ArrayList<>();
 
+    // IDR-09 - starts at the first stage, designer advances it as the renovation progresses
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 25)
+    private MilestoneStage milestoneStage = MilestoneStage.DESIGN_APPROVED;
+
     @Column(nullable = false)
     private int viewCount = 0;
 
@@ -102,6 +107,14 @@ public class Project {
         this.category = category;
     }
 
+    public void advanceMilestone() {
+        MilestoneStage next = milestoneStage.next();
+        if (next == null) {
+            throw new IllegalStateException("Already at the final milestone.");
+        }
+        milestoneStage = next;
+    }
+
     public Long getId() {
         return id;
     }
@@ -132,6 +145,10 @@ public class Project {
 
     public List<String> getBeforePhotoUrls() {
         return beforePhotoUrls;
+    }
+
+    public MilestoneStage getMilestoneStage() {
+        return milestoneStage;
     }
 
     public int getViewCount() {
