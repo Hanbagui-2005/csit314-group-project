@@ -85,11 +85,19 @@
             <div class="form-text">Optional - fill in both or leave both blank.</div>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-3">
             <label class="form-label">Estimated timeline</label>
             <input type="text" name="estimatedTimeline" class="form-control" placeholder="e.g. 4-6 weeks"
                    th:value="${isEdit} ? ${project.estimatedTimeline} : null"/>
             <div class="form-text">Optional.</div>
+        </div>
+
+        <!-- CUS-04 -->
+        <div class="mb-4">
+            <label class="form-label">Room size (sqm)</label>
+            <input type="number" name="roomSizeSqm" class="form-control" min="0" placeholder="e.g. 12"
+                   th:value="${isEdit} ? ${project.roomSizeSqm} : null"/>
+            <div class="form-text">Optional - helps customers filter by what's realistic for their own space.</div>
         </div>
 
         <button type="submit" class="btn btn-dark">Save</button>

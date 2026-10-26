@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -27,14 +28,16 @@ class BrowseServiceUnitTests {
     BrowseService service;
 
     Project project;
+    Category category;
+    InteriorDesigner designer;
 
     @BeforeEach
     void setUp() {
         service = new BrowseService(projectRepository, projectViewRepository);
 
-        InteriorDesigner designer = new InteriorDesigner("Designer", "designer@example.test", "encoded",
+        designer = new InteriorDesigner("Designer", "designer@example.test", "encoded",
                 new Company("Studio", "Description", "12345"));
-        Category category = new Category("Kitchen");
+        category = new Category("Kitchen");
         project = new Project("Kitchen remodel", "Description", category, designer);
         ReflectionTestUtils.setField(project, "id", 100L);
     }
@@ -77,15 +80,56 @@ class BrowseServiceUnitTests {
 
     @Test
     void blankSearchTermsAreTreatedAsNoFilter() {
-        service.search("  ", "");
+        service.search("  ", "", null, null);
 
-        verify(projectRepository).search(null, null);
+        verify(projectRepository).search(null, null, null, null);
     }
 
     @Test
     void realSearchTermsArePassedThrough() {
-        service.search(" kitchen ", "Kitchen");
+        service.search(" kitchen ", "Kitchen", null, null);
 
-        verify(projectRepository).search("kitchen", "Kitchen");
+        verify(projectRepository).search("kitchen", "Kitchen", null, null);
+    }
+
+    // CUS-04
+    @Test
+    void budgetAndRoomSizeFiltersArePassedThrough() {
+        service.search(null, null, 10000, 15);
+
+        verify(projectRepository).search(null, null, 10000, 15);
+    }
+
+    // CUS-12
+    @Test
+    void estimateSpansTheWidestMinAndMaxAcrossListings() {
+        Project cheap = new Project("Budget kitchen", "x", category, designer);
+        ReflectionTestUtils.setField(cheap, "budgetMin", 2000);
+        ReflectionTestUtils.setField(cheap, "budgetMax", 4000);
+        Project premium = new Project("Premium kitchen", "x", category, designer);
+        ReflectionTestUtils.setField(premium, "budgetMin", 8000);
+        ReflectionTestUtils.setField(premium, "budgetMax", 15000);
+        when(projectRepository.findByCategoryNameAndBudgetMinIsNotNull("Kitchen")).thenReturn(List.of(cheap, premium));
+
+        var estimate = service.estimateBudget("Kitchen");
+
+        assertThat(estimate).isPresent();
+        assertThat(estimate.get().min()).isEqualTo(2000);
+        assertThat(estimate.get().max()).isEqualTo(15000);
+        assertThat(estimate.get().sampleSize()).isEqualTo(2);
+    }
+
+    @Test
+    void estimateIsEmptyWithNoBudgetDataForTheCategory() {
+        when(projectRepository.findByCategoryNameAndBudgetMinIsNotNull("Kitchen")).thenReturn(List.of());
+
+        assertThat(service.estimateBudget("Kitchen")).isEmpty();
+    }
+
+    @Test
+    void estimateIsEmptyWithNoCategorySelected() {
+        assertThat(service.estimateBudget(null)).isEmpty();
+        assertThat(service.estimateBudget("  ")).isEmpty();
+        verifyNoInteractions(projectRepository);
     }
 }

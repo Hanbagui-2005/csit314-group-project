@@ -45,15 +45,20 @@ public class PageController {
         return "privacy";
     }
 
-    // IDR-10 - was hardcoded sample data, now real projects
+    // IDR-10/CUS-04/CUS-12 - was hardcoded sample data, now real projects with real filters
     @GetMapping("/search")
     public String search(@RequestParam(required = false) String q,
                           @RequestParam(required = false) String category,
+                          @RequestParam(required = false) Integer maxBudget,
+                          @RequestParam(required = false) Integer minRoomSize,
                           Model model) {
         model.addAttribute("query", q);
         model.addAttribute("selectedCategory", category);
+        model.addAttribute("maxBudget", maxBudget);
+        model.addAttribute("minRoomSize", minRoomSize);
         model.addAttribute("categories", categoryRepository.findAll());
-        model.addAttribute("projects", browseService.search(q, category));
+        model.addAttribute("projects", browseService.search(q, category, maxBudget, minRoomSize));
+        model.addAttribute("budgetEstimate", browseService.estimateBudget(category).orElse(null));
         return "search";
     }
 

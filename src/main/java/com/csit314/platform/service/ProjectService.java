@@ -59,7 +59,8 @@ public class ProjectService {
         validateBudgetRange(form.budgetMin(), form.budgetMax());
 
         Project project = new Project(title, description, category, designer);
-        project.updateDetails(title, description, category, form.budgetMin(), form.budgetMax(), cleanTimeline(form.estimatedTimeline()));
+        project.updateDetails(title, description, category, form.budgetMin(), form.budgetMax(),
+                cleanTimeline(form.estimatedTimeline()), form.roomSizeSqm());
         uploaded.forEach(file -> project.addPhoto(fileStorageService.store(file)));
         uploadedBefore.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 
@@ -93,7 +94,8 @@ public class ProjectService {
         }
         validateAll(newAfterPhotos, newBeforePhotos);
 
-        project.updateDetails(title, description, category, form.budgetMin(), form.budgetMax(), cleanTimeline(form.estimatedTimeline()));
+        project.updateDetails(title, description, category, form.budgetMin(), form.budgetMax(),
+                cleanTimeline(form.estimatedTimeline()), form.roomSizeSqm());
         newAfterPhotos.forEach(file -> project.addPhoto(fileStorageService.store(file)));
         newBeforePhotos.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 

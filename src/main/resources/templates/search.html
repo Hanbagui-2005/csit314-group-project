@@ -5,22 +5,39 @@
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
 <div class="container">
 
-    <form class="row g-2 mb-3" method="get" th:action="@{/search}">
-        <div class="col-8">
+    <form class="row g-2 mb-2" method="get" th:action="@{/search}">
+        <div class="col-md-5">
             <input type="text" name="q" class="form-control" placeholder="Search by keyword"
                    th:value="${query}"/>
         </div>
-        <div class="col-4">
-            <button type="submit" class="btn btn-dark w-100">Search</button>
+        <!-- CUS-04 -->
+        <div class="col-md-3">
+            <input type="number" name="maxBudget" class="form-control" min="0" placeholder="Max budget"
+                   th:value="${maxBudget}"/>
         </div>
+        <div class="col-md-3">
+            <input type="number" name="minRoomSize" class="form-control" min="0" placeholder="Min room size (sqm)"
+                   th:value="${minRoomSize}"/>
+        </div>
+        <div class="col-md-1">
+            <button type="submit" class="btn btn-dark w-100">Go</button>
+        </div>
+        <input type="hidden" name="category" th:value="${selectedCategory}"/>
     </form>
 
-    <div class="mb-4">
+    <div class="mb-3">
         <a th:each="cat : ${categories}"
-           th:href="@{/search(q=${query}, category=${cat.name})}"
+           th:href="@{/search(q=${query}, category=${cat.name}, maxBudget=${maxBudget}, minRoomSize=${minRoomSize})}"
            th:text="${cat.name}"
            class="btn btn-sm me-2 mb-2"
            th:classappend="${cat.name == selectedCategory} ? 'btn-dark' : 'btn-outline-secondary'">Category</a>
+    </div>
+
+    <!-- CUS-12 -->
+    <div class="alert alert-light border small" th:if="${budgetEstimate != null}">
+        Typical budget for <strong th:text="${selectedCategory}">Category</strong>:
+        $<span th:text="${budgetEstimate.min}">0</span> - $<span th:text="${budgetEstimate.max}">0</span>
+        <span class="text-muted">(based on <span th:text="${budgetEstimate.sampleSize}">0</span> listing(s))</span>
     </div>
 
     <div class="row row-cols-1 row-cols-md-3 g-4">
@@ -29,7 +46,9 @@
                 <img th:src="${project.photoUrls[0]}" class="card-img-top" alt="Project photo"/>
                 <div class="card-body">
                     <h6 class="card-title mb-1" th:text="${project.title}">Project title</h6>
-                    <p class="card-text text-muted small mb-2" th:text="${project.designer.company.name}">Designer name</p>
+                    <p class="card-text text-muted small mb-1" th:text="${project.designer.company.name}">Designer name</p>
+                    <p class="card-text text-muted small mb-2" th:if="${project.budgetMin != null}"
+                       th:text="'$' + ${project.budgetMin} + ' - $' + ${project.budgetMax}">Budget</p>
                     <a th:href="@{/projects/{id}(id=${project.id})}" class="btn btn-sm btn-outline-dark">View</a>
                 </div>
             </div>

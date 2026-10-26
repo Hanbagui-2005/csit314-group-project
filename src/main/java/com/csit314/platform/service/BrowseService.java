@@ -4,10 +4,12 @@ import com.csit314.platform.model.Project;
 import com.csit314.platform.model.ProjectView;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.ProjectViewRepository;
+import com.csit314.platform.web.dto.BudgetEstimate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 // IDR-10 - public browsing + the real view-count tracking that was missing
 @Service
@@ -21,10 +23,12 @@ public class BrowseService {
         this.projectViewRepository = projectViewRepository;
     }
 
-    public List<Project> search(String query, String categoryName) {
+    // CUS-04 - maxBudget/minRoomSize are optional filters; a project with no budget/size
+    // data of its own gets excluded once that filter is in use, since there's nothing to check it against
+    public List<Project> search(String query, String categoryName, Integer maxBudget, Integer minRoomSize) {
         String cleanQuery = blankToNull(query);
         String cleanCategory = blankToNull(categoryName);
-        return projectRepository.search(cleanQuery, cleanCategory);
+        return projectRepository.search(cleanQuery, cleanCategory, maxBudget, minRoomSize);
     }
 
     @Transactional
@@ -35,6 +39,21 @@ public class BrowseService {
         // IDR-08 - also logged as its own row so a weekly delta is possible later
         projectViewRepository.save(new ProjectView(project));
         return project;
+    }
+
+    // CUS-12
+    public Optional<BudgetEstimate> estimateBudget(String categoryName) {
+        String cleanCategory = blankToNull(categoryName);
+        if (cleanCategory == null) {
+            return Optional.empty();
+        }
+        List<Project> withBudget = projectRepository.findByCategoryNameAndBudgetMinIsNotNull(cleanCategory);
+        if (withBudget.isEmpty()) {
+            return Optional.empty();
+        }
+        int min = withBudget.stream().mapToInt(Project::getBudgetMin).min().orElseThrow();
+        int max = withBudget.stream().mapToInt(Project::getBudgetMax).max().orElseThrow();
+        return Optional.of(new BudgetEstimate(min, max, withBudget.size()));
     }
 
     private String blankToNull(String value) {

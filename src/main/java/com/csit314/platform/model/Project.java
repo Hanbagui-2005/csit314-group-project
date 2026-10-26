@@ -77,6 +77,11 @@ public class Project {
     @Column(name = "estimated_timeline", length = 100)
     private String estimatedTimeline;
 
+    // CUS-04 - the room this project was done in, so customers can filter for
+    // something realistic compared to their own space. Optional, same as budget.
+    @Column(name = "room_size_sqm")
+    private Integer roomSizeSqm;
+
     @Column(nullable = false)
     private int viewCount = 0;
 
@@ -112,13 +117,15 @@ public class Project {
     }
 
     public void updateDetails(String title, String description, Category category,
-                              Integer budgetMin, Integer budgetMax, String estimatedTimeline) {
+                              Integer budgetMin, Integer budgetMax, String estimatedTimeline,
+                              Integer roomSizeSqm) {
         this.title = title;
         this.description = description;
         this.category = category;
         this.budgetMin = budgetMin;
         this.budgetMax = budgetMax;
         this.estimatedTimeline = estimatedTimeline;
+        this.roomSizeSqm = roomSizeSqm;
     }
 
     public void advanceMilestone() {
@@ -190,6 +197,10 @@ public class Project {
 
     public String getEstimatedTimeline() {
         return estimatedTimeline;
+    }
+
+    public Integer getRoomSizeSqm() {
+        return roomSizeSqm;
     }
 
     public int getViewCount() {
