@@ -29,8 +29,12 @@
             <a th:href="@{/designers/{id}(id=${project.designer.id})}" class="text-decoration-none fw-semibold"
                th:text="${project.designer.company.name}">Designer name</a>
         </div>
-        <a th:href="@{/designers/{id}/contact(id=${project.designer.id}, projectId=${project.id})}"
-           class="btn btn-sm btn-outline-dark">Message designer</a>
+        <div class="d-flex gap-2">
+            <a th:href="@{/designers/{id}/contact(id=${project.designer.id}, projectId=${project.id})}"
+               class="btn btn-sm btn-outline-dark">Message designer</a>
+            <a th:href="@{/designers/{id}/book(id=${project.designer.id}, projectId=${project.id})}"
+               class="btn btn-sm btn-dark">Book consultation</a>
+        </div>
     </div>
 
 </div>
