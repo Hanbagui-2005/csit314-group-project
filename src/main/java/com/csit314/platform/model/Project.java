@@ -67,6 +67,16 @@ public class Project {
     @Column(nullable = false, length = 25)
     private MilestoneStage milestoneStage = MilestoneStage.DESIGN_APPROVED;
 
+    // IDR-14 - all optional, so customers can gauge fit before reaching out
+    @Column(name = "budget_min")
+    private Integer budgetMin;
+
+    @Column(name = "budget_max")
+    private Integer budgetMax;
+
+    @Column(name = "estimated_timeline", length = 100)
+    private String estimatedTimeline;
+
     @Column(nullable = false)
     private int viewCount = 0;
 
@@ -101,10 +111,14 @@ public class Project {
         beforePhotoUrls.add(url);
     }
 
-    public void updateDetails(String title, String description, Category category) {
+    public void updateDetails(String title, String description, Category category,
+                              Integer budgetMin, Integer budgetMax, String estimatedTimeline) {
         this.title = title;
         this.description = description;
         this.category = category;
+        this.budgetMin = budgetMin;
+        this.budgetMax = budgetMax;
+        this.estimatedTimeline = estimatedTimeline;
     }
 
     public void advanceMilestone() {
@@ -149,6 +163,18 @@ public class Project {
 
     public MilestoneStage getMilestoneStage() {
         return milestoneStage;
+    }
+
+    public Integer getBudgetMin() {
+        return budgetMin;
+    }
+
+    public Integer getBudgetMax() {
+        return budgetMax;
+    }
+
+    public String getEstimatedTimeline() {
+        return estimatedTimeline;
     }
 
     public int getViewCount() {

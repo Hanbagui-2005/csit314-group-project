@@ -57,7 +57,11 @@ class ProjectServiceUnitTests {
     }
 
     private ProjectForm form(String title) {
-        return new ProjectForm(title, "Updated description", 10L);
+        return form(title, null, null, null);
+    }
+
+    private ProjectForm form(String title, Integer budgetMin, Integer budgetMax, String estimatedTimeline) {
+        return new ProjectForm(title, "Updated description", 10L, budgetMin, budgetMax, estimatedTimeline);
     }
 
     @Test
@@ -152,5 +156,66 @@ class ProjectServiceUnitTests {
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("your own projects");
         assertThat(project.getMilestoneStage()).isEqualTo(MilestoneStage.DESIGN_APPROVED);
+    }
+
+    // IDR-14 - budget range + estimated timeline
+    @Test
+    void updateSavesAValidBudgetRangeAndTimeline() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        Project result = service.updateProject(owner, 100L, form("Title", 5000, 8000, "4-6 weeks"), null, null);
+
+        assertThat(result.getBudgetMin()).isEqualTo(5000);
+        assertThat(result.getBudgetMax()).isEqualTo(8000);
+        assertThat(result.getEstimatedTimeline()).isEqualTo("4-6 weeks");
+    }
+
+    @Test
+    void updateWithNoBudgetLeavesItBlank() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        Project result = service.updateProject(owner, 100L, form("Title"), null, null);
+
+        assertThat(result.getBudgetMin()).isNull();
+        assertThat(result.getBudgetMax()).isNull();
+    }
+
+    @Test
+    void updateRejectsAOneSidedBudgetRange() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        assertThatThrownBy(() -> service.updateProject(owner, 100L, form("Title", 5000, null, null), null, null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("both");
+    }
+
+    @Test
+    void updateRejectsAMinAboveMax() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        assertThatThrownBy(() -> service.updateProject(owner, 100L, form("Title", 9000, 5000, null), null, null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("Minimum");
+    }
+
+    // IDR-15 - photo file validation is delegated to FileStorageService.validate();
+    // this just confirms ProjectService checks every file before storing or saving anything
+    // (the actual type/size rules are tested directly in FileStorageServiceUnitTests)
+    @Test
+    void createRejectsABadFileBeforeStoringOrSavingAnything() {
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        MockMultipartFile badPhoto = new MockMultipartFile("photos", "b.exe", "application/octet-stream", "y".getBytes());
+        doThrow(new ServiceException("\"b.exe\" isn't a supported image type."))
+                .when(fileStorageService).validate(badPhoto);
+
+        assertThatThrownBy(() -> service.createProject(owner, form("Title"), List.of(badPhoto), null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("supported image type");
+        verify(fileStorageService, never()).store(any());
+        verify(projectRepository, never()).save(any());
     }
 }

@@ -55,8 +55,11 @@ public class ProjectService {
         if (uploadedBefore.size() > MAX_PHOTOS) {
             throw new ServiceException("You can upload up to " + MAX_PHOTOS + " before-photos.");
         }
+        validateAll(uploaded, uploadedBefore);
+        validateBudgetRange(form.budgetMin(), form.budgetMax());
 
         Project project = new Project(title, description, category, designer);
+        project.updateDetails(title, description, category, form.budgetMin(), form.budgetMax(), cleanTimeline(form.estimatedTimeline()));
         uploaded.forEach(file -> project.addPhoto(fileStorageService.store(file)));
         uploadedBefore.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 
@@ -78,8 +81,7 @@ public class ProjectService {
         }
         Category category = categoryRepository.findById(form.categoryId())
                 .orElseThrow(() -> new ServiceException("That category no longer exists."));
-
-        project.updateDetails(title, description, category);
+        validateBudgetRange(form.budgetMin(), form.budgetMax());
 
         List<MultipartFile> newAfterPhotos = cleanUploads(afterPhotos);
         List<MultipartFile> newBeforePhotos = cleanUploads(beforePhotos);
@@ -89,7 +91,9 @@ public class ProjectService {
         if (project.getBeforePhotoUrls().size() + newBeforePhotos.size() > MAX_PHOTOS) {
             throw new ServiceException("A project can have up to " + MAX_PHOTOS + " before-photos in total.");
         }
+        validateAll(newAfterPhotos, newBeforePhotos);
 
+        project.updateDetails(title, description, category, form.budgetMin(), form.budgetMax(), cleanTimeline(form.estimatedTimeline()));
         newAfterPhotos.forEach(file -> project.addPhoto(fileStorageService.store(file)));
         newBeforePhotos.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 
@@ -119,5 +123,39 @@ public class ProjectService {
 
     private List<MultipartFile> cleanUploads(List<MultipartFile> files) {
         return files == null ? List.of() : files.stream().filter(f -> f != null && !f.isEmpty()).toList();
+    }
+
+    // IDR-15 - check every file before storing any of them, so a bad file later in
+    // the batch doesn't leave earlier valid ones already written to disk
+    private void validateAll(List<MultipartFile> afterPhotos, List<MultipartFile> beforePhotos) {
+        afterPhotos.forEach(fileStorageService::validate);
+        beforePhotos.forEach(fileStorageService::validate);
+    }
+
+    // IDR-14
+    private void validateBudgetRange(Integer budgetMin, Integer budgetMax) {
+        if (budgetMin == null && budgetMax == null) {
+            return;
+        }
+        if (budgetMin == null || budgetMax == null) {
+            throw new ServiceException("Enter both a minimum and maximum budget, or leave both blank.");
+        }
+        if (budgetMin < 0 || budgetMax < 0) {
+            throw new ServiceException("Budget can't be negative.");
+        }
+        if (budgetMin > budgetMax) {
+            throw new ServiceException("Minimum budget can't be more than the maximum.");
+        }
+    }
+
+    private String cleanTimeline(String estimatedTimeline) {
+        if (estimatedTimeline == null || estimatedTimeline.isBlank()) {
+            return null;
+        }
+        String trimmed = estimatedTimeline.trim();
+        if (trimmed.length() > 100) {
+            throw new ServiceException("Estimated timeline must be under 100 characters.");
+        }
+        return trimmed;
     }
 }

@@ -23,6 +23,8 @@
                     <span th:text="'Views: ' + ${project.viewCount}">Views</span>
                     <span th:text="'Shortlists: ' + ${project.shortlistCount}">Shortlists</span>
                     <span class="badge bg-light" th:text="${project.milestoneStage.label}">Milestone</span>
+                    <span class="badge bg-light" th:if="${project.budgetMin != null}"
+                          th:text="'$' + ${project.budgetMin} + ' - $' + ${project.budgetMax}">Budget</span>
                 </div>
             </div>
             <form th:if="${not project.milestoneStage.lastStage}" method="post"
