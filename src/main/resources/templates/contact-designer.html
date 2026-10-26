@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Contact ' + ${designer.company.name})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 480px;">
+
+    <h4 class="mb-1">Message <span th:text="${designer.company.name}">Studio</span></h4>
+    <p class="text-muted small mb-4">They'll see this in their inbox and can get back to you directly.</p>
+
+    <form method="post" th:action="@{/designers/{id}/contact(id=${designer.id})}">
+
+        <div class="mb-3" th:if="${not #lists.isEmpty(projects)}">
+            <label class="form-label">About a specific project? (optional)</label>
+            <select name="projectId" class="form-select">
+                <option value="">General enquiry</option>
+                <option th:each="project : ${projects}" th:value="${project.id}" th:text="${project.title}">
+                    Project
+                </option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Your message</label>
+            <textarea name="body" class="form-control" rows="5"
+                      placeholder="Tell them a bit about your renovation and what you're after"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-dark w-100">Send message</button>
+
+    </form>
+
+</div>
+</body>
+</html>

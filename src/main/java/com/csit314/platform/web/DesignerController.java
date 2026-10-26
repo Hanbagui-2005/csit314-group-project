@@ -7,6 +7,7 @@ import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.service.CategorySuggestionService;
+import com.csit314.platform.service.MessageService;
 import com.csit314.platform.service.PortfolioAnalyticsService;
 import com.csit314.platform.service.ProjectService;
 import com.csit314.platform.service.ServiceException;
@@ -40,6 +41,7 @@ public class DesignerController {
     private final ProjectService projectService;
     private final CategorySuggestionService categorySuggestionService;
     private final PortfolioAnalyticsService portfolioAnalyticsService;
+    private final MessageService messageService;
     private final LoginSession loginSession;
 
     public DesignerController(ProjectRepository projectRepository,
@@ -48,6 +50,7 @@ public class DesignerController {
                               ProjectService projectService,
                               CategorySuggestionService categorySuggestionService,
                               PortfolioAnalyticsService portfolioAnalyticsService,
+                              MessageService messageService,
                               LoginSession loginSession) {
         this.projectRepository = projectRepository;
         this.categoryRepository = categoryRepository;
@@ -55,6 +58,7 @@ public class DesignerController {
         this.projectService = projectService;
         this.categorySuggestionService = categorySuggestionService;
         this.portfolioAnalyticsService = portfolioAnalyticsService;
+        this.messageService = messageService;
         this.loginSession = loginSession;
     }
 
@@ -62,6 +66,8 @@ public class DesignerController {
     public String dashboard(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
         model.addAttribute("projects", projectRepository.findByDesignerIdOrderByCreatedAtDesc(current.id()));
+        InteriorDesigner designer = designerRepository.findById(current.id()).orElseThrow();
+        model.addAttribute("unreadMessageCount", messageService.unreadCount(designer));
         return "designer-dashboard";
     }
 

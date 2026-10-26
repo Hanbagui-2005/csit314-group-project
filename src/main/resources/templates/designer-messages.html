@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Messages')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 720px;">
+
+    <h4 class="mb-3">Messages</h4>
+
+    <div class="list-group">
+        <div class="list-group-item" th:each="message : ${messages}">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="fw-semibold" th:text="${message.sender.fullName}">Customer name</span>
+                    <span class="text-muted small ms-2" th:text="${message.sender.email}">email</span>
+                    <span class="badge bg-light ms-2" th:if="${message.project != null}"
+                          th:text="${message.project.title}">Project</span>
+                    <span class="badge bg-dark ms-2" th:if="${not message.read}">New</span>
+                </div>
+                <span class="text-muted small" th:text="${#temporals.format(message.sentAt, 'dd MMM, HH:mm')}">date</span>
+            </div>
+            <p class="mb-2 mt-2" th:text="${message.body}">Message body</p>
+            <form th:if="${not message.read}" method="post"
+                  th:action="@{/designer/messages/{id}/read(id=${message.id})}" class="mb-0">
+                <button type="submit" class="btn btn-sm btn-outline-dark">Mark as read</button>
+            </form>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(messages)}" class="text-muted">No messages yet.</p>
+
+</div>
+</body>
+</html>
