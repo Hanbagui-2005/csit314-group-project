@@ -33,7 +33,8 @@
                     Price
                 </td>
                 <td th:text="${#strings.listJoin(row.styles, ', ')}">Styles</td>
-                <td class="text-muted">No ratings yet</td>
+                <td th:text="${row.averageRating != null} ? ${#numbers.formatDecimal(row.averageRating, 1, 1)} + ' / 5' : 'No ratings yet'"
+                    th:classappend="${row.averageRating == null} ? 'text-muted' : ''">Rating</td>
             </tr>
             </tbody>
         </table>

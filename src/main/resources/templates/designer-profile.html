@@ -9,6 +9,11 @@
         <div>
             <h4 class="mb-1" th:text="${designer.company.name}">Studio name</h4>
             <div class="text-muted small" th:text="${designer.company.phone}">Phone</div>
+            <div class="small mt-1" th:if="${ratingSummary.average != null}">
+                <span class="fw-semibold" th:text="${#numbers.formatDecimal(ratingSummary.average, 1, 1)} + ' / 5'">0 / 5</span>
+                <span class="text-muted">(<span th:text="${ratingSummary.count}">0</span> review(s))</span>
+            </div>
+            <div class="small mt-1 text-muted" th:if="${ratingSummary.average == null}">No ratings yet</div>
         </div>
         <div class="d-flex gap-2">
             <a th:href="@{/designers/{id}/contact(id=${designer.id})}" class="btn btn-sm btn-outline-dark">Message</a>
@@ -33,6 +38,43 @@
     </div>
 
     <p th:if="${#lists.isEmpty(projects)}" class="text-muted">No projects listed yet.</p>
+
+    <!-- CUS-13 -->
+    <h6 class="mt-5 mb-3">Reviews</h6>
+
+    <div th:if="${canRate}" class="card mb-3">
+        <div class="card-body">
+            <form method="post" th:action="@{/designers/{id}/rate(id=${designer.id})}">
+                <div class="mb-2">
+                    <label class="form-label small">Your rating</label>
+                    <select name="score" class="form-select form-select-sm" style="max-width: 100px;">
+                        <option value="5">5</option>
+                        <option value="4">4</option>
+                        <option value="3">3</option>
+                        <option value="2">2</option>
+                        <option value="1">1</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <textarea name="comment" class="form-control form-control-sm" rows="2"
+                              placeholder="Optional comment"></textarea>
+                </div>
+                <button type="submit" class="btn btn-sm btn-dark">Submit rating</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="list-group">
+        <div class="list-group-item" th:each="review : ${ratingSummary.reviews}">
+            <div class="d-flex justify-content-between">
+                <span class="fw-semibold" th:text="${review.customer.fullName}">Customer</span>
+                <span th:text="${review.score} + ' / 5'">0 / 5</span>
+            </div>
+            <p class="text-muted small mb-0" th:if="${review.comment != null}" th:text="${review.comment}">Comment</p>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(ratingSummary.reviews)}" class="text-muted">No reviews yet.</p>
 
 </div>
 </body>

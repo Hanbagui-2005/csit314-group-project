@@ -9,6 +9,7 @@ import com.csit314.platform.model.Shortlist;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.ShortlistRepository;
 import com.csit314.platform.web.dto.DesignerComparison;
+import com.csit314.platform.web.dto.RatingSummary;
 import com.csit314.platform.web.dto.ShortlistTrendPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ class FavouriteServiceUnitTests {
 
     @Mock ShortlistRepository shortlistRepository;
     @Mock ProjectRepository projectRepository;
+    @Mock RatingService ratingService;
     FavouriteService service;
 
     Customer customer;
@@ -38,7 +40,7 @@ class FavouriteServiceUnitTests {
 
     @BeforeEach
     void setUp() {
-        service = new FavouriteService(shortlistRepository, projectRepository);
+        service = new FavouriteService(shortlistRepository, projectRepository, ratingService);
 
         customer = new Customer("Jordan Lee", "jordan@example.test", "encoded");
         ReflectionTestUtils.setField(customer, "id", 1L);
@@ -156,6 +158,7 @@ class FavouriteServiceUnitTests {
         ReflectionTestUtils.setField(premium, "budgetMin", 8000);
         ReflectionTestUtils.setField(premium, "budgetMax", 15000);
         when(projectRepository.findByDesignerIdOrderByCreatedAtDesc(2L)).thenReturn(List.of(cheap, premium));
+        when(ratingService.summaryFor(2L)).thenReturn(new RatingSummary(null, 0, List.of()));
 
         List<DesignerComparison> comparisons = service.compareShortlistedDesigners(customer);
 
@@ -174,6 +177,7 @@ class FavouriteServiceUnitTests {
         Shortlist second = new Shortlist(customer, secondProject);
         when(shortlistRepository.findByCustomerIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(first, second));
         when(projectRepository.findByDesignerIdOrderByCreatedAtDesc(2L)).thenReturn(List.of(project, secondProject));
+        when(ratingService.summaryFor(2L)).thenReturn(new RatingSummary(null, 0, List.of()));
 
         assertThat(service.compareShortlistedDesigners(customer)).hasSize(1);
     }

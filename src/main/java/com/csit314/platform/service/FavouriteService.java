@@ -29,10 +29,13 @@ public class FavouriteService {
 
     private final ShortlistRepository shortlistRepository;
     private final ProjectRepository projectRepository;
+    private final RatingService ratingService;
 
-    public FavouriteService(ShortlistRepository shortlistRepository, ProjectRepository projectRepository) {
+    public FavouriteService(ShortlistRepository shortlistRepository, ProjectRepository projectRepository,
+                            RatingService ratingService) {
         this.shortlistRepository = shortlistRepository;
         this.projectRepository = projectRepository;
+        this.ratingService = ratingService;
     }
 
     @Transactional
@@ -97,7 +100,8 @@ public class FavouriteService {
         Integer priceMin = mins.isEmpty() ? null : Collections.min(mins);
         Integer priceMax = maxes.isEmpty() ? null : Collections.max(maxes);
         List<String> styles = portfolio.stream().map(p -> p.getCategory().getName()).distinct().toList();
-        return new DesignerComparison(designer, priceMin, priceMax, styles);
+        Double averageRating = ratingService.summaryFor(designer.getId()).average();
+        return new DesignerComparison(designer, priceMin, priceMax, styles, averageRating);
     }
 
     // IDR-11 - who shortlisted which of the designer's projects
