@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 // IDR-13 - standalone contact form, reachable directly by a designer's id rather than
@@ -45,7 +46,9 @@ public class CustomerMessageController {
     }
 
     @GetMapping
-    public String contactForm(@PathVariable Long designerId, Model model, RedirectAttributes redirect) {
+    public String contactForm(@PathVariable Long designerId,
+                              @RequestParam(required = false) Long projectId,
+                              Model model, RedirectAttributes redirect) {
         InteriorDesigner designer = designerRepository.findById(designerId).orElse(null);
         if (designer == null) {
             redirect.addFlashAttribute("errorMessage", "That designer couldn't be found.");
@@ -53,6 +56,7 @@ public class CustomerMessageController {
         }
         model.addAttribute("designer", designer);
         model.addAttribute("projects", projectRepository.findByDesignerIdOrderByCreatedAtDesc(designerId));
+        model.addAttribute("selectedProjectId", projectId);
         return "contact-designer";
     }
 

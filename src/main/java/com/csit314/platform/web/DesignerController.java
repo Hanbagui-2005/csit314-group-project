@@ -7,6 +7,7 @@ import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.service.CategorySuggestionService;
+import com.csit314.platform.service.FavouriteService;
 import com.csit314.platform.service.MessageService;
 import com.csit314.platform.service.PortfolioAnalyticsService;
 import com.csit314.platform.service.ProjectService;
@@ -42,6 +43,7 @@ public class DesignerController {
     private final CategorySuggestionService categorySuggestionService;
     private final PortfolioAnalyticsService portfolioAnalyticsService;
     private final MessageService messageService;
+    private final FavouriteService favouriteService;
     private final LoginSession loginSession;
 
     public DesignerController(ProjectRepository projectRepository,
@@ -51,6 +53,7 @@ public class DesignerController {
                               CategorySuggestionService categorySuggestionService,
                               PortfolioAnalyticsService portfolioAnalyticsService,
                               MessageService messageService,
+                              FavouriteService favouriteService,
                               LoginSession loginSession) {
         this.projectRepository = projectRepository;
         this.categoryRepository = categoryRepository;
@@ -59,6 +62,7 @@ public class DesignerController {
         this.categorySuggestionService = categorySuggestionService;
         this.portfolioAnalyticsService = portfolioAnalyticsService;
         this.messageService = messageService;
+        this.favouriteService = favouriteService;
         this.loginSession = loginSession;
     }
 
@@ -133,11 +137,14 @@ public class DesignerController {
         return "redirect:/designer/dashboard";
     }
 
-    // IDR-03
+    // IDR-03 / IDR-11 / IDR-12
     @GetMapping("/analytics")
     public String analytics(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
+        InteriorDesigner designer = designerRepository.findById(current.id()).orElseThrow();
         model.addAttribute("breakdown", portfolioAnalyticsService.categoryBreakdown(current.id()));
+        model.addAttribute("shortlisters", favouriteService.shortlistersFor(designer));
+        model.addAttribute("shortlistTrend", favouriteService.shortlistTrend(designer));
         return "designer-analytics";
     }
 

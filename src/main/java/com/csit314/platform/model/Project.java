@@ -129,6 +129,21 @@ public class Project {
         milestoneStage = next;
     }
 
+    // IDR-10/11/12 - real view/shortlist counts, now that Browse/detail/favourites use real data
+    public void incrementViewCount() {
+        viewCount++;
+    }
+
+    public void incrementShortlistCount() {
+        shortlistCount++;
+    }
+
+    public void decrementShortlistCount() {
+        if (shortlistCount > 0) {
+            shortlistCount--;
+        }
+    }
+
     public Long getId() {
         return id;
     }

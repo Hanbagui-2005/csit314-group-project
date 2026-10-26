@@ -1,69 +1,83 @@
 package com.csit314.platform.web;
 
-import com.csit314.platform.web.dto.FavouriteItem;
-import com.csit314.platform.web.dto.ProjectCard;
-import com.csit314.platform.web.dto.ProjectDetail;
+import com.csit314.platform.model.Customer;
+import com.csit314.platform.model.Project;
+import com.csit314.platform.model.Role;
+import com.csit314.platform.repository.CategoryRepository;
+import com.csit314.platform.repository.CustomerRepository;
+import com.csit314.platform.service.BrowseService;
+import com.csit314.platform.service.FavouriteService;
+import com.csit314.platform.service.ServiceException;
+import com.csit314.platform.web.session.LoginSession;
+import com.csit314.platform.web.session.SessionUser;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.List;
-
-// serves the main pages with hardcoded data until the backend/DB is ready
+// serves the main public pages
 @Controller
 public class PageController {
 
-    private static final List<String> CATEGORIES = List.of("Kitchen", "Living Room", "Bedroom", "Minimal", "Budget");
+    private final BrowseService browseService;
+    private final FavouriteService favouriteService;
+    private final CategoryRepository categoryRepository;
+    private final CustomerRepository customerRepository;
+    private final LoginSession loginSession;
 
-    private static final List<ProjectCard> SAMPLE_PROJECTS = List.of(
-            new ProjectCard(1L, "Modern minimalist kitchen", "Studio Lume", "/images/placeholder.svg", "Kitchen"),
-            new ProjectCard(2L, "Cozy reading nook", "Studio Lume", "/images/placeholder.svg", "Living Room"),
-            new ProjectCard(3L, "Budget-friendly bedroom refresh", "North & Pine", "/images/placeholder.svg", "Bedroom"),
-            new ProjectCard(4L, "Open-plan living and dining", "North & Pine", "/images/placeholder.svg", "Living Room")
-    );
+    public PageController(BrowseService browseService,
+                          FavouriteService favouriteService,
+                          CategoryRepository categoryRepository,
+                          CustomerRepository customerRepository,
+                          LoginSession loginSession) {
+        this.browseService = browseService;
+        this.favouriteService = favouriteService;
+        this.categoryRepository = categoryRepository;
+        this.customerRepository = customerRepository;
+        this.loginSession = loginSession;
+    }
 
     @GetMapping("/privacy")
     public String privacy() {
         return "privacy";
     }
 
+    // IDR-10 - was hardcoded sample data, now real projects
     @GetMapping("/search")
     public String search(@RequestParam(required = false) String q,
                           @RequestParam(required = false) String category,
                           Model model) {
         model.addAttribute("query", q);
         model.addAttribute("selectedCategory", category);
-        model.addAttribute("categories", CATEGORIES);
-        model.addAttribute("projects", SAMPLE_PROJECTS);
+        model.addAttribute("categories", categoryRepository.findAll());
+        model.addAttribute("projects", browseService.search(q, category));
         return "search";
     }
 
+    // IDR-10 - counts as a real view now, and shows whether the current customer already saved it
     @GetMapping("/projects/{id}")
-    public String projectDetail(@PathVariable Long id, Model model) {
-        ProjectDetail detail = new ProjectDetail(
-                id,
-                "Modern minimalist kitchen",
-                "A full kitchen renovation focused on clean lines, light oak cabinetry and a neutral "
-                        + "palette. Includes new island seating and integrated appliances.",
-                "/images/placeholder.svg",
-                "Studio Lume",
-                101L,
-                "Kitchen"
-        );
-        model.addAttribute("project", detail);
-        return "project-detail";
-    }
+    public String projectDetail(@PathVariable Long id, HttpServletRequest request, Model model,
+                                RedirectAttributes redirect) {
+        Project project;
+        try {
+            project = browseService.viewProject(id);
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/search";
+        }
+        model.addAttribute("project", project);
 
-    @GetMapping("/favourites")
-    public String favourites(Model model) {
-        List<FavouriteItem> favourites = List.of(
-                new FavouriteItem(1L, "Modern minimalist kitchen", "Studio Lume", "/images/placeholder.svg"),
-                new FavouriteItem(3L, "Budget-friendly bedroom refresh", "North & Pine", "/images/placeholder.svg")
-        );
-        model.addAttribute("favourites", favourites);
-        return "favourites";
+        SessionUser current = loginSession.current(request).orElse(null);
+        boolean isShortlisted = false;
+        if (current != null && current.hasRole(Role.CUSTOMER)) {
+            Customer customer = customerRepository.findById(current.id()).orElse(null);
+            isShortlisted = customer != null && favouriteService.isShortlisted(customer, id);
+        }
+        model.addAttribute("isShortlisted", isShortlisted);
+        return "project-detail";
     }
 
     // IDR-04/05/07 - real dashboard, new-project form and edit form now live in DesignerController
