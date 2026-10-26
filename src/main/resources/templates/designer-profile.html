@@ -7,7 +7,10 @@
 
     <div class="d-flex justify-content-between align-items-start mb-2">
         <div>
-            <h4 class="mb-1" th:text="${designer.company.name}">Studio name</h4>
+            <h4 class="mb-1">
+                <span th:text="${designer.company.name}">Studio name</span>
+                <span class="badge bg-light text-dark border" th:if="${designer.verified}">Verified</span>
+            </h4>
             <div class="text-muted small" th:text="${designer.company.phone}">Phone</div>
             <div class="small mt-1" th:if="${ratingSummary.average != null}">
                 <span class="fw-semibold" th:text="${#numbers.formatDecimal(ratingSummary.average, 1, 1)} + ' / 5'">0 / 5</span>

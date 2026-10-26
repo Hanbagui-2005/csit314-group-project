@@ -23,12 +23,14 @@ public class BrowseService {
         this.projectViewRepository = projectViewRepository;
     }
 
-    // CUS-04 - maxBudget/minRoomSize are optional filters; a project with no budget/size
-    // data of its own gets excluded once that filter is in use, since there's nothing to check it against
-    public List<Project> search(String query, String categoryName, Integer maxBudget, Integer minRoomSize) {
+    // CUS-04/CUS-09 - maxBudget/minRoomSize/verifiedOnly are all optional filters; a
+    // project with no budget/size data of its own gets excluded once that filter is in
+    // use, since there's nothing to check it against
+    public List<Project> search(String query, String categoryName, Integer maxBudget, Integer minRoomSize,
+                                boolean verifiedOnly) {
         String cleanQuery = blankToNull(query);
         String cleanCategory = blankToNull(categoryName);
-        return projectRepository.search(cleanQuery, cleanCategory, maxBudget, minRoomSize);
+        return projectRepository.search(cleanQuery, cleanCategory, maxBudget, minRoomSize, verifiedOnly);
     }
 
     @Transactional

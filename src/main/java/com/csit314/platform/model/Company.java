@@ -25,6 +25,10 @@ public class Company {
     @Column(length = 30)
     private String phone;
 
+    // CUS-09 - optional; InteriorDesigner.approve() only sets verified=true when this is present
+    @Column(name = "license_number", length = 60)
+    private String licenseNumber;
+
     protected Company() {
     }
 
@@ -60,5 +64,13 @@ public class Company {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getLicenseNumber() {
+        return licenseNumber;
+    }
+
+    public void setLicenseNumber(String licenseNumber) {
+        this.licenseNumber = licenseNumber;
     }
 }

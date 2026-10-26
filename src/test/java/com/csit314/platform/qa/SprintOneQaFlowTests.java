@@ -57,7 +57,7 @@ class SprintOneQaFlowTests {
     private InteriorDesigner designer(String email) {
         return designerService.register(new DesignerRegistrationForm(
                 "QA Contact", email, PASSWORD, PASSWORD, "QA Studio",
-                "Synthetic company for automated tests.", "5550000000"));
+                "Synthetic company for automated tests.", "5550000000", null));
     }
 
     private MockHttpSession adminSession() throws Exception {

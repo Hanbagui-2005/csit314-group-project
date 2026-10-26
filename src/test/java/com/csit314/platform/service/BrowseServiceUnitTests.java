@@ -80,24 +80,32 @@ class BrowseServiceUnitTests {
 
     @Test
     void blankSearchTermsAreTreatedAsNoFilter() {
-        service.search("  ", "", null, null);
+        service.search("  ", "", null, null, false);
 
-        verify(projectRepository).search(null, null, null, null);
+        verify(projectRepository).search(null, null, null, null, false);
     }
 
     @Test
     void realSearchTermsArePassedThrough() {
-        service.search(" kitchen ", "Kitchen", null, null);
+        service.search(" kitchen ", "Kitchen", null, null, false);
 
-        verify(projectRepository).search("kitchen", "Kitchen", null, null);
+        verify(projectRepository).search("kitchen", "Kitchen", null, null, false);
     }
 
     // CUS-04
     @Test
     void budgetAndRoomSizeFiltersArePassedThrough() {
-        service.search(null, null, 10000, 15);
+        service.search(null, null, 10000, 15, false);
 
-        verify(projectRepository).search(null, null, 10000, 15);
+        verify(projectRepository).search(null, null, 10000, 15, false);
+    }
+
+    // CUS-09
+    @Test
+    void verifiedOnlyFlagIsPassedThrough() {
+        service.search(null, null, null, null, true);
+
+        verify(projectRepository).search(null, null, null, null, true);
     }
 
     // CUS-12

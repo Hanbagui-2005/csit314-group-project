@@ -23,11 +23,19 @@
             <button type="submit" class="btn btn-dark w-100">Go</button>
         </div>
         <input type="hidden" name="category" th:value="${selectedCategory}"/>
+        <!-- CUS-09 -->
+        <div class="col-12">
+            <div class="form-check">
+                <input type="checkbox" name="verifiedOnly" value="true" id="verifiedOnly" class="form-check-input"
+                       th:checked="${verifiedOnly}" onchange="this.form.submit()"/>
+                <label for="verifiedOnly" class="form-check-label small">Verified designers only</label>
+            </div>
+        </div>
     </form>
 
     <div class="mb-3">
         <a th:each="cat : ${categories}"
-           th:href="@{/search(q=${query}, category=${cat.name}, maxBudget=${maxBudget}, minRoomSize=${minRoomSize})}"
+           th:href="@{/search(q=${query}, category=${cat.name}, maxBudget=${maxBudget}, minRoomSize=${minRoomSize}, verifiedOnly=${verifiedOnly})}"
            th:text="${cat.name}"
            class="btn btn-sm me-2 mb-2"
            th:classappend="${cat.name == selectedCategory} ? 'btn-dark' : 'btn-outline-secondary'">Category</a>
@@ -46,7 +54,10 @@
                 <img th:src="${project.photoUrls[0]}" class="card-img-top" alt="Project photo"/>
                 <div class="card-body">
                     <h6 class="card-title mb-1" th:text="${project.title}">Project title</h6>
-                    <p class="card-text text-muted small mb-1" th:text="${project.designer.company.name}">Designer name</p>
+                    <p class="card-text text-muted small mb-1">
+                        <span th:text="${project.designer.company.name}">Designer name</span>
+                        <span class="badge bg-light text-dark border" th:if="${project.designer.verified}">Verified</span>
+                    </p>
                     <p class="card-text text-muted small mb-2" th:if="${project.budgetMin != null}"
                        th:text="'$' + ${project.budgetMin} + ' - $' + ${project.budgetMax}">Budget</p>
                     <a th:href="@{/projects/{id}(id=${project.id})}" class="btn btn-sm btn-outline-dark">View</a>

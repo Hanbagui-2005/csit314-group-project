@@ -27,6 +27,12 @@ public class InteriorDesigner extends UserAccount {
     @Column(name = "rejection_reason", length = 1000)
     private String rejectionReason;
 
+    // CUS-09 - true once an admin approves a registration that included a license
+    // number. There's no separate "verify license" admin action (ADM-05) yet, so
+    // approving with a license is the closest real signal this app has
+    @Column(nullable = false)
+    private boolean verified = false;
+
     protected InteriorDesigner() {
     }
 
@@ -41,6 +47,7 @@ public class InteriorDesigner extends UserAccount {
         setStatus(AccountStatus.ACTIVE);
         this.rejectionReason = null;
         this.reviewedAt = LocalDateTime.now();
+        this.verified = company.getLicenseNumber() != null && !company.getLicenseNumber().isBlank();
     }
 
     public void reject(String reason) {
@@ -69,5 +76,9 @@ public class InteriorDesigner extends UserAccount {
 
     public String getRejectionReason() {
         return rejectionReason;
+    }
+
+    public boolean isVerified() {
+        return verified;
     }
 }
