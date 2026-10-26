@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Weekly summary')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 560px;">
+
+    <h4 class="mb-1">Weekly summary</h4>
+    <p class="text-muted small mb-4">
+        Your portfolio's activity over the last 7 days. The same numbers get logged
+        automatically every Monday - no need to come check manually if you don't want to.
+    </p>
+
+    <div class="row g-3 mb-4">
+        <div class="col-4">
+            <div class="border rounded p-3 text-center">
+                <div class="fs-4 fw-semibold" th:text="${summary.viewsThisWeek}">0</div>
+                <div class="text-muted small">Views this week</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="border rounded p-3 text-center">
+                <div class="fs-4 fw-semibold" th:text="${summary.shortlistsThisWeek}">0</div>
+                <div class="text-muted small">Shortlists this week</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="border rounded p-3 text-center">
+                <div class="fs-4 fw-semibold" th:text="${summary.messagesThisWeek}">0</div>
+                <div class="text-muted small">Messages this week</div>
+            </div>
+        </div>
+    </div>
+
+    <h6 class="text-muted">All-time</h6>
+    <p class="small">
+        <span th:text="${summary.totalProjects}">0</span> project(s),
+        <span th:text="${summary.totalViewsAllTime}">0</span> total views,
+        <span th:text="${summary.totalShortlistsAllTime}">0</span> total shortlists.
+    </p>
+
+</div>
+</body>
+</html>

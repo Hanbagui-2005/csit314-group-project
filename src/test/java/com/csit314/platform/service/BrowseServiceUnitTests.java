@@ -5,6 +5,7 @@ import com.csit314.platform.model.Company;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.ProjectRepository;
+import com.csit314.platform.repository.ProjectViewRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,13 +23,14 @@ import static org.mockito.Mockito.*;
 class BrowseServiceUnitTests {
 
     @Mock ProjectRepository projectRepository;
+    @Mock ProjectViewRepository projectViewRepository;
     BrowseService service;
 
     Project project;
 
     @BeforeEach
     void setUp() {
-        service = new BrowseService(projectRepository);
+        service = new BrowseService(projectRepository, projectViewRepository);
 
         InteriorDesigner designer = new InteriorDesigner("Designer", "designer@example.test", "encoded",
                 new Company("Studio", "Description", "12345"));
@@ -54,6 +56,15 @@ class BrowseServiceUnitTests {
         service.viewProject(100L);
 
         assertThat(project.getViewCount()).isEqualTo(2);
+    }
+
+    @Test
+    void viewingAProjectRecordsAViewEvent() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        service.viewProject(100L);
+
+        verify(projectViewRepository).save(any());
     }
 
     @Test
