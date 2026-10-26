@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Compare designers')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 720px;">
+
+    <h4 class="mb-1">Compare designers</h4>
+    <p class="text-muted small mb-4">Based on the designers behind your currently shortlisted projects.</p>
+
+    <p th:if="${#lists.size(comparisons) < 2}" class="text-muted">
+        Save projects from at least two different designers to compare them here.
+    </p>
+
+    <div class="table-responsive" th:if="${#lists.size(comparisons) >= 2}">
+        <table class="table align-middle">
+            <thead>
+            <tr>
+                <th>Designer</th>
+                <th>Price range</th>
+                <th>Style</th>
+                <th>Rating</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${comparisons}">
+                <td>
+                    <a th:href="@{/designers/{id}(id=${row.designer.id})}" th:text="${row.designer.company.name}">
+                        Studio
+                    </a>
+                </td>
+                <td th:text="${row.priceMin != null} ? '$' + ${row.priceMin} + ' - $' + ${row.priceMax} : 'Not listed'">
+                    Price
+                </td>
+                <td th:text="${#strings.listJoin(row.styles, ', ')}">Styles</td>
+                <td class="text-muted">No ratings yet</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

@@ -24,4 +24,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     // CUS-12 - only listings that actually gave a budget, to estimate a range from
     List<Project> findByCategoryNameAndBudgetMinIsNotNull(String categoryName);
+
+    // CUS-05 - other projects in categories the customer already likes
+    List<Project> findByCategoryIdInAndIdNotInOrderByCreatedAtDesc(List<Long> categoryIds, List<Long> excludeIds);
 }
