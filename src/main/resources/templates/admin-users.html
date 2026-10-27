@@ -5,44 +5,81 @@
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
 <div class="container">
 
-    <h4 class="mb-3">All registered users</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">All registered users</h4>
+        <span th:if="${pendingCount > 0}" class="badge bg-warning text-dark" th:text="${pendingCount} + ' pending'">0 pending</span>
+    </div>
 
-    <table class="table table-hover align-middle">
-        <thead>
-        <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="user : ${users}">
-            <td th:text="${user.name}">Name</td>
-            <td th:text="${user.email}">Email</td>
-            <td th:text="${user.role}">Role</td>
-            <td>
-                <span class="badge"
-                      th:text="${user.status}"
-                      th:classappend="${user.status == 'Active'} ? 'bg-success' : (${user.status == 'Pending'} ? 'bg-warning text-dark' : 'bg-secondary')">
-                    Status
-                </span>
-            </td>
-            <td>
-                <div th:if="${user.status == 'Pending'}" class="d-flex gap-2">
-                    <form method="post" th:action="@{'/admin/users/' + ${user.id} + '/approve'}">
-                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                    </form>
-                    <button type="button" class="btn btn-sm btn-outline-danger"
-                            data-bs-toggle="modal" th:attr="data-bs-target='#rejectModal-' + ${user.id}">
-                        Reject
-                    </button>
-                </div>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+    <form method="post" id="bulkForm">
+        <div class="d-flex gap-2 mb-2">
+            <button type="submit" formaction="/admin/users/bulk-approve" class="btn btn-sm btn-success">Approve selected</button>
+            <button type="submit" formaction="/admin/users/bulk-suspend" class="btn btn-sm btn-outline-danger">Suspend selected</button>
+        </div>
+
+        <table class="table table-hover align-middle">
+            <thead>
+            <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>License</th>
+                <th>Verified</th>
+                <th>Risk</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="user : ${users}">
+                <td><input type="checkbox" name="ids" th:value="${user.id}" form="bulkForm"/></td>
+                <td th:text="${user.name}">Name</td>
+                <td th:text="${user.email}">Email</td>
+                <td th:text="${user.role}">Role</td>
+                <td>
+                    <span class="badge"
+                          th:text="${user.status}"
+                          th:classappend="${user.status == 'Active'} ? 'bg-success' : (${user.status == 'Pending'} ? 'bg-warning text-dark' : 'bg-secondary')">
+                        Status
+                    </span>
+                    <span class="badge bg-danger" th:if="${user.locked}">Locked</span>
+                </td>
+                <td th:text="${user.licenseNumber != null ? user.licenseNumber : '-'}">-</td>
+                <td>
+                    <span th:if="${user.verified != null and user.verified}" class="badge bg-info text-dark">Verified</span>
+                    <span th:if="${user.verified != null and !user.verified}" class="badge bg-light text-dark border">Unverified</span>
+                </td>
+                <td th:text="${user.riskScore != null ? user.riskScore : '-'}">-</td>
+                <td>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <div th:if="${user.status == 'Pending' and user.role == 'Interior Designer'}" class="d-flex gap-2">
+                            <form method="post" th:action="@{'/admin/users/' + ${user.id} + '/approve'}">
+                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    data-bs-toggle="modal" th:attr="data-bs-target='#rejectModal-' + ${user.id}">
+                                Reject
+                            </button>
+                        </div>
+                        <form method="post" th:if="${user.status == 'Active' and user.role != 'User Admin'}" th:action="@{'/admin/users/' + ${user.id} + '/suspend'}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Suspend</button>
+                        </form>
+                        <form method="post" th:if="${user.status == 'Suspended'}" th:action="@{'/admin/users/' + ${user.id} + '/reactivate'}">
+                            <button type="submit" class="btn btn-sm btn-outline-success">Reactivate</button>
+                        </form>
+                        <form method="post" th:if="${user.locked}" th:action="@{'/admin/users/' + ${user.id} + '/unlock'}">
+                            <button type="submit" class="btn btn-sm btn-outline-dark">Unlock</button>
+                        </form>
+                        <form method="post" th:if="${user.verified != null}" th:action="@{'/admin/users/' + ${user.id} + '/toggle-verified'}">
+                            <button type="submit" class="btn btn-sm btn-outline-info"
+                                    th:text="${user.verified} ? 'Unverify' : 'Verify'">Verify</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </form>
 
     <p th:if="${#lists.isEmpty(users)}" class="text-muted">No users found.</p>
 

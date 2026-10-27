@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
@@ -39,7 +41,7 @@ public class AdminController {
                         HttpServletRequest request,
                         RedirectAttributes redirect) {
         try {
-            UserAccount admin = authService.loginAdmin(email, password);
+            UserAccount admin = authService.loginAdmin(email, password, request.getRemoteAddr());
             loginSession.start(request, admin);
             return "redirect:/admin/users";
         } catch (ServiceException e) {
@@ -48,10 +50,11 @@ public class AdminController {
         }
     }
 
-    // ADM-02
+    // ADM-02 / ADM-12
     @GetMapping("/users")
     public String users(Model model) {
         model.addAttribute("users", userManagementService.listAllUsers());
+        model.addAttribute("pendingCount", userManagementService.pendingDesignerCount());
         return "admin-users";
     }
 
@@ -80,6 +83,71 @@ public class AdminController {
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());
         }
+        return "redirect:/admin/users";
+    }
+
+    // ADM-06
+    @PostMapping("/users/{id}/suspend")
+    public String suspend(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            userManagementService.suspend(id);
+            redirect.addFlashAttribute("successMessage", "Account suspended.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    // ADM-06
+    @PostMapping("/users/{id}/reactivate")
+    public String reactivate(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            userManagementService.reactivate(id);
+            redirect.addFlashAttribute("successMessage", "Account reactivated.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    // ADM-09
+    @PostMapping("/users/{id}/unlock")
+    public String unlock(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            userManagementService.unlock(id);
+            redirect.addFlashAttribute("successMessage", "Account unlocked.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    // ADM-05
+    @PostMapping("/users/{id}/toggle-verified")
+    public String toggleVerified(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            InteriorDesigner designer = userManagementService.toggleVerified(id);
+            redirect.addFlashAttribute("successMessage",
+                    designer.getCompany().getName() + " is now " + (designer.isVerified() ? "verified." : "unverified."));
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    // ADM-08
+    @PostMapping("/users/bulk-approve")
+    public String bulkApprove(@RequestParam(required = false) List<Long> ids, RedirectAttributes redirect) {
+        int count = userManagementService.bulkApproveDesigners(ids == null ? List.of() : ids);
+        redirect.addFlashAttribute("successMessage", count + " registration(s) approved.");
+        return "redirect:/admin/users";
+    }
+
+    // ADM-08
+    @PostMapping("/users/bulk-suspend")
+    public String bulkSuspend(@RequestParam(required = false) List<Long> ids, RedirectAttributes redirect) {
+        int count = userManagementService.bulkSuspend(ids == null ? List.of() : ids);
+        redirect.addFlashAttribute("successMessage", count + " account(s) suspended.");
         return "redirect:/admin/users";
     }
 }

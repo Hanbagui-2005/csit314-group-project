@@ -45,6 +45,17 @@ public abstract class UserAccount {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    // ADM-09/13 - locked after too many failed logins, regardless of account status
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "locked_at")
+    private LocalDateTime lockedAt;
+
+    // ADM-14 - where they signed up from, so clusters of sign-ups can be flagged
+    @Column(name = "registration_ip", length = 45)
+    private String registrationIp;
+
     protected UserAccount() {
     }
 
@@ -103,5 +114,39 @@ public abstract class UserAccount {
 
     public void setLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+
+    public void recordFailedLogin() {
+        failedLoginAttempts++;
+        if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+            lockedAt = LocalDateTime.now();
+        }
+    }
+
+    public void clearFailedLogins() {
+        failedLoginAttempts = 0;
+        lockedAt = null;
+    }
+
+    public boolean isLocked() {
+        return lockedAt != null;
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public LocalDateTime getLockedAt() {
+        return lockedAt;
+    }
+
+    public String getRegistrationIp() {
+        return registrationIp;
+    }
+
+    public void setRegistrationIp(String registrationIp) {
+        this.registrationIp = registrationIp;
     }
 }
