@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Complaints')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <h4 class="mb-3">Customer complaints</h4>
+
+    <div class="list-group">
+        <div class="list-group-item" th:each="complaint : ${complaints}">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="fw-semibold" th:text="${complaint.customer.fullName}">Customer</span>
+                    <span class="text-muted"> about </span>
+                    <span class="fw-semibold" th:text="${complaint.designer.company.name}">Studio</span>
+                    <span class="badge ms-2"
+                          th:classappend="${complaint.status.name() == 'OPEN'} ? 'bg-warning text-dark' : (${complaint.status.name() == 'RESOLVED'} ? 'bg-success' : 'bg-secondary')"
+                          th:text="${complaint.status}">Status</span>
+                </div>
+                <span class="text-muted small" th:text="${#temporals.format(complaint.createdAt, 'dd MMM yyyy HH:mm')}">date</span>
+            </div>
+            <p class="mb-2 mt-2" th:text="${complaint.description}">Description</p>
+            <div th:if="${complaint.status.name() == 'OPEN'}" class="d-flex gap-2">
+                <form method="post" th:action="@{/admin/complaints/{id}/resolve(id=${complaint.id})}" class="mb-0">
+                    <button type="submit" class="btn btn-sm btn-success">Resolve</button>
+                </form>
+                <form method="post" th:action="@{/admin/complaints/{id}/dismiss(id=${complaint.id})}" class="mb-0">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Dismiss</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(complaints)}" class="text-muted">No complaints have been filed.</p>
+
+</div>
+</body>
+</html>

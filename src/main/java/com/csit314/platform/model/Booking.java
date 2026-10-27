@@ -75,6 +75,14 @@ public class Booking {
         status = BookingStatus.DECLINED;
     }
 
+    // ADM-11 - cancellation rate signal; only makes sense before the designer has responded
+    public void cancel() {
+        if (status != BookingStatus.PENDING && status != BookingStatus.ACCEPTED) {
+            throw new IllegalStateException("Only a pending or accepted booking can be cancelled.");
+        }
+        status = BookingStatus.CANCELLED;
+    }
+
     public Long getId() {
         return id;
     }

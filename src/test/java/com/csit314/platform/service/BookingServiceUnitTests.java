@@ -131,4 +131,42 @@ class BookingServiceUnitTests {
                 .hasMessageContaining("your own bookings");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
     }
+
+    // ADM-11
+    @Test
+    void customerCanCancelTheirOwnPendingBooking() {
+        Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
+        ReflectionTestUtils.setField(booking, "id", 500L);
+        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+
+        service.cancel(customer, 500L);
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
+    }
+
+    @Test
+    void anotherCustomerCannotCancelSomeoneElsesBooking() {
+        Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
+        ReflectionTestUtils.setField(booking, "id", 500L);
+        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+
+        Customer otherCustomer = new Customer("Other", "other-customer@example.test", "encoded");
+        ReflectionTestUtils.setField(otherCustomer, "id", 99L);
+
+        assertThatThrownBy(() -> service.cancel(otherCustomer, 500L))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("your own bookings");
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
+    }
+
+    @Test
+    void anAlreadyCancelledBookingCannotBeCancelledAgain() {
+        Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
+        ReflectionTestUtils.setField(booking, "id", 500L);
+        booking.cancel();
+        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+
+        assertThatThrownBy(() -> service.cancel(customer, 500L))
+                .isInstanceOf(ServiceException.class);
+    }
 }

@@ -17,9 +17,19 @@
         <div class="d-flex gap-3 align-items-center">
             <a class="nav-link" href="/search">Browse</a>
             <a class="nav-link" href="/favourites">Favourites</a>
+            <a class="nav-link" href="/bookings">My bookings</a>
             <a class="nav-link" href="/privacy">Privacy</a>
             <a class="nav-link" href="/designer/dashboard">Designer dashboard</a>
-            <a class="nav-link" href="/admin/users">Admin: users</a>
+            <div class="dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Admin</a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="/admin/users">Users</a></li>
+                    <li><a class="dropdown-item" href="/admin/complaints">Complaints</a></li>
+                    <li><a class="dropdown-item" href="/admin/quality">Designer quality</a></li>
+                    <li><a class="dropdown-item" href="/admin/security">Login security</a></li>
+                    <li><a class="dropdown-item" href="/admin/registration-alerts">Registration alerts</a></li>
+                </ul>
+            </div>
             <button th:if="${currentUser == null}" type="button" class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">Log in</button>
             <form th:if="${currentUser != null}" method="post" th:action="@{/logout}" class="d-flex gap-2 align-items-center mb-0">
                 <span class="text-muted small" th:text="${currentUser.name}">Name</span>

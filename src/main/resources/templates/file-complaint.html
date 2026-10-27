@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('File a complaint')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 480px;">
+
+    <h4 class="mb-1">File a complaint about <span th:text="${designer.company.name}">Studio</span></h4>
+    <p class="text-muted small mb-4">Our admin team reviews every complaint and will follow up if needed.</p>
+
+    <form method="post" th:action="@{/designers/{id}/complaint(id=${designer.id})}">
+        <div class="mb-4">
+            <label class="form-label">What happened?</label>
+            <textarea name="description" class="form-control" rows="5"
+                      placeholder="Describe the issue in as much detail as you can"></textarea>
+        </div>
+        <button type="submit" class="btn btn-dark w-100">Submit complaint</button>
+    </form>
+
+</div>
+</body>
+</html>

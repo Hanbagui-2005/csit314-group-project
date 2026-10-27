@@ -14,4 +14,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     // CUS-13 - the closest thing this app has to "actually worked with this designer"
     boolean existsByCustomerIdAndDesignerIdAndStatus(Long customerId, Long designerId, BookingStatus status);
+
+    // ADM-11
+    long countByDesignerId(Long designerId);
+
+    long countByDesignerIdAndStatus(Long designerId, BookingStatus status);
 }

@@ -41,8 +41,10 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(new AuthInterceptor(loginSession, Role.CUSTOMER, "/search"))
                 .addPathPatterns("/favourites", "/favourites/**");
 
-        // IDR-13/CUS-11/CUS-13 - only a logged-in customer can message, book, or rate a designer
+        // IDR-13/CUS-11/CUS-13/ADM-10/ADM-11 - only a logged-in customer can message, book,
+        // rate, complain about a designer, or manage their own bookings
         registry.addInterceptor(new AuthInterceptor(loginSession, Role.CUSTOMER, "/search"))
-                .addPathPatterns("/designers/*/contact", "/designers/*/book", "/designers/*/rate");
+                .addPathPatterns("/designers/*/contact", "/designers/*/book", "/designers/*/rate",
+                        "/designers/*/complaint", "/bookings", "/bookings/**");
     }
 }

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Designer quality')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <h4 class="mb-3">Designer quality overview</h4>
+    <p class="text-muted small mb-3">Sorted by dispute rate, highest first.</p>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Designer</th>
+            <th>Complaints</th>
+            <th>Bookings</th>
+            <th>Cancelled</th>
+            <th>Dispute rate</th>
+            <th>Cancellation rate</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="summary : ${summaries}">
+            <td th:text="${summary.designer.company.name}">Studio</td>
+            <td th:text="${summary.complaintCount}">0</td>
+            <td th:text="${summary.totalBookings}">0</td>
+            <td th:text="${summary.cancelledBookings}">0</td>
+            <td th:text="${summary.disputeRate != null ? #numbers.formatDecimal(summary.disputeRate * 100, 1, 1) + '%' : '-'}">-</td>
+            <td th:text="${summary.cancellationRate != null ? #numbers.formatDecimal(summary.cancellationRate * 100, 1, 1) + '%' : '-'}">-</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p th:if="${#lists.isEmpty(summaries)}" class="text-muted">No designers found.</p>
+
+</div>
+</body>
+</html>

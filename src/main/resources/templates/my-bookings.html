@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('My bookings')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 720px;">
+
+    <h4 class="mb-3">My bookings</h4>
+
+    <div class="list-group">
+        <div class="list-group-item" th:each="booking : ${bookings}">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="fw-semibold" th:text="${booking.designer.company.name}">Studio</span>
+                    <span class="badge bg-light ms-2" th:if="${booking.project != null}"
+                          th:text="${booking.project.title}">Project</span>
+                    <span class="badge ms-2"
+                          th:classappend="${booking.status.name() == 'PENDING'} ? 'bg-dark' : (${booking.status.name() == 'ACCEPTED'} ? 'bg-success' : 'bg-secondary')"
+                          th:text="${booking.status}">Status</span>
+                </div>
+                <span class="text-muted small" th:text="${#temporals.format(booking.preferredDate, 'dd MMM yyyy')}">date</span>
+            </div>
+            <p class="mb-2 mt-2 text-muted small" th:if="${booking.notes != null}" th:text="${booking.notes}">Notes</p>
+            <form th:if="${booking.status.name() == 'PENDING' or booking.status.name() == 'ACCEPTED'}"
+                  method="post" th:action="@{/bookings/{id}/cancel(id=${booking.id})}" class="mb-0">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Cancel booking</button>
+            </form>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(bookings)}" class="text-muted">You haven't requested any bookings yet.</p>
+
+</div>
+</body>
+</html>
