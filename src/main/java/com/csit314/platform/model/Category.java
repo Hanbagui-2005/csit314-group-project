@@ -25,6 +25,11 @@ public class Category {
         this.name = name;
     }
 
+    // PM-03
+    public void rename(String name) {
+        this.name = name;
+    }
+
     public Long getId() {
         return id;
     }

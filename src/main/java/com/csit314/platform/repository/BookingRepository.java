@@ -4,11 +4,15 @@ import com.csit314.platform.model.Booking;
 import com.csit314.platform.model.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
+
+    // PM-05
+    long countByCreatedAtAfter(LocalDateTime since);
 
     List<Booking> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
 

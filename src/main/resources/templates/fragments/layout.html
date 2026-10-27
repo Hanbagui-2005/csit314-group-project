@@ -30,6 +30,13 @@
                     <li><a class="dropdown-item" href="/admin/registration-alerts">Registration alerts</a></li>
                 </ul>
             </div>
+            <div class="dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Platform</a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="/platform-manager/categories">Categories</a></li>
+                    <li><a class="dropdown-item" href="/platform-manager/reports">Reports</a></li>
+                </ul>
+            </div>
             <button th:if="${currentUser == null}" type="button" class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">Log in</button>
             <form th:if="${currentUser != null}" method="post" th:action="@{/logout}" class="d-flex gap-2 align-items-center mb-0">
                 <span class="text-muted small" th:text="${currentUser.name}">Name</span>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Platform reports')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <h4 class="mb-3">Platform activity reports</h4>
+    <p class="text-muted small mb-3">Each window counts activity from now back to the start of that period.</p>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Period</th>
+            <th>New customers</th>
+            <th>New designers</th>
+            <th>New projects</th>
+            <th>New bookings</th>
+            <th>New complaints</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="report : ${reports}">
+            <td th:text="${report.periodLabel}">Period</td>
+            <td th:text="${report.newCustomers}">0</td>
+            <td th:text="${report.newDesigners}">0</td>
+            <td th:text="${report.newProjects}">0</td>
+            <td th:text="${report.newBookings}">0</td>
+            <td th:text="${report.newComplaints}">0</td>
+        </tr>
+        </tbody>
+    </table>
+
+</div>
+</body>
+</html>

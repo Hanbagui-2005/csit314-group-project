@@ -114,4 +114,9 @@ public class PageController {
         return "admin-login";
     }
 
+    @GetMapping("/platform-manager/login")
+    public String platformManagerLoginForm() {
+        return "platform-manager-login";
+    }
+
 }
