@@ -24,8 +24,13 @@ public class CustomerService {
     }
 
     // CUS-01: validate the form and save a new active customer
-    @Transactional
     public Customer register(CustomerRegistrationForm form) {
+        return register(form, null);
+    }
+
+    // ADM-14 - ipAddress is optional (bulk/test data has none) and used to spot registration bursts
+    @Transactional
+    public Customer register(CustomerRegistrationForm form, String ipAddress) {
         String name = InputRules.requireText(form.name(), "Full name", 100);
         String email = InputRules.requireEmail(form.email());
         InputRules.checkNewPassword(form.password(), form.confirmPassword());
@@ -35,6 +40,7 @@ public class CustomerService {
         }
 
         Customer customer = new Customer(name, email, passwordEncoder.encode(form.password()));
+        customer.setRegistrationIp(ipAddress);
         return customerRepository.save(customer);
     }
 }

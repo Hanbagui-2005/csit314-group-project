@@ -32,9 +32,10 @@ public class DesignerAuthController {
 
     // IDR-01
     @PostMapping("/register")
-    public String register(@ModelAttribute DesignerRegistrationForm form, RedirectAttributes redirect) {
+    public String register(@ModelAttribute DesignerRegistrationForm form, HttpServletRequest request,
+                           RedirectAttributes redirect) {
         try {
-            designerService.register(form);
+            designerService.register(form, request.getRemoteAddr());
             redirect.addFlashAttribute("successMessage",
                     "Thanks for registering! We'll review your company details and you can log in once you're approved.");
             return "redirect:/designer/login";
@@ -51,7 +52,7 @@ public class DesignerAuthController {
                         HttpServletRequest request,
                         RedirectAttributes redirect) {
         try {
-            UserAccount designer = authService.loginDesigner(email, password);
+            UserAccount designer = authService.loginDesigner(email, password, request.getRemoteAddr());
             loginSession.start(request, designer);
             return "redirect:/designer/dashboard";
         } catch (ServiceException e) {

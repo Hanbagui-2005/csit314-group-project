@@ -35,7 +35,7 @@ public class CustomerAuthController {
                            HttpServletRequest request,
                            RedirectAttributes redirect) {
         try {
-            Customer customer = customerService.register(form);
+            Customer customer = customerService.register(form, request.getRemoteAddr());
             loginSession.start(request, customer);
             redirect.addFlashAttribute("successMessage", "Welcome, " + customer.getFullName() + "! Your account is ready.");
             return "redirect:/search";
@@ -52,7 +52,7 @@ public class CustomerAuthController {
                         HttpServletRequest request,
                         RedirectAttributes redirect) {
         try {
-            UserAccount customer = authService.loginCustomer(email, password);
+            UserAccount customer = authService.loginCustomer(email, password, request.getRemoteAddr());
             loginSession.start(request, customer);
             return "redirect:/favourites";
         } catch (ServiceException e) {

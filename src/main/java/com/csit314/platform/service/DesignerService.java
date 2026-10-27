@@ -5,12 +5,16 @@ import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.UserAccountRepository;
 import com.csit314.platform.web.dto.DesignerRegistrationForm;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DesignerService {
+
+    private static final Logger log = LoggerFactory.getLogger(DesignerService.class);
 
     private final InteriorDesignerRepository designerRepository;
     private final UserAccountRepository userAccountRepository;
@@ -25,8 +29,13 @@ public class DesignerService {
     }
 
     // IDR-01: save the designer and their company; the account stays PENDING until an admin reviews it
-    @Transactional
     public InteriorDesigner register(DesignerRegistrationForm form) {
+        return register(form, null);
+    }
+
+    // ADM-14 - ipAddress is optional (bulk/test data has none) and used to spot registration bursts
+    @Transactional
+    public InteriorDesigner register(DesignerRegistrationForm form, String ipAddress) {
         String contactName = InputRules.requireText(form.contactName(), "Contact name", 100);
         String email = InputRules.requireEmail(form.email());
         InputRules.checkNewPassword(form.password(), form.confirmPassword());
@@ -43,6 +52,12 @@ public class DesignerService {
         company.setLicenseNumber(licenseNumber);
         InteriorDesigner designer = new InteriorDesigner(contactName, email,
                 passwordEncoder.encode(form.password()), company);
-        return designerRepository.save(designer);
+        designer.setRegistrationIp(ipAddress);
+        InteriorDesigner saved = designerRepository.save(designer);
+
+        // ADM-12 - no mail server yet (same as password reset / weekly digest), so this
+        // goes to the log; the admin users page also shows a live pending-count badge
+        log.info("New designer registration pending approval: {} ({})", companyName, email);
+        return saved;
     }
 }

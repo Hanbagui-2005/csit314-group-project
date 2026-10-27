@@ -1,6 +1,7 @@
 package com.csit314.platform.service;
 
 import com.csit314.platform.model.*;
+import com.csit314.platform.repository.FailedLoginAttemptRepository;
 import com.csit314.platform.repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,9 +22,10 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceUnitTests {
     @Mock UserAccountRepository users;
+    @Mock FailedLoginAttemptRepository failedLoginAttempts;
     @Mock PasswordEncoder encoder;
     AuthService service;
-    @BeforeEach void setUp() { service = new AuthService(users, encoder); }
+    @BeforeEach void setUp() { service = new AuthService(users, failedLoginAttempts, encoder); }
 
     private UserAccount account(Role role) {
         UserAccount result = switch (role) {
@@ -38,9 +40,9 @@ class AuthServiceUnitTests {
     }
     private UserAccount login(Role role, String email, String password) {
         return switch (role) {
-            case ADMIN -> service.loginAdmin(email, password);
-            case CUSTOMER -> service.loginCustomer(email, password);
-            case INTERIOR_DESIGNER -> service.loginDesigner(email, password);
+            case ADMIN -> service.loginAdmin(email, password, "127.0.0.1");
+            case CUSTOMER -> service.loginCustomer(email, password, "127.0.0.1");
+            case INTERIOR_DESIGNER -> service.loginDesigner(email, password, "127.0.0.1");
             default -> throw new IllegalArgumentException();
         };
     }
@@ -98,7 +100,7 @@ class AuthServiceUnitTests {
         user.setStatus(state);
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(encoder.matches("password123", "encoded")).thenReturn(true);
-        assertThatThrownBy(() -> service.loginDesigner(user.getEmail(), "password123"))
+        assertThatThrownBy(() -> service.loginDesigner(user.getEmail(), "password123", "127.0.0.1"))
                 .isInstanceOf(ServiceException.class);
         assertThat(user.getLastLoginAt()).isNull();
     }
@@ -108,13 +110,33 @@ class AuthServiceUnitTests {
         user.reject("Company details missing");
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(encoder.matches("password123", "encoded")).thenReturn(true);
-        assertThatThrownBy(() -> service.loginDesigner(user.getEmail(), "password123"))
+        assertThatThrownBy(() -> service.loginDesigner(user.getEmail(), "password123", "127.0.0.1"))
                 .hasMessageContaining("Company details missing");
     }
 
     @ParameterizedTest @NullAndEmptySource @ValueSource(strings = {"   "})
     void missingEmailIsHandledWithoutUnexpectedException(String email) {
         when(users.findByEmail("")).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.loginAdmin(email, "password123")).isInstanceOf(ServiceException.class);
+        assertThatThrownBy(() -> service.loginAdmin(email, "password123", "127.0.0.1")).isInstanceOf(ServiceException.class);
+    }
+
+    // ADM-13 - these saves must happen even though the caller throws right after login()
+    // returns; this guards against a @Transactional method rolling them back again
+    @Test void aFailedAttemptIsSavedAndTheAccountsCounterIsPersistedExplicitly() {
+        UserAccount user = account(Role.CUSTOMER);
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        assertThatThrownBy(() -> service.loginCustomer(user.getEmail(), "wrong", "127.0.0.1"))
+                .isInstanceOf(ServiceException.class);
+        verify(failedLoginAttempts).save(any());
+        verify(users).save(user);
+        assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
+    }
+
+    @Test void aSuccessfulLoginIsSavedExplicitly() {
+        UserAccount user = account(Role.CUSTOMER);
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(encoder.matches("valid-password", "encoded")).thenReturn(true);
+        service.loginCustomer(user.getEmail(), "valid-password", "127.0.0.1");
+        verify(users).save(user);
     }
 }
