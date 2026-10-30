@@ -19,8 +19,8 @@
             <a class="nav-link" href="/favourites">Favourites</a>
             <a class="nav-link" href="/bookings">My bookings</a>
             <a class="nav-link" href="/privacy">Privacy</a>
-            <a class="nav-link" href="/designer/dashboard">Designer dashboard</a>
-            <div class="dropdown">
+            <a class="nav-link" th:if="${currentUser != null and currentUser.role.name() == 'INTERIOR_DESIGNER'}" href="/designer/dashboard">Designer dashboard</a>
+            <div class="dropdown" th:if="${currentUser != null and currentUser.role.name() == 'ADMIN'}">
                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Admin</a>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="/admin/users">Users</a></li>
@@ -30,7 +30,7 @@
                     <li><a class="dropdown-item" href="/admin/registration-alerts">Registration alerts</a></li>
                 </ul>
             </div>
-            <div class="dropdown">
+            <div class="dropdown" th:if="${currentUser != null and currentUser.role.name() == 'PLATFORM_MANAGER'}">
                 <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Platform</a>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="/platform-manager/categories">Categories</a></li>

@@ -1,5 +1,4 @@
-/* Shared visual theme for the whole app - loaded after Bootstrap so these override it.
-   Keep this static (no hover/transition effects yet - that's a separate pass). */
+/* Shared visual theme for the whole app - loaded after Bootstrap so these override it. */
 
 :root {
     --color-bg: #FAF6EF;
@@ -49,12 +48,26 @@ a {
 .navbar .nav-link {
     color: var(--color-text-muted);
     font-weight: 500;
+    transition: color 0.15s ease;
+}
+
+.navbar .nav-link:hover {
+    color: var(--color-primary-dark);
 }
 
 /* Buttons */
 .btn {
     border-radius: var(--radius-sm);
     font-weight: 500;
+    transition: filter 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.btn:hover {
+    filter: brightness(0.94);
+}
+
+.btn:active {
+    transform: translateY(1px);
 }
 
 .btn-dark {
@@ -63,14 +76,35 @@ a {
     color: #fff;
 }
 
+.btn-dark:hover {
+    background-color: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
+    color: #fff;
+    filter: none;
+}
+
 .btn-outline-dark {
     color: var(--color-primary-dark);
     border-color: var(--color-primary);
 }
 
+.btn-outline-dark:hover {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+    filter: none;
+}
+
 .btn-outline-secondary {
     color: var(--color-text-muted);
     border-color: var(--color-border);
+}
+
+.btn-outline-secondary:hover {
+    background-color: var(--color-surface-alt);
+    border-color: var(--color-border);
+    color: var(--color-text);
+    filter: none;
 }
 
 /* Category filter chips on Browse use the same btn classes but smaller/pill-shaped */
@@ -83,6 +117,12 @@ a {
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px -14px rgba(46, 40, 34, 0.35);
 }
 
 .list-group-item {
@@ -90,6 +130,12 @@ a {
     border: 1px solid var(--color-border) !important;
     border-radius: var(--radius-md) !important;
     margin-bottom: 0.65rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.list-group-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -14px rgba(46, 40, 34, 0.3);
 }
 
 /* Forms */
@@ -154,6 +200,14 @@ a {
     text-transform: uppercase;
     letter-spacing: 0.03em;
     border-bottom: none;
+}
+
+.table-hover tbody tr {
+    transition: background-color 0.1s ease;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--color-surface-alt);
 }
 
 /* Modal */
