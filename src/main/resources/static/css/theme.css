@@ -1,16 +1,20 @@
 /* Shared visual theme for the whole app - loaded after Bootstrap so these override it. */
 
 :root {
-    --color-bg: #FAF6EF;
+    --color-bg: #F5F3ED;
     --color-surface: #FFFFFF;
-    --color-surface-alt: #F2EADD;
-    --color-border: #E6DCC9;
-    --color-text: #2E2822;
-    --color-text-muted: #8A8075;
-    --color-primary: #C1693E;
-    --color-primary-dark: #A14F2C;
-    --color-accent: #6B7F5E;
-    --color-accent-bg: #E8EDE3;
+    --color-surface-alt: #E9F2EE;
+    --color-border: #D9E2DC;
+    --color-text: #16241F;
+    --color-text-muted: #6B7A74;
+    --color-primary: #0E6E5B;
+    --color-primary-dark: #0A5346;
+    --color-primary-rgb: 14, 110, 91;
+    --color-accent: #D97B2E;
+    --color-accent-dark: #B8611D;
+    --color-accent-bg: #FBEAD6;
+    --color-jewel: #7A2E4A;
+    --color-jewel-bg: #F3E3EA;
     --radius-sm: 8px;
     --radius-md: 14px;
     --radius-pill: 999px;
@@ -43,6 +47,10 @@ a {
     font-weight: 600;
     color: var(--color-primary-dark) !important;
     font-size: 1.3rem;
+    background: linear-gradient(100deg, var(--color-primary) 0%, var(--color-accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .navbar .nav-link {
@@ -71,16 +79,18 @@ a {
 }
 
 .btn-dark {
-    background-color: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     border-color: var(--color-primary);
     color: #fff;
+    box-shadow: 0 2px 10px -4px rgba(var(--color-primary-rgb), 0.5);
 }
 
 .btn-dark:hover {
-    background-color: var(--color-primary-dark);
+    background: var(--color-primary-dark);
     border-color: var(--color-primary-dark);
     color: #fff;
     filter: none;
+    box-shadow: 0 4px 14px -4px rgba(var(--color-primary-rgb), 0.6);
 }
 
 .btn-outline-dark {
@@ -122,7 +132,8 @@ a {
 
 .card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 24px -14px rgba(46, 40, 34, 0.35);
+    box-shadow: 0 10px 24px -14px rgba(var(--color-primary-rgb), 0.45);
+    border-color: var(--color-primary);
 }
 
 .list-group-item {
@@ -135,7 +146,7 @@ a {
 
 .list-group-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px -14px rgba(46, 40, 34, 0.3);
+    box-shadow: 0 8px 20px -14px rgba(var(--color-primary-rgb), 0.4);
 }
 
 /* Forms */
@@ -146,6 +157,11 @@ a {
     color: var(--color-text);
 }
 
+.form-control:focus, .form-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--color-primary-rgb), 0.18);
+}
+
 .form-label {
     font-weight: 500;
     color: var(--color-text);
@@ -153,6 +169,16 @@ a {
 
 .form-text {
     color: var(--color-text-muted);
+}
+
+.form-check-input:checked {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.form-check-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--color-primary-rgb), 0.18);
 }
 
 /* Alerts */
@@ -181,7 +207,13 @@ a {
 
 .badge.bg-light {
     background-color: var(--color-accent-bg) !important;
-    color: var(--color-accent) !important;
+    color: var(--color-accent-dark) !important;
+    border: none !important;
+}
+
+.badge.bg-info {
+    background-color: var(--color-jewel-bg) !important;
+    color: var(--color-jewel) !important;
     border: none !important;
 }
 
