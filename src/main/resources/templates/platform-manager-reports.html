@@ -57,6 +57,25 @@
         </tbody>
     </table>
 
+    <h4 class="mb-3 mt-5">Most-viewed categories</h4>
+    <p class="text-muted small mb-3">PM-04 - categories ranked by total views across their projects, so
+        PM can see what's popular with customers.</p>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Category</th>
+            <th>Total views</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="ranking : ${categoryViewRanking}">
+            <td th:text="${ranking.categoryName}">Category</td>
+            <td th:text="${ranking.totalViews}">0</td>
+        </tr>
+        </tbody>
+    </table>
+
 </div>
 </body>
 </html>

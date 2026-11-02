@@ -8,6 +8,7 @@ import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.UserAccountRepository;
 import com.csit314.platform.dto.CategoryDesignerCoverage;
+import com.csit314.platform.dto.CategoryViewRanking;
 import com.csit314.platform.dto.PlatformReport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -124,5 +125,23 @@ class PlatformReportServiceUnitTests {
         assertThat(captured.get(0)).isEqualTo(today.atStartOfDay());
         assertThat(captured.get(1)).isEqualTo(today.with(DayOfWeek.MONDAY).atStartOfDay());
         assertThat(captured.get(2)).isEqualTo(today.withDayOfMonth(1).atStartOfDay());
+    }
+
+    @Test
+    void ranksCategoriesWithMostViewsFirst() {
+        Category kitchens = new Category("Kitchens");
+        ReflectionTestUtils.setField(kitchens, "id", 1L);
+        Category bathrooms = new Category("Bathrooms");
+        ReflectionTestUtils.setField(bathrooms, "id", 2L);
+        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(bathrooms, kitchens));
+
+        when(projectRepository.sumViewCountByCategoryId(1L)).thenReturn(50L);
+        when(projectRepository.sumViewCountByCategoryId(2L)).thenReturn(120L);
+
+        List<CategoryViewRanking> ranking = service.categoryViewRanking();
+
+        assertThat(ranking).extracting(CategoryViewRanking::categoryName)
+                .containsExactly("Bathrooms", "Kitchens");
+        assertThat(ranking.get(0).totalViews()).isEqualTo(120L);
     }
 }

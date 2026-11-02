@@ -7,6 +7,7 @@ import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.UserAccountRepository;
 import com.csit314.platform.dto.CategoryDesignerCoverage;
+import com.csit314.platform.dto.CategoryViewRanking;
 import com.csit314.platform.dto.PlatformReport;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 // PM-06/PM-08 - daily/monthly activity reports (plus a bonus weekly window) + PM-07's
@@ -72,6 +74,16 @@ public class PlatformReportService {
                     return new CategoryDesignerCoverage(category.getId(), category.getName(), designers, demand,
                             shortage);
                 })
+                .toList();
+    }
+
+    // PM-04 - categories ranked by total views across their projects, so PM can see what's popular
+    @Transactional(readOnly = true)
+    public List<CategoryViewRanking> categoryViewRanking() {
+        return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name")).stream()
+                .map(category -> new CategoryViewRanking(category.getId(), category.getName(),
+                        projectRepository.sumViewCountByCategoryId(category.getId())))
+                .sorted(Comparator.comparingLong(CategoryViewRanking::totalViews).reversed())
                 .toList();
     }
 
