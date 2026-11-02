@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Registration alerts')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <h4 class="mb-3">Registration burst alerts</h4>
+    <p class="text-muted small mb-3">IP addresses with 3 or more sign-ups in the last hour.</p>
+
+    <div class="list-group">
+        <div class="list-group-item" th:each="alert : ${alerts}">
+            <div class="d-flex justify-content-between align-items-start">
+                <span class="fw-semibold" th:text="${alert.ipAddress}">IP</span>
+                <span class="badge bg-danger" th:text="${alert.count} + ' sign-ups'">0 sign-ups</span>
+            </div>
+            <p class="text-muted small mb-0 mt-1" th:text="${#strings.listJoin(alert.emails, ', ')}">emails</p>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(alerts)}" class="text-muted">No registration bursts detected in the last hour.</p>
+
+</div>
+</body>
+</html>

@@ -8,7 +8,7 @@ import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.MessageRepository;
 import com.csit314.platform.repository.ProjectRepository;
-import com.csit314.platform.web.dto.ContactDesignerForm;
+import com.csit314.platform.dto.ContactDesignerForm;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

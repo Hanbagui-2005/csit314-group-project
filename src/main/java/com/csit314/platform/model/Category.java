@@ -25,6 +25,11 @@ public class Category {
         this.name = name;
     }
 
+    // supports PM-01 - not its own tracked Taiga story
+    public void rename(String name) {
+        this.name = name;
+    }
+
     public Long getId() {
         return id;
     }

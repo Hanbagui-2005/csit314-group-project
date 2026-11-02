@@ -33,6 +33,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns("/admin/login");
 
+        // every /platform-manager/** route, including PM-05/PM-07
+        registry.addInterceptor(new AuthInterceptor(loginSession, Role.PLATFORM_MANAGER, "/platform-manager/login"))
+                .addPathPatterns("/platform-manager/**")
+                .excludePathPatterns("/platform-manager/login");
+
         registry.addInterceptor(new AuthInterceptor(loginSession, Role.INTERIOR_DESIGNER, "/designer/login"))
                 .addPathPatterns("/designer/**")
                 .excludePathPatterns("/designer/login", "/designer/register");
@@ -41,8 +46,10 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(new AuthInterceptor(loginSession, Role.CUSTOMER, "/search"))
                 .addPathPatterns("/favourites", "/favourites/**");
 
-        // IDR-13/CUS-11/CUS-13 - only a logged-in customer can message, book, or rate a designer
+        // IDR-13/CUS-11/CUS-13/ADM-10/ADM-11 - only a logged-in customer can message, book,
+        // rate, complain about a designer, or manage their own bookings
         registry.addInterceptor(new AuthInterceptor(loginSession, Role.CUSTOMER, "/search"))
-                .addPathPatterns("/designers/*/contact", "/designers/*/book", "/designers/*/rate");
+                .addPathPatterns("/designers/*/contact", "/designers/*/book", "/designers/*/rate",
+                        "/designers/*/complaint", "/bookings", "/bookings/**");
     }
 }

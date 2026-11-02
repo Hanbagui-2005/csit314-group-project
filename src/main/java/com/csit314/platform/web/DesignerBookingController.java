@@ -1,8 +1,8 @@
 package com.csit314.platform.web;
 
 import com.csit314.platform.model.InteriorDesigner;
-import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.service.BookingService;
+import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
@@ -23,21 +23,21 @@ import java.util.function.BiConsumer;
 public class DesignerBookingController {
 
     private final BookingService bookingService;
-    private final InteriorDesignerRepository designerRepository;
+    private final DesignerService designerService;
     private final LoginSession loginSession;
 
     public DesignerBookingController(BookingService bookingService,
-                                     InteriorDesignerRepository designerRepository,
+                                     DesignerService designerService,
                                      LoginSession loginSession) {
         this.bookingService = bookingService;
-        this.designerRepository = designerRepository;
+        this.designerService = designerService;
         this.loginSession = loginSession;
     }
 
     @GetMapping
     public String bookings(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
-        var designer = designerRepository.findById(current.id()).orElseThrow();
+        var designer = designerService.requireById(current.id());
         model.addAttribute("bookings", bookingService.bookingsFor(designer));
         return "designer-bookings";
     }
@@ -56,7 +56,7 @@ public class DesignerBookingController {
                            BiConsumer<InteriorDesigner, Long> action) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            var designer = designerRepository.findById(current.id()).orElseThrow();
+            var designer = designerService.requireById(current.id());
             action.accept(designer, id);
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());

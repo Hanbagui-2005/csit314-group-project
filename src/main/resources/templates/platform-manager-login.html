@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Platform Manager login')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 400px;">
+
+    <h4 class="mb-3">Platform Manager login</h4>
+
+    <form method="post" th:action="@{/platform-manager/login}">
+
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" placeholder="manager@example.com"/>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-control"/>
+        </div>
+
+        <button type="submit" class="btn btn-dark w-100">Log in</button>
+
+    </form>
+
+</div>
+</body>
+</html>

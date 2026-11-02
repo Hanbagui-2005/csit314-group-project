@@ -28,10 +28,15 @@ public class InteriorDesigner extends UserAccount {
     private String rejectionReason;
 
     // CUS-09 - true once an admin approves a registration that included a license
-    // number. There's no separate "verify license" admin action (ADM-05) yet, so
-    // approving with a license is the closest real signal this app has
+    // number, or an admin manually toggles it later (ADM-05 - e.g. a designer added
+    // their license after approval, or admin found a reason to revoke it)
     @Column(nullable = false)
     private boolean verified = false;
+
+    // PM-05 - Platform Management confirms the service area the designer declared in
+    // Company.serviceArea is actually accurate, separately from the license-based verified flag
+    @Column(name = "service_area_verified", nullable = false)
+    private boolean serviceAreaVerified = false;
 
     protected InteriorDesigner() {
     }
@@ -80,5 +85,19 @@ public class InteriorDesigner extends UserAccount {
 
     public boolean isVerified() {
         return verified;
+    }
+
+    // ADM-05
+    public void setVerified(boolean verified) {
+        this.verified = verified;
+    }
+
+    public boolean isServiceAreaVerified() {
+        return serviceAreaVerified;
+    }
+
+    // PM-05
+    public void setServiceAreaVerified(boolean serviceAreaVerified) {
+        this.serviceAreaVerified = serviceAreaVerified;
     }
 }

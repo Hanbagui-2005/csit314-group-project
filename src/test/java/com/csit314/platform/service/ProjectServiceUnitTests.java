@@ -7,7 +7,7 @@ import com.csit314.platform.model.MilestoneStage;
 import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.ProjectRepository;
-import com.csit314.platform.web.dto.ProjectForm;
+import com.csit314.platform.dto.ProjectForm;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Login security')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <h4 class="mb-3">Recent failed login attempts</h4>
+    <p class="text-muted small mb-3">Most recent 50 attempts, across every account (and unknown emails).</p>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Email</th>
+            <th>IP address</th>
+            <th>Attempted at</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="attempt : ${attempts}">
+            <td th:text="${attempt.email}">Email</td>
+            <td th:text="${attempt.ipAddress != null ? attempt.ipAddress : '-'}">-</td>
+            <td th:text="${#temporals.format(attempt.attemptedAt, 'dd MMM yyyy HH:mm:ss')}">date</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p th:if="${#lists.isEmpty(attempts)}" class="text-muted">No failed login attempts recorded.</p>
+
+</div>
+</body>
+</html>

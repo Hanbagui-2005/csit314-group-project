@@ -3,7 +3,7 @@ package com.csit314.platform.qa;
 import com.csit314.platform.model.*;
 import com.csit314.platform.repository.*;
 import com.csit314.platform.service.*;
-import com.csit314.platform.web.dto.*;
+import com.csit314.platform.dto.*;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
 import jakarta.persistence.EntityManager;
@@ -57,7 +57,7 @@ class SprintOneQaFlowTests {
     private InteriorDesigner designer(String email) {
         return designerService.register(new DesignerRegistrationForm(
                 "QA Contact", email, PASSWORD, PASSWORD, "QA Studio",
-                "Synthetic company for automated tests.", "5550000000", null));
+                "Synthetic company for automated tests.", "5550000000", null, null));
     }
 
     private MockHttpSession adminSession() throws Exception {

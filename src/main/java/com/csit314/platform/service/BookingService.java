@@ -8,7 +8,7 @@ import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.BookingRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.ProjectRepository;
-import com.csit314.platform.web.dto.BookingRequestForm;
+import com.csit314.platform.dto.BookingRequestForm;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +62,25 @@ public class BookingService {
 
     public List<Booking> bookingsFor(InteriorDesigner designer) {
         return bookingRepository.findByDesignerIdOrderByCreatedAtDesc(designer.getId());
+    }
+
+    public List<Booking> bookingsFor(Customer customer) {
+        return bookingRepository.findByCustomerIdOrderByCreatedAtDesc(customer.getId());
+    }
+
+    // ADM-11 - gives customers a way to cancel, which is what the dispute/cancellation rate counts
+    @Transactional
+    public void cancel(Customer customer, Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ServiceException("Booking not found."));
+        if (!booking.getCustomer().getId().equals(customer.getId())) {
+            throw new ServiceException("You can only manage your own bookings.");
+        }
+        try {
+            booking.cancel();
+        } catch (IllegalStateException e) {
+            throw new ServiceException(e.getMessage());
+        }
     }
 
     @Transactional

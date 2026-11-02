@@ -1,6 +1,6 @@
 package com.csit314.platform.web;
 
-import com.csit314.platform.repository.InteriorDesignerRepository;
+import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.MessageService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.web.session.LoginSession;
@@ -20,21 +20,21 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class DesignerMessageController {
 
     private final MessageService messageService;
-    private final InteriorDesignerRepository designerRepository;
+    private final DesignerService designerService;
     private final LoginSession loginSession;
 
     public DesignerMessageController(MessageService messageService,
-                                     InteriorDesignerRepository designerRepository,
+                                     DesignerService designerService,
                                      LoginSession loginSession) {
         this.messageService = messageService;
-        this.designerRepository = designerRepository;
+        this.designerService = designerService;
         this.loginSession = loginSession;
     }
 
     @GetMapping
     public String inbox(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
-        var designer = designerRepository.findById(current.id()).orElseThrow();
+        var designer = designerService.requireById(current.id());
         model.addAttribute("messages", messageService.inbox(designer));
         return "designer-messages";
     }
@@ -43,7 +43,7 @@ public class DesignerMessageController {
     public String markRead(@PathVariable Long id, HttpServletRequest request, RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            var designer = designerRepository.findById(current.id()).orElseThrow();
+            var designer = designerService.requireById(current.id());
             messageService.markRead(designer, id);
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());

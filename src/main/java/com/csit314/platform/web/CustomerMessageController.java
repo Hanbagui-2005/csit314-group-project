@@ -2,12 +2,12 @@ package com.csit314.platform.web;
 
 import com.csit314.platform.model.Customer;
 import com.csit314.platform.model.InteriorDesigner;
-import com.csit314.platform.repository.CustomerRepository;
-import com.csit314.platform.repository.InteriorDesignerRepository;
-import com.csit314.platform.repository.ProjectRepository;
+import com.csit314.platform.service.BrowseService;
+import com.csit314.platform.service.CustomerService;
+import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.MessageService;
 import com.csit314.platform.service.ServiceException;
-import com.csit314.platform.web.dto.ContactDesignerForm;
+import com.csit314.platform.dto.ContactDesignerForm;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,20 +28,20 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class CustomerMessageController {
 
     private final MessageService messageService;
-    private final CustomerRepository customerRepository;
-    private final InteriorDesignerRepository designerRepository;
-    private final ProjectRepository projectRepository;
+    private final CustomerService customerService;
+    private final DesignerService designerService;
+    private final BrowseService browseService;
     private final LoginSession loginSession;
 
     public CustomerMessageController(MessageService messageService,
-                                     CustomerRepository customerRepository,
-                                     InteriorDesignerRepository designerRepository,
-                                     ProjectRepository projectRepository,
+                                     CustomerService customerService,
+                                     DesignerService designerService,
+                                     BrowseService browseService,
                                      LoginSession loginSession) {
         this.messageService = messageService;
-        this.customerRepository = customerRepository;
-        this.designerRepository = designerRepository;
-        this.projectRepository = projectRepository;
+        this.customerService = customerService;
+        this.designerService = designerService;
+        this.browseService = browseService;
         this.loginSession = loginSession;
     }
 
@@ -49,13 +49,13 @@ public class CustomerMessageController {
     public String contactForm(@PathVariable Long designerId,
                               @RequestParam(required = false) Long projectId,
                               Model model, RedirectAttributes redirect) {
-        InteriorDesigner designer = designerRepository.findById(designerId).orElse(null);
+        InteriorDesigner designer = designerService.findById(designerId).orElse(null);
         if (designer == null) {
             redirect.addFlashAttribute("errorMessage", "That designer couldn't be found.");
             return "redirect:/search";
         }
         model.addAttribute("designer", designer);
-        model.addAttribute("projects", projectRepository.findByDesignerIdOrderByCreatedAtDesc(designerId));
+        model.addAttribute("projects", browseService.listForDesigner(designerId));
         model.addAttribute("selectedProjectId", projectId);
         return "contact-designer";
     }
@@ -67,8 +67,7 @@ public class CustomerMessageController {
                               RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            Customer sender = customerRepository.findById(current.id())
-                    .orElseThrow(() -> new ServiceException("Customer account not found."));
+            Customer sender = customerService.requireById(current.id());
             messageService.sendMessage(sender, designerId, form);
             redirect.addFlashAttribute("successMessage", "Your message has been sent.");
             return "redirect:/search";

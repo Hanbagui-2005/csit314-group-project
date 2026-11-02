@@ -3,10 +3,12 @@ package com.csit314.platform.service;
 import com.csit314.platform.model.Customer;
 import com.csit314.platform.repository.CustomerRepository;
 import com.csit314.platform.repository.UserAccountRepository;
-import com.csit314.platform.web.dto.CustomerRegistrationForm;
+import com.csit314.platform.dto.CustomerRegistrationForm;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 public class CustomerService {
@@ -24,8 +26,13 @@ public class CustomerService {
     }
 
     // CUS-01: validate the form and save a new active customer
-    @Transactional
     public Customer register(CustomerRegistrationForm form) {
+        return register(form, null);
+    }
+
+    // ADM-14 - ipAddress is optional (bulk/test data has none) and used to spot registration bursts
+    @Transactional
+    public Customer register(CustomerRegistrationForm form, String ipAddress) {
         String name = InputRules.requireText(form.name(), "Full name", 100);
         String email = InputRules.requireEmail(form.email());
         InputRules.checkNewPassword(form.password(), form.confirmPassword());
@@ -35,6 +42,20 @@ public class CustomerService {
         }
 
         Customer customer = new Customer(name, email, passwordEncoder.encode(form.password()));
+        customer.setRegistrationIp(ipAddress);
         return customerRepository.save(customer);
+    }
+
+    // the logged-in customer resolved from their own session - should always exist
+    @Transactional(readOnly = true)
+    public Customer requireById(Long id) {
+        return customerRepository.findById(id)
+                .orElseThrow(() -> new ServiceException("Customer account not found."));
+    }
+
+    // looking up some other customer by id for display - may not exist, caller decides what to do
+    @Transactional(readOnly = true)
+    public Optional<Customer> findById(Long id) {
+        return customerRepository.findById(id);
     }
 }

@@ -1,10 +1,10 @@
 package com.csit314.platform.web;
 
 import com.csit314.platform.model.Customer;
-import com.csit314.platform.repository.CustomerRepository;
+import com.csit314.platform.service.CustomerService;
 import com.csit314.platform.service.RatingService;
 import com.csit314.platform.service.ServiceException;
-import com.csit314.platform.web.dto.RatingForm;
+import com.csit314.platform.dto.RatingForm;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,14 +21,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class CustomerRatingController {
 
     private final RatingService ratingService;
-    private final CustomerRepository customerRepository;
+    private final CustomerService customerService;
     private final LoginSession loginSession;
 
     public CustomerRatingController(RatingService ratingService,
-                                    CustomerRepository customerRepository,
+                                    CustomerService customerService,
                                     LoginSession loginSession) {
         this.ratingService = ratingService;
-        this.customerRepository = customerRepository;
+        this.customerService = customerService;
         this.loginSession = loginSession;
     }
 
@@ -37,8 +37,7 @@ public class CustomerRatingController {
                        HttpServletRequest request, RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            Customer customer = customerRepository.findById(current.id())
-                    .orElseThrow(() -> new ServiceException("Customer account not found."));
+            Customer customer = customerService.requireById(current.id());
             ratingService.rate(customer, designerId, form);
             redirect.addFlashAttribute("successMessage", "Thanks for the rating!");
         } catch (ServiceException e) {
