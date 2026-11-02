@@ -33,6 +33,11 @@ public class InteriorDesigner extends UserAccount {
     @Column(nullable = false)
     private boolean verified = false;
 
+    // PM-05 - Platform Management confirms the service area the designer declared in
+    // Company.serviceArea is actually accurate, separately from the license-based verified flag
+    @Column(name = "service_area_verified", nullable = false)
+    private boolean serviceAreaVerified = false;
+
     protected InteriorDesigner() {
     }
 
@@ -85,5 +90,14 @@ public class InteriorDesigner extends UserAccount {
     // ADM-05
     public void setVerified(boolean verified) {
         this.verified = verified;
+    }
+
+    public boolean isServiceAreaVerified() {
+        return serviceAreaVerified;
+    }
+
+    // PM-05
+    public void setServiceAreaVerified(boolean serviceAreaVerified) {
+        this.serviceAreaVerified = serviceAreaVerified;
     }
 }

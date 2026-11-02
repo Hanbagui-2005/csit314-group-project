@@ -28,6 +28,10 @@
                 <form method="post" th:action="@{/admin/complaints/{id}/dismiss(id=${complaint.id})}" class="mb-0">
                     <button type="submit" class="btn btn-sm btn-outline-secondary">Dismiss</button>
                 </form>
+                <form th:if="${complaint.designer.status.name() == 'ACTIVE'}" method="post"
+                      th:action="@{/admin/users/{id}/suspend(id=${complaint.designer.id})}" class="mb-0">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Suspend designer</button>
+                </form>
             </div>
         </div>
     </div>

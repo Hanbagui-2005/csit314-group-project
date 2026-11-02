@@ -1,7 +1,7 @@
 package com.csit314.platform.web;
 
 import com.csit314.platform.model.Customer;
-import com.csit314.platform.repository.CustomerRepository;
+import com.csit314.platform.service.CustomerService;
 import com.csit314.platform.service.FavouriteService;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
@@ -19,14 +19,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class CustomerFavouriteController {
 
     private final FavouriteService favouriteService;
-    private final CustomerRepository customerRepository;
+    private final CustomerService customerService;
     private final LoginSession loginSession;
 
     public CustomerFavouriteController(FavouriteService favouriteService,
-                                       CustomerRepository customerRepository,
+                                       CustomerService customerService,
                                        LoginSession loginSession) {
         this.favouriteService = favouriteService;
-        this.customerRepository = customerRepository;
+        this.customerService = customerService;
         this.loginSession = loginSession;
     }
 
@@ -62,6 +62,6 @@ public class CustomerFavouriteController {
 
     private Customer currentCustomer(HttpServletRequest request) {
         SessionUser current = loginSession.current(request).orElseThrow();
-        return customerRepository.findById(current.id()).orElseThrow();
+        return customerService.requireById(current.id());
     }
 }

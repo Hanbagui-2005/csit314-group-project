@@ -24,8 +24,16 @@ mvn spring-boot:run
 
 Then open http://localhost:8080/search.
 
-A default User Admin is created on first start: `admin@platform.local` / `Admin@12345`
-(override with `ADMIN_EMAIL` / `ADMIN_PASSWORD`). Log in at `/admin/login`.
+## Logging in
+
+Customers and Interior Designers register themselves (`/register` and `/designer/register`).
+User Admin and Platform Management have no public sign-up — a default account for each is
+seeded on first start:
+
+| Role | Login page | Default email | Default password | Override via |
+|---|---|---|---|---|
+| User Admin | `/admin/login` | `admin@platform.local` | `Admin@12345` | `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
+| Platform Management | `/platform-manager/login` | `platform-manager@platform.local` | `Manager@12345` | `app.platform-manager.email` / `app.platform-manager.password` |
 
 There's no mail server yet, so password reset links are printed in the app log.
 

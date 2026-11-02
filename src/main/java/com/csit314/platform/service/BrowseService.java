@@ -4,7 +4,7 @@ import com.csit314.platform.model.Project;
 import com.csit314.platform.model.ProjectView;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.ProjectViewRepository;
-import com.csit314.platform.web.dto.BudgetEstimate;
+import com.csit314.platform.dto.BudgetEstimate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +41,12 @@ public class BrowseService {
         // IDR-08 - also logged as its own row so a weekly delta is possible later
         projectViewRepository.save(new ProjectView(project));
         return project;
+    }
+
+    // a designer's own project list, used wherever their portfolio is shown to someone else
+    // (profile page, contact form, booking form)
+    public List<Project> listForDesigner(Long designerId) {
+        return projectRepository.findByDesignerIdOrderByCreatedAtDesc(designerId);
     }
 
     // CUS-12

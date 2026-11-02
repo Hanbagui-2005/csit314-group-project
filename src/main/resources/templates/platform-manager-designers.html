@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Designer service areas')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <h4 class="mb-3">Designer service areas</h4>
+    <p class="text-muted small mb-3">PM-05 - confirm each designer's declared service area is accurate before
+        customers are matched against it.</p>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Studio</th>
+            <th>Service area</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="designer : ${designers}">
+            <td th:text="${designer.company.name}">Studio</td>
+            <td th:text="${designer.company.serviceArea != null ? designer.company.serviceArea : 'Not provided'}">Service area</td>
+            <td>
+                <span class="badge bg-light" th:if="${designer.serviceAreaVerified}">Verified</span>
+                <span class="badge bg-warning text-dark" th:unless="${designer.serviceAreaVerified}">Unverified</span>
+            </td>
+            <td class="d-flex gap-2">
+                <form th:if="${not designer.serviceAreaVerified}" method="post"
+                      th:action="@{/platform-manager/designers/{id}/verify-service-area(id=${designer.id})}" class="mb-0">
+                    <button type="submit" class="btn btn-sm btn-outline-dark">Verify</button>
+                </form>
+                <form th:if="${designer.serviceAreaVerified}" method="post"
+                      th:action="@{/platform-manager/designers/{id}/flag-service-area(id=${designer.id})}" class="mb-0">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Flag as inaccurate</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p th:if="${#lists.isEmpty(designers)}" class="text-muted">No designers registered yet.</p>
+
+</div>
+</body>
+</html>

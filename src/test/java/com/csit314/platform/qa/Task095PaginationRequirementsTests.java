@@ -2,7 +2,7 @@ package com.csit314.platform.qa;
 
 import com.csit314.platform.model.Customer;
 import com.csit314.platform.repository.CustomerRepository;
-import com.csit314.platform.web.dto.UserSummary;
+import com.csit314.platform.dto.UserSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;

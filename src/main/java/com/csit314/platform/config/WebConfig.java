@@ -33,6 +33,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns("/admin/login");
 
+        // every /platform-manager/** route, including PM-05/PM-07
+        registry.addInterceptor(new AuthInterceptor(loginSession, Role.PLATFORM_MANAGER, "/platform-manager/login"))
+                .addPathPatterns("/platform-manager/**")
+                .excludePathPatterns("/platform-manager/login");
+
         registry.addInterceptor(new AuthInterceptor(loginSession, Role.INTERIOR_DESIGNER, "/designer/login"))
                 .addPathPatterns("/designer/**")
                 .excludePathPatterns("/designer/login", "/designer/register");

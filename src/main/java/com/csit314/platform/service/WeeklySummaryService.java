@@ -6,7 +6,7 @@ import com.csit314.platform.repository.MessageRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.ProjectViewRepository;
 import com.csit314.platform.repository.ShortlistRepository;
-import com.csit314.platform.web.dto.WeeklySummary;
+import com.csit314.platform.dto.WeeklySummary;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;

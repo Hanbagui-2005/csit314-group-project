@@ -2,7 +2,7 @@ package com.csit314.platform.service;
 
 import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.ProjectRepository;
-import com.csit314.platform.web.dto.CategoryBreakdown;
+import com.csit314.platform.dto.CategoryBreakdown;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;

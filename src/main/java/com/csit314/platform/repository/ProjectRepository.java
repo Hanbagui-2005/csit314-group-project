@@ -5,11 +5,23 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
+
+    // supports PM-01 - a category still used by at least one project can't be deleted
+    long countByCategoryId(Long categoryId);
+
+    // PM-06/PM-08 - activity reports
+    long countByCreatedAtAfter(LocalDateTime since);
+
+    // PM-07 - active designers who have at least one project in this category
+    @Query("select count(distinct p.designer.id) from Project p "
+            + "where p.category.id = :categoryId and p.designer.status = com.csit314.platform.model.AccountStatus.ACTIVE")
+    long countDistinctActiveDesignersByCategoryId(@Param("categoryId") Long categoryId);
 
     // IDR-10/CUS-04/CUS-09 - Browse search, filters on keyword/category/budget/room size/verified when given
     @Query("select p from Project p where "

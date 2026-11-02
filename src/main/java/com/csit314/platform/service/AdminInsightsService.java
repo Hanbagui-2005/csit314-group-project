@@ -1,11 +1,13 @@
 package com.csit314.platform.service;
 
 import com.csit314.platform.model.BookingStatus;
+import com.csit314.platform.model.FailedLoginAttempt;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.BookingRepository;
 import com.csit314.platform.repository.ComplaintRepository;
+import com.csit314.platform.repository.FailedLoginAttemptRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
-import com.csit314.platform.web.dto.DesignerQualitySummary;
+import com.csit314.platform.dto.DesignerQualitySummary;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -18,13 +20,21 @@ public class AdminInsightsService {
     private final InteriorDesignerRepository designerRepository;
     private final ComplaintRepository complaintRepository;
     private final BookingRepository bookingRepository;
+    private final FailedLoginAttemptRepository failedLoginAttemptRepository;
 
     public AdminInsightsService(InteriorDesignerRepository designerRepository,
                                 ComplaintRepository complaintRepository,
-                                BookingRepository bookingRepository) {
+                                BookingRepository bookingRepository,
+                                FailedLoginAttemptRepository failedLoginAttemptRepository) {
         this.designerRepository = designerRepository;
         this.complaintRepository = complaintRepository;
         this.bookingRepository = bookingRepository;
+        this.failedLoginAttemptRepository = failedLoginAttemptRepository;
+    }
+
+    // ADM-13
+    public List<FailedLoginAttempt> recentFailedLoginAttempts() {
+        return failedLoginAttemptRepository.findTop50ByOrderByAttemptedAtDesc();
     }
 
     public List<DesignerQualitySummary> designerQualitySummaries() {

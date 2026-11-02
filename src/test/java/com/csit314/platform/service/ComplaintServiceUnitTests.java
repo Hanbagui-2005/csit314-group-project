@@ -7,7 +7,7 @@ import com.csit314.platform.model.Customer;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
-import com.csit314.platform.web.dto.ComplaintForm;
+import com.csit314.platform.dto.ComplaintForm;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

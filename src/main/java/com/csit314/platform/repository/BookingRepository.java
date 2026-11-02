@@ -4,11 +4,15 @@ import com.csit314.platform.model.Booking;
 import com.csit314.platform.model.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
+
+    // PM-06/PM-08 - activity reports
+    long countByCreatedAtAfter(LocalDateTime since);
 
     List<Booking> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
 
@@ -19,4 +23,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     long countByDesignerId(Long designerId);
 
     long countByDesignerIdAndStatus(Long designerId, BookingStatus status);
+
+    // PM-07 - customer demand signal per category: booking requests against projects in it
+    long countByProjectCategoryId(Long categoryId);
 }

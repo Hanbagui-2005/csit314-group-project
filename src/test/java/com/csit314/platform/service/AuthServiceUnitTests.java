@@ -33,7 +33,7 @@ class AuthServiceUnitTests {
             case CUSTOMER -> new Customer("Customer", "person@example.test", "encoded");
             case INTERIOR_DESIGNER -> new InteriorDesigner("Designer", "person@example.test", "encoded",
                     new Company("Studio", "Description", "12345"));
-            default -> throw new IllegalArgumentException();
+            case PLATFORM_MANAGER -> new PlatformManager("Manager", "person@example.test", "encoded");
         };
         result.setStatus(AccountStatus.ACTIVE);
         return result;
@@ -43,11 +43,11 @@ class AuthServiceUnitTests {
             case ADMIN -> service.loginAdmin(email, password, "127.0.0.1");
             case CUSTOMER -> service.loginCustomer(email, password, "127.0.0.1");
             case INTERIOR_DESIGNER -> service.loginDesigner(email, password, "127.0.0.1");
-            default -> throw new IllegalArgumentException();
+            case PLATFORM_MANAGER -> service.loginPlatformManager(email, password, "127.0.0.1");
         };
     }
 
-    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER"})
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
     void activeAccountAuthenticatesAndNormalisesEmail(Role role) {
         UserAccount user = account(role);
         when(users.findByEmail("person@example.test")).thenReturn(Optional.of(user));
@@ -56,7 +56,7 @@ class AuthServiceUnitTests {
         assertThat(user.getLastLoginAt()).isNotNull();
     }
 
-    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER"})
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
     void unknownAccountIsRejectedWithoutPasswordComparison(Role role) {
         when(users.findByEmail("missing@example.test")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> login(role, "missing@example.test", "password123"))
@@ -64,7 +64,7 @@ class AuthServiceUnitTests {
         verifyNoInteractions(encoder);
     }
 
-    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER"})
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
     void wrongPasswordDoesNotUpdateLastLogin(Role role) {
         UserAccount user = account(role);
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
@@ -73,7 +73,7 @@ class AuthServiceUnitTests {
         assertThat(user.getLastLoginAt()).isNull();
     }
 
-    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER"})
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
     void nullPasswordIsRejectedWithoutCallingEncoder(Role role) {
         UserAccount user = account(role);
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
@@ -81,9 +81,9 @@ class AuthServiceUnitTests {
         verifyNoInteractions(encoder);
     }
 
-    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER"})
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
     void credentialsFromAnotherRoleCannotUsePortal(Role expectedRole) {
-        for (Role actualRole : new Role[]{Role.ADMIN, Role.CUSTOMER, Role.INTERIOR_DESIGNER}) {
+        for (Role actualRole : new Role[]{Role.ADMIN, Role.CUSTOMER, Role.INTERIOR_DESIGNER, Role.PLATFORM_MANAGER}) {
             if (actualRole == expectedRole) continue;
             UserAccount user = account(actualRole);
             when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));

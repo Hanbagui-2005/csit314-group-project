@@ -4,7 +4,7 @@ import com.csit314.platform.model.UserAccount;
 import com.csit314.platform.service.AuthService;
 import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.ServiceException;
-import com.csit314.platform.web.dto.DesignerRegistrationForm;
+import com.csit314.platform.dto.DesignerRegistrationForm;
 import com.csit314.platform.web.session.LoginSession;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;

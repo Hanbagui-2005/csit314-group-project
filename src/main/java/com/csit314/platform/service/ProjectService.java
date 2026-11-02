@@ -5,12 +5,13 @@ import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.ProjectRepository;
-import com.csit314.platform.web.dto.ProjectForm;
+import com.csit314.platform.dto.ProjectForm;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 // IDR-04 / IDR-05
 @Service
@@ -28,6 +29,23 @@ public class ProjectService {
         this.projectRepository = projectRepository;
         this.categoryRepository = categoryRepository;
         this.fileStorageService = fileStorageService;
+    }
+
+    // IDR-04/07 - category dropdown on the new/edit project form
+    public List<Category> listCategories() {
+        return categoryRepository.findAll();
+    }
+
+    // a designer's own dashboard list
+    public List<Project> listForDesigner(Long designerId) {
+        return projectRepository.findByDesignerIdOrderByCreatedAtDesc(designerId);
+    }
+
+    // IDR-07 - the edit form's GET: empty when the project doesn't exist or isn't owned
+    // by this designer, so the controller can redirect instead of throwing
+    public Optional<Project> findEditable(InteriorDesigner designer, Long projectId) {
+        return projectRepository.findById(projectId)
+                .filter(project -> project.getDesigner().getId().equals(designer.getId()));
     }
 
     @Transactional

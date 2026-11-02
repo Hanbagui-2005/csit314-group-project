@@ -48,6 +48,11 @@ public class AuthService {
         return login(email, password, Role.CUSTOMER, ipAddress);
     }
 
+    // not its own numbered Taiga story, same as the Platform Manager account seeding
+    public UserAccount loginPlatformManager(String email, String password, String ipAddress) {
+        return login(email, password, Role.PLATFORM_MANAGER, ipAddress);
+    }
+
     private UserAccount login(String email, String password, Role expectedRole, String ipAddress) {
         String normalisedEmail = InputRules.normaliseEmail(email);
         Optional<UserAccount> maybeUser = userAccountRepository.findByEmail(normalisedEmail);

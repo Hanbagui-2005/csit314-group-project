@@ -5,8 +5,9 @@ import com.csit314.platform.model.Company;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.BookingRepository;
 import com.csit314.platform.repository.ComplaintRepository;
+import com.csit314.platform.repository.FailedLoginAttemptRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
-import com.csit314.platform.web.dto.DesignerQualitySummary;
+import com.csit314.platform.dto.DesignerQualitySummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,7 @@ class AdminInsightsServiceUnitTests {
     @Mock InteriorDesignerRepository designerRepository;
     @Mock ComplaintRepository complaintRepository;
     @Mock BookingRepository bookingRepository;
+    @Mock FailedLoginAttemptRepository failedLoginAttemptRepository;
     AdminInsightsService service;
 
     InteriorDesigner busy;
@@ -33,7 +35,8 @@ class AdminInsightsServiceUnitTests {
 
     @BeforeEach
     void setUp() {
-        service = new AdminInsightsService(designerRepository, complaintRepository, bookingRepository);
+        service = new AdminInsightsService(designerRepository, complaintRepository, bookingRepository,
+                failedLoginAttemptRepository);
 
         busy = new InteriorDesigner("Busy", "busy@example.test", "encoded", new Company("Busy Studio", "d", "p"));
         ReflectionTestUtils.setField(busy, "id", 1L);

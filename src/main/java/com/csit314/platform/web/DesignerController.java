@@ -3,18 +3,16 @@ package com.csit314.platform.web;
 import com.csit314.platform.model.Category;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.model.Project;
-import com.csit314.platform.repository.CategoryRepository;
-import com.csit314.platform.repository.InteriorDesignerRepository;
-import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.service.CategorySuggestionService;
+import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.FavouriteService;
 import com.csit314.platform.service.MessageService;
 import com.csit314.platform.service.PortfolioAnalyticsService;
 import com.csit314.platform.service.ProjectService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.service.WeeklySummaryService;
-import com.csit314.platform.web.dto.CategorySuggestionResponse;
-import com.csit314.platform.web.dto.ProjectForm;
+import com.csit314.platform.dto.CategorySuggestionResponse;
+import com.csit314.platform.dto.ProjectForm;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,10 +35,8 @@ import java.util.List;
 @RequestMapping("/designer")
 public class DesignerController {
 
-    private final ProjectRepository projectRepository;
-    private final CategoryRepository categoryRepository;
-    private final InteriorDesignerRepository designerRepository;
     private final ProjectService projectService;
+    private final DesignerService designerService;
     private final CategorySuggestionService categorySuggestionService;
     private final PortfolioAnalyticsService portfolioAnalyticsService;
     private final MessageService messageService;
@@ -48,20 +44,16 @@ public class DesignerController {
     private final WeeklySummaryService weeklySummaryService;
     private final LoginSession loginSession;
 
-    public DesignerController(ProjectRepository projectRepository,
-                              CategoryRepository categoryRepository,
-                              InteriorDesignerRepository designerRepository,
-                              ProjectService projectService,
+    public DesignerController(ProjectService projectService,
+                              DesignerService designerService,
                               CategorySuggestionService categorySuggestionService,
                               PortfolioAnalyticsService portfolioAnalyticsService,
                               MessageService messageService,
                               FavouriteService favouriteService,
                               WeeklySummaryService weeklySummaryService,
                               LoginSession loginSession) {
-        this.projectRepository = projectRepository;
-        this.categoryRepository = categoryRepository;
-        this.designerRepository = designerRepository;
         this.projectService = projectService;
+        this.designerService = designerService;
         this.categorySuggestionService = categorySuggestionService;
         this.portfolioAnalyticsService = portfolioAnalyticsService;
         this.messageService = messageService;
@@ -73,8 +65,8 @@ public class DesignerController {
     @GetMapping("/dashboard")
     public String dashboard(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
-        model.addAttribute("projects", projectRepository.findByDesignerIdOrderByCreatedAtDesc(current.id()));
-        InteriorDesigner designer = designerRepository.findById(current.id()).orElseThrow();
+        model.addAttribute("projects", projectService.listForDesigner(current.id()));
+        InteriorDesigner designer = designerService.requireById(current.id());
         model.addAttribute("unreadMessageCount", messageService.unreadCount(designer));
         return "designer-dashboard";
     }
@@ -82,7 +74,7 @@ public class DesignerController {
     // IDR-04
     @GetMapping("/projects/new")
     public String newProjectForm(Model model) {
-        model.addAttribute("categories", categoryRepository.findAll());
+        model.addAttribute("categories", projectService.listCategories());
         model.addAttribute("isEdit", false);
         return "project-form";
     }
@@ -92,12 +84,13 @@ public class DesignerController {
     public String editProjectForm(@PathVariable Long id, HttpServletRequest request, Model model,
                                   RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
-        Project project = projectRepository.findById(id).orElse(null);
-        if (project == null || !project.getDesigner().getId().equals(current.id())) {
+        InteriorDesigner designer = designerService.requireById(current.id());
+        Project project = projectService.findEditable(designer, id).orElse(null);
+        if (project == null) {
             redirect.addFlashAttribute("errorMessage", "That project couldn't be found.");
             return "redirect:/designer/dashboard";
         }
-        model.addAttribute("categories", categoryRepository.findAll());
+        model.addAttribute("categories", projectService.listCategories());
         model.addAttribute("isEdit", true);
         model.addAttribute("projectId", id);
         model.addAttribute("project", project);
@@ -114,8 +107,7 @@ public class DesignerController {
                                 RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            InteriorDesigner designer = designerRepository.findById(current.id())
-                    .orElseThrow(() -> new ServiceException("Designer account not found."));
+            InteriorDesigner designer = designerService.requireById(current.id());
             Project project = projectService.updateProject(designer, id, form, photos, beforePhotos);
             redirect.addFlashAttribute("successMessage", "\"" + project.getTitle() + "\" has been updated.");
             return "redirect:/designer/dashboard";
@@ -130,8 +122,7 @@ public class DesignerController {
     public String advanceMilestone(@PathVariable Long id, HttpServletRequest request, RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            InteriorDesigner designer = designerRepository.findById(current.id())
-                    .orElseThrow(() -> new ServiceException("Designer account not found."));
+            InteriorDesigner designer = designerService.requireById(current.id());
             Project project = projectService.advanceMilestone(designer, id);
             redirect.addFlashAttribute("successMessage",
                     "\"" + project.getTitle() + "\" moved to " + project.getMilestoneStage().getLabel() + ".");
@@ -145,7 +136,7 @@ public class DesignerController {
     @GetMapping("/analytics")
     public String analytics(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
-        InteriorDesigner designer = designerRepository.findById(current.id()).orElseThrow();
+        InteriorDesigner designer = designerService.requireById(current.id());
         model.addAttribute("breakdown", portfolioAnalyticsService.categoryBreakdown(current.id()));
         model.addAttribute("shortlisters", favouriteService.shortlistersFor(designer));
         model.addAttribute("shortlistTrend", favouriteService.shortlistTrend(designer));
@@ -156,7 +147,7 @@ public class DesignerController {
     @GetMapping("/weekly-summary")
     public String weeklySummary(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
-        InteriorDesigner designer = designerRepository.findById(current.id()).orElseThrow();
+        InteriorDesigner designer = designerService.requireById(current.id());
         model.addAttribute("summary", weeklySummaryService.summarise(designer));
         return "designer-weekly-summary";
     }
@@ -182,8 +173,7 @@ public class DesignerController {
                                 RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            InteriorDesigner designer = designerRepository.findById(current.id())
-                    .orElseThrow(() -> new ServiceException("Designer account not found."));
+            InteriorDesigner designer = designerService.requireById(current.id());
             Project project = projectService.createProject(designer, form, photos, beforePhotos);
             redirect.addFlashAttribute("successMessage",
                     "\"" + project.getTitle() + "\" has been added to your portfolio.");
