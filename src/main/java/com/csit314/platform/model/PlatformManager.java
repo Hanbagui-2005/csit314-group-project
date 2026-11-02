@@ -4,7 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
-// PM-01 - manages IDP categories and platform-wide reporting, separate from User Admin
+// manages IDP categories, service-area verification and platform-wide reporting
+// (PM-01/05/06/07/08), separate from User Admin
 @Entity
 @Table(name = "platform_managers")
 public class PlatformManager extends UserAccount {

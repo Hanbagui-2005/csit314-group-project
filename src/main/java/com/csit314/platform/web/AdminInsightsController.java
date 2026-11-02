@@ -4,7 +4,6 @@ import com.csit314.platform.service.AdminInsightsService;
 import com.csit314.platform.service.ComplaintService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.service.UserManagementService;
-import com.csit314.platform.repository.FailedLoginAttemptRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,16 +20,13 @@ public class AdminInsightsController {
     private final ComplaintService complaintService;
     private final AdminInsightsService adminInsightsService;
     private final UserManagementService userManagementService;
-    private final FailedLoginAttemptRepository failedLoginAttemptRepository;
 
     public AdminInsightsController(ComplaintService complaintService,
                                    AdminInsightsService adminInsightsService,
-                                   UserManagementService userManagementService,
-                                   FailedLoginAttemptRepository failedLoginAttemptRepository) {
+                                   UserManagementService userManagementService) {
         this.complaintService = complaintService;
         this.adminInsightsService = adminInsightsService;
         this.userManagementService = userManagementService;
-        this.failedLoginAttemptRepository = failedLoginAttemptRepository;
     }
 
     // ADM-10
@@ -70,7 +66,7 @@ public class AdminInsightsController {
     // ADM-13
     @GetMapping("/security")
     public String security(Model model) {
-        model.addAttribute("attempts", failedLoginAttemptRepository.findTop50ByOrderByAttemptedAtDesc());
+        model.addAttribute("attempts", adminInsightsService.recentFailedLoginAttempts());
         return "admin-security";
     }
 

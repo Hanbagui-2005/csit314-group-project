@@ -7,8 +7,8 @@ import com.csit314.platform.model.Rating;
 import com.csit314.platform.repository.BookingRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.RatingRepository;
-import com.csit314.platform.web.dto.RatingForm;
-import com.csit314.platform.web.dto.RatingSummary;
+import com.csit314.platform.dto.RatingForm;
+import com.csit314.platform.dto.RatingSummary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

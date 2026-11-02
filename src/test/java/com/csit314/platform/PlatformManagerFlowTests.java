@@ -23,7 +23,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// PM-01 through PM-05 - controller/routing coverage for the Platform Management portal
+// controller/routing coverage for the Platform Management portal: login, category
+// management (PM-01) and activity reports (PM-06/PM-08). Service-area verification
+// (PM-05) is covered separately in PlatformManagerDesignersFlowTests
 @SpringBootTest
 @AutoConfigureMockMvc
 class PlatformManagerFlowTests {
@@ -116,7 +118,7 @@ class PlatformManagerFlowTests {
         Company company = new Company("Verification Studio", "Testing only", "+61 400 000 001");
         InteriorDesigner designer = designerRepository.save(
                 new InteriorDesigner("Designer", "verification.designer@test.local", "encoded", company));
-        Project project = new Project("Guard test project", "Used to verify PM-04", category, designer);
+        Project project = new Project("Guard test project", "Used to verify the category delete guard", category, designer);
         project.addPhoto("/uploads/guard-test-project.jpg");
         projectRepository.save(project);
 

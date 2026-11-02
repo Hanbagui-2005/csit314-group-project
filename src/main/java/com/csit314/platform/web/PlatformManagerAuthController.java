@@ -23,7 +23,7 @@ public class PlatformManagerAuthController {
         this.loginSession = loginSession;
     }
 
-    // PM-01
+    // not its own numbered Taiga story
     @PostMapping("/login")
     public String login(@RequestParam(required = false) String email,
                         @RequestParam(required = false) String password,

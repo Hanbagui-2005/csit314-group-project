@@ -31,6 +31,32 @@
         </tbody>
     </table>
 
+    <h4 class="mb-3 mt-5">Category designer coverage</h4>
+    <p class="text-muted small mb-3">PM-07 - categories where booking demand outpaces active designers are
+        flagged as short, so recruiting can be prioritised there.</p>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Category</th>
+            <th>Active designers</th>
+            <th>Booking demand</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="coverage : ${categoryCoverage}">
+            <td th:text="${coverage.categoryName}">Category</td>
+            <td th:text="${coverage.activeDesignerCount}">0</td>
+            <td th:text="${coverage.demandCount}">0</td>
+            <td>
+                <span class="badge bg-warning text-dark" th:if="${coverage.shortage}">Short on designers</span>
+                <span class="badge bg-light" th:unless="${coverage.shortage}">Adequate</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
 </div>
 </body>
 </html>

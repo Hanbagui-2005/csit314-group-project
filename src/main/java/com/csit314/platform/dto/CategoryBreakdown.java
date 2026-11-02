@@ -1,4 +1,4 @@
-package com.csit314.platform.web.dto;
+package com.csit314.platform.dto;
 
 // IDR-03 - one row of the category breakdown: how many of the designer's projects
 // are in this category, and what share of the portfolio that is

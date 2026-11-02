@@ -4,12 +4,15 @@ import com.csit314.platform.model.Company;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.UserAccountRepository;
-import com.csit314.platform.web.dto.DesignerRegistrationForm;
+import com.csit314.platform.dto.DesignerRegistrationForm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DesignerService {
@@ -43,6 +46,7 @@ public class DesignerService {
         String description = InputRules.optionalText(form.companyDescription(), 5000, "Company description");
         String phone = InputRules.optionalText(form.companyPhone(), 30, "Contact phone");
         String licenseNumber = InputRules.optionalText(form.licenseNumber(), 60, "License number");
+        String serviceArea = InputRules.optionalText(form.serviceArea(), 200, "Service area");
 
         if (userAccountRepository.existsByEmail(email)) {
             throw new ServiceException("An account with this email already exists.");
@@ -50,6 +54,7 @@ public class DesignerService {
 
         Company company = new Company(companyName, description, phone);
         company.setLicenseNumber(licenseNumber);
+        company.setServiceArea(serviceArea);
         InteriorDesigner designer = new InteriorDesigner(contactName, email,
                 passwordEncoder.encode(form.password()), company);
         designer.setRegistrationIp(ipAddress);
@@ -59,5 +64,31 @@ public class DesignerService {
         // goes to the log; the admin users page also shows a live pending-count badge
         log.info("New designer registration pending approval: {} ({})", companyName, email);
         return saved;
+    }
+
+    // the logged-in designer resolved from their own session - should always exist
+    @Transactional(readOnly = true)
+    public InteriorDesigner requireById(Long id) {
+        return designerRepository.findById(id)
+                .orElseThrow(() -> new ServiceException("Designer account not found."));
+    }
+
+    // looking up some other designer by id for display - may not exist, caller decides what to do
+    @Transactional(readOnly = true)
+    public Optional<InteriorDesigner> findById(Long id) {
+        return designerRepository.findById(id);
+    }
+
+    // PM-05 - every designer, so Platform Management can review declared service areas
+    @Transactional(readOnly = true)
+    public List<InteriorDesigner> listAll() {
+        return designerRepository.findAll();
+    }
+
+    // PM-05
+    @Transactional
+    public void setServiceAreaVerified(Long designerId, boolean verified) {
+        InteriorDesigner designer = requireById(designerId);
+        designer.setServiceAreaVerified(verified);
     }
 }

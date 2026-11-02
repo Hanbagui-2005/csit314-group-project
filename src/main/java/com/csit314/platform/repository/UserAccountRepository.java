@@ -22,6 +22,6 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
     // ADM-14 - everyone who signed up from this IP recently, to spot a registration burst
     List<UserAccount> findByRegistrationIpAndCreatedAtAfter(String registrationIp, LocalDateTime since);
 
-    // PM-05
+    // PM-06/PM-08 - activity reports
     long countByRoleAndCreatedAtAfter(Role role, LocalDateTime since);
 }

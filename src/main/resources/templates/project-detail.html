@@ -19,7 +19,14 @@
         </form>
     </div>
 
-    <span class="badge bg-light text-dark border mb-3" th:text="${project.category.name}">Category</span>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <span class="badge bg-light text-dark border" th:text="${project.category.name}">Category</span>
+        <span class="badge bg-light" th:text="${project.milestoneStage.label}">Milestone</span>
+        <span class="badge bg-light" th:if="${project.budgetMin != null}"
+              th:text="'$' + ${project.budgetMin} + ' - $' + ${project.budgetMax}">Budget</span>
+        <span class="badge bg-light" th:if="${project.estimatedTimeline != null}"
+              th:text="${project.estimatedTimeline}">Timeline</span>
+    </div>
 
     <p th:text="${project.description}">Project description goes here.</p>
 

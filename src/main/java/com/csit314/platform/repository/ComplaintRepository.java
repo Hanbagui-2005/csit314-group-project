@@ -14,6 +14,6 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
 
     long countByDesignerId(Long designerId);
 
-    // PM-05
+    // PM-06/PM-08 - activity reports
     long countByCreatedAtAfter(LocalDateTime since);
 }

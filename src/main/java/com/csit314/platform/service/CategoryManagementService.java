@@ -21,13 +21,13 @@ public class CategoryManagementService {
         this.projectRepository = projectRepository;
     }
 
-    // PM-02
+    // PM-01
     @Transactional(readOnly = true)
     public List<Category> listCategories() {
         return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
     }
 
-    // PM-02
+    // PM-01
     @Transactional
     public Category addCategory(String name) {
         String trimmed = InputRules.requireText(name, "Category name", 60);
@@ -37,7 +37,7 @@ public class CategoryManagementService {
         return categoryRepository.save(new Category(trimmed));
     }
 
-    // PM-03
+    // supports PM-01 - not its own tracked story (PM-03 is automatic duplicate-merging)
     @Transactional
     public Category renameCategory(Long categoryId, String newName) {
         Category category = findCategory(categoryId);
@@ -49,8 +49,9 @@ public class CategoryManagementService {
         return category;
     }
 
-    // PM-04 - a category still used by at least one project can't be deleted, so projects
-    // never end up pointing at a category that no longer exists
+    // supports PM-01 - a category still used by at least one project can't be deleted, so
+    // projects never end up pointing at a category that no longer exists. This is a hard
+    // delete, not PM-13's soft-delete (not yet implemented)
     @Transactional
     public void deleteCategory(Long categoryId) {
         Category category = findCategory(categoryId);

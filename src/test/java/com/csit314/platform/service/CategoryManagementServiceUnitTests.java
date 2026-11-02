@@ -15,7 +15,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-// PM-02/03/04
+// PM-01 and the rename/delete actions that support it
 @ExtendWith(MockitoExtension.class)
 class CategoryManagementServiceUnitTests {
 
@@ -95,7 +95,7 @@ class CategoryManagementServiceUnitTests {
         verify(categoryRepository).delete(category);
     }
 
-    // PM-04 - deleting a category still in use would leave projects pointing at nothing
+    // supports PM-01 - deleting a category still in use would leave projects pointing at nothing
     @Test
     void deleteCategoryFailsWhenAProjectStillUsesIt() {
         Category category = category(1L, "Kitchen");

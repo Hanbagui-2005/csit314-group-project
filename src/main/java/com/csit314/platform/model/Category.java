@@ -25,7 +25,7 @@ public class Category {
         this.name = name;
     }
 
-    // PM-03
+    // supports PM-01 - not its own tracked Taiga story
     public void rename(String name) {
         this.name = name;
     }

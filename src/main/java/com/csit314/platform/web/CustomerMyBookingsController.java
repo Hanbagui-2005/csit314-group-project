@@ -1,7 +1,7 @@
 package com.csit314.platform.web;
 
-import com.csit314.platform.repository.CustomerRepository;
 import com.csit314.platform.service.BookingService;
+import com.csit314.platform.service.CustomerService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
@@ -21,21 +21,21 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class CustomerMyBookingsController {
 
     private final BookingService bookingService;
-    private final CustomerRepository customerRepository;
+    private final CustomerService customerService;
     private final LoginSession loginSession;
 
     public CustomerMyBookingsController(BookingService bookingService,
-                                        CustomerRepository customerRepository,
+                                        CustomerService customerService,
                                         LoginSession loginSession) {
         this.bookingService = bookingService;
-        this.customerRepository = customerRepository;
+        this.customerService = customerService;
         this.loginSession = loginSession;
     }
 
     @GetMapping
     public String myBookings(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
-        var customer = customerRepository.findById(current.id()).orElseThrow();
+        var customer = customerService.requireById(current.id());
         model.addAttribute("bookings", bookingService.bookingsFor(customer));
         return "my-bookings";
     }
@@ -44,7 +44,7 @@ public class CustomerMyBookingsController {
     public String cancel(@PathVariable Long id, HttpServletRequest request, RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            var customer = customerRepository.findById(current.id()).orElseThrow();
+            var customer = customerService.requireById(current.id());
             bookingService.cancel(customer, id);
             redirect.addFlashAttribute("successMessage", "Booking cancelled.");
         } catch (ServiceException e) {

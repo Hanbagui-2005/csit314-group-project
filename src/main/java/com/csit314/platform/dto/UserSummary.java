@@ -1,4 +1,4 @@
-package com.csit314.platform.web.dto;
+package com.csit314.platform.dto;
 
 // one row in the admin user list (ADM-02). licenseNumber/verified/riskScore are
 // only populated for Interior Designer rows (ADM-05/07), null otherwise

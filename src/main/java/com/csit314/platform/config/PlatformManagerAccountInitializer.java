@@ -13,7 +13,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Locale;
 
-// PM-01 - there's no public sign-up for this role either, so seed the first one from config
+// there's no public sign-up for this role either, so seed the first one from config
+// (unlike ADM-01, login itself isn't a separately numbered Taiga story for this role)
 @Component
 public class PlatformManagerAccountInitializer implements ApplicationRunner {
 

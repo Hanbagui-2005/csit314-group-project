@@ -1,6 +1,7 @@
-package com.csit314.platform.web.dto;
+package com.csit314.platform.dto;
 
-// fields posted by designer-register.html (IDR-01); licenseNumber is optional (CUS-09)
+// fields posted by designer-register.html (IDR-01); licenseNumber and serviceArea are both
+// optional (CUS-09, PM-05)
 public record DesignerRegistrationForm(String contactName,
                                        String email,
                                        String password,
@@ -8,5 +9,6 @@ public record DesignerRegistrationForm(String contactName,
                                        String companyName,
                                        String companyDescription,
                                        String companyPhone,
-                                       String licenseNumber) {
+                                       String licenseNumber,
+                                       String serviceArea) {
 }

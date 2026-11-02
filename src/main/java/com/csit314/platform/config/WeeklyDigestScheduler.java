@@ -4,7 +4,7 @@ import com.csit314.platform.model.AccountStatus;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.service.WeeklySummaryService;
-import com.csit314.platform.web.dto.WeeklySummary;
+import com.csit314.platform.dto.WeeklySummary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;

@@ -11,7 +11,7 @@ import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.BookingRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.ProjectRepository;
-import com.csit314.platform.web.dto.BookingRequestForm;
+import com.csit314.platform.dto.BookingRequestForm;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

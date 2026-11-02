@@ -1,4 +1,4 @@
-package com.csit314.platform.web.dto;
+package com.csit314.platform.dto;
 
 import com.csit314.platform.model.InteriorDesigner;
 

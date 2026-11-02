@@ -2,17 +2,21 @@ package com.csit314.platform.service;
 
 import com.csit314.platform.model.Role;
 import com.csit314.platform.repository.BookingRepository;
+import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.UserAccountRepository;
-import com.csit314.platform.web.dto.PlatformReport;
+import com.csit314.platform.dto.CategoryDesignerCoverage;
+import com.csit314.platform.dto.PlatformReport;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-// PM-05 - daily/weekly/monthly activity counts across the whole platform
+// PM-06/PM-08 - daily/monthly activity reports (plus a bonus weekly window) + PM-07's
+// category designer-coverage view
 @Service
 public class PlatformReportService {
 
@@ -20,15 +24,18 @@ public class PlatformReportService {
     private final ProjectRepository projectRepository;
     private final BookingRepository bookingRepository;
     private final ComplaintRepository complaintRepository;
+    private final CategoryRepository categoryRepository;
 
     public PlatformReportService(UserAccountRepository userAccountRepository,
                                   ProjectRepository projectRepository,
                                   BookingRepository bookingRepository,
-                                  ComplaintRepository complaintRepository) {
+                                  ComplaintRepository complaintRepository,
+                                  CategoryRepository categoryRepository) {
         this.userAccountRepository = userAccountRepository;
         this.projectRepository = projectRepository;
         this.bookingRepository = bookingRepository;
         this.complaintRepository = complaintRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     @Transactional(readOnly = true)
@@ -39,6 +46,20 @@ public class PlatformReportService {
                 report("This week", now.minusDays(7)),
                 report("This month", now.minusDays(30))
         );
+    }
+
+    // PM-07 - per category, active designer supply vs. booking demand, so Platform
+    // Management can see which categories are underserved
+    @Transactional(readOnly = true)
+    public List<CategoryDesignerCoverage> categoryDesignerCoverage() {
+        return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name")).stream()
+                .map(category -> {
+                    long designers = projectRepository.countDistinctActiveDesignersByCategoryId(category.getId());
+                    long demand = bookingRepository.countByProjectCategoryId(category.getId());
+                    return new CategoryDesignerCoverage(category.getId(), category.getName(), designers, demand,
+                            demand > designers);
+                })
+                .toList();
     }
 
     private PlatformReport report(String periodLabel, LocalDateTime since) {

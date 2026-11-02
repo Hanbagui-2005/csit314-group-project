@@ -29,6 +29,11 @@ public class Company {
     @Column(name = "license_number", length = 60)
     private String licenseNumber;
 
+    // PM-05 - the region(s) this studio actually services, self-declared by the designer;
+    // Platform Management checks this is accurate (InteriorDesigner.serviceAreaVerified)
+    @Column(name = "service_area", length = 200)
+    private String serviceArea;
+
     protected Company() {
     }
 
@@ -72,5 +77,13 @@ public class Company {
 
     public void setLicenseNumber(String licenseNumber) {
         this.licenseNumber = licenseNumber;
+    }
+
+    public String getServiceArea() {
+        return serviceArea;
+    }
+
+    public void setServiceArea(String serviceArea) {
+        this.serviceArea = serviceArea;
     }
 }

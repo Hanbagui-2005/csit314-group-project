@@ -5,7 +5,7 @@ import com.csit314.platform.model.Customer;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
-import com.csit314.platform.web.dto.ComplaintForm;
+import com.csit314.platform.dto.ComplaintForm;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

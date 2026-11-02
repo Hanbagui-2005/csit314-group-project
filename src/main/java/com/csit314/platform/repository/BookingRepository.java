@@ -11,7 +11,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
 
-    // PM-05
+    // PM-06/PM-08 - activity reports
     long countByCreatedAtAfter(LocalDateTime since);
 
     List<Booking> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
@@ -23,4 +23,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     long countByDesignerId(Long designerId);
 
     long countByDesignerIdAndStatus(Long designerId, BookingStatus status);
+
+    // PM-07 - customer demand signal per category: booking requests against projects in it
+    long countByProjectCategoryId(Long categoryId);
 }

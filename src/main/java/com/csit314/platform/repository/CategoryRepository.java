@@ -7,6 +7,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     boolean existsByNameIgnoreCase(String name);
 
-    // PM-03 - renaming to the same name as another category isn't a duplicate against itself
+    // supports PM-01 - renaming to the same name as another category isn't a duplicate against itself
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 }

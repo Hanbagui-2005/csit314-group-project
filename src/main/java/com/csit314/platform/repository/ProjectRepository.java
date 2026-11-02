@@ -12,11 +12,16 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
 
-    // PM-04 - a category still used by at least one project can't be deleted
+    // supports PM-01 - a category still used by at least one project can't be deleted
     long countByCategoryId(Long categoryId);
 
-    // PM-05
+    // PM-06/PM-08 - activity reports
     long countByCreatedAtAfter(LocalDateTime since);
+
+    // PM-07 - active designers who have at least one project in this category
+    @Query("select count(distinct p.designer.id) from Project p "
+            + "where p.category.id = :categoryId and p.designer.status = com.csit314.platform.model.AccountStatus.ACTIVE")
+    long countDistinctActiveDesignersByCategoryId(@Param("categoryId") Long categoryId);
 
     // IDR-10/CUS-04/CUS-09 - Browse search, filters on keyword/category/budget/room size/verified when given
     @Query("select p from Project p where "
