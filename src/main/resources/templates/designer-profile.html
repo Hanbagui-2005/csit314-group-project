@@ -9,9 +9,15 @@
         <div>
             <h4 class="mb-1">
                 <span th:text="${designer.company.name}">Studio name</span>
-                <span class="badge bg-light text-dark border" th:if="${designer.verified}">Verified</span>
+                <span class="badge bg-light text-dark border" th:if="${designer.verified}">License provided</span>
             </h4>
             <div class="text-muted small" th:text="${designer.company.phone}">Phone</div>
+            <!-- PM-05 - the service area Platform Management has confirmed is accurate -->
+            <div class="small mt-1" th:if="${designer.company.serviceArea != null and not #strings.isEmpty(designer.company.serviceArea)}">
+                <span th:text="'Services: ' + ${designer.company.serviceArea}">Service area</span>
+                <span class="badge bg-success" th:if="${designer.serviceAreaVerified}">Area verified</span>
+                <span class="badge bg-light text-dark border" th:unless="${designer.serviceAreaVerified}">Area unverified</span>
+            </div>
             <div class="small mt-1" th:if="${ratingSummary.average != null}">
                 <span class="fw-semibold" th:text="${#numbers.formatDecimal(ratingSummary.average, 1, 1)} + ' / 5'">0 / 5</span>
                 <span class="text-muted">(<span th:text="${ratingSummary.count}">0</span> review(s))</span>

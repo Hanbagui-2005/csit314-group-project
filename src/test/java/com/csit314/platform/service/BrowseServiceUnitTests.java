@@ -46,17 +46,17 @@ class BrowseServiceUnitTests {
     void viewingARealProjectBumpsTheCount() {
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
 
-        Project result = service.viewProject(100L);
+        Project result = service.viewProject(100L, null, true);
 
         assertThat(result.getViewCount()).isEqualTo(1);
     }
 
     @Test
-    void viewingTwiceCountsTwice() {
+    void viewingTwiceCountsTwiceWhenEachCallIsItsOwnSession() {
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
 
-        service.viewProject(100L);
-        service.viewProject(100L);
+        service.viewProject(100L, null, true);
+        service.viewProject(100L, null, true);
 
         assertThat(project.getViewCount()).isEqualTo(2);
     }
@@ -65,7 +65,7 @@ class BrowseServiceUnitTests {
     void viewingAProjectRecordsAViewEvent() {
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
 
-        service.viewProject(100L);
+        service.viewProject(100L, null, true);
 
         verify(projectViewRepository).save(any());
     }
@@ -74,38 +74,69 @@ class BrowseServiceUnitTests {
     void viewingAMissingProjectFails() {
         when(projectRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.viewProject(999L))
+        assertThatThrownBy(() -> service.viewProject(999L, null, true))
                 .isInstanceOf(ServiceException.class);
+    }
+
+    // IDR-10 - the designer viewing their own project shouldn't inflate their own count
+    @Test
+    void theDesignerViewingTheirOwnProjectDoesNotBumpTheCount() {
+        ReflectionTestUtils.setField(designer, "id", 50L);
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        Project result = service.viewProject(100L, 50L, true);
+
+        assertThat(result.getViewCount()).isEqualTo(0);
+        verifyNoInteractions(projectViewRepository);
+    }
+
+    // IDR-10 - a refresh in the same browser session shouldn't count as a second view
+    @Test
+    void aRepeatViewInTheSameSessionDoesNotCount() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        service.viewProject(100L, null, false);
+
+        assertThat(project.getViewCount()).isEqualTo(0);
+        verifyNoInteractions(projectViewRepository);
     }
 
     @Test
     void blankSearchTermsAreTreatedAsNoFilter() {
-        service.search("  ", "", null, null, false);
+        service.search("  ", "", null, null, false, "  ");
 
-        verify(projectRepository).search(null, null, null, null, false);
+        verify(projectRepository).search(null, null, null, null, false, null);
     }
 
     @Test
     void realSearchTermsArePassedThrough() {
-        service.search(" kitchen ", "Kitchen", null, null, false);
+        service.search(" kitchen ", "Kitchen", null, null, false, null);
 
-        verify(projectRepository).search("kitchen", "Kitchen", null, null, false);
+        verify(projectRepository).search("kitchen", "Kitchen", null, null, false, null);
     }
 
     // CUS-04
     @Test
     void budgetAndRoomSizeFiltersArePassedThrough() {
-        service.search(null, null, 10000, 15, false);
+        service.search(null, null, 10000, 15, false, null);
 
-        verify(projectRepository).search(null, null, 10000, 15, false);
+        verify(projectRepository).search(null, null, 10000, 15, false, null);
     }
 
     // CUS-09
     @Test
     void verifiedOnlyFlagIsPassedThrough() {
-        service.search(null, null, null, null, true);
+        service.search(null, null, null, null, true, null);
 
-        verify(projectRepository).search(null, null, null, null, true);
+        verify(projectRepository).search(null, null, null, null, true, null);
+    }
+
+    // PM-05
+    @Test
+    void locationFilterIsTrimmedAndPassedThrough() {
+        service.search(null, null, null, null, false, " Downtown ");
+
+        verify(projectRepository).search(null, null, null, null, false, "Downtown");
     }
 
     // CUS-12

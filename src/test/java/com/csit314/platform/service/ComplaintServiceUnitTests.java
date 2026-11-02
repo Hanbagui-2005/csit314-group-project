@@ -5,6 +5,7 @@ import com.csit314.platform.model.Complaint;
 import com.csit314.platform.model.ComplaintStatus;
 import com.csit314.platform.model.Customer;
 import com.csit314.platform.model.InteriorDesigner;
+import com.csit314.platform.repository.BookingRepository;
 import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.dto.ComplaintForm;
@@ -26,6 +27,7 @@ class ComplaintServiceUnitTests {
 
     @Mock ComplaintRepository complaintRepository;
     @Mock InteriorDesignerRepository designerRepository;
+    @Mock BookingRepository bookingRepository;
     ComplaintService service;
 
     Customer customer;
@@ -33,7 +35,7 @@ class ComplaintServiceUnitTests {
 
     @BeforeEach
     void setUp() {
-        service = new ComplaintService(complaintRepository, designerRepository);
+        service = new ComplaintService(complaintRepository, designerRepository, bookingRepository);
 
         customer = new Customer("Jordan Lee", "jordan@example.test", "encoded");
         ReflectionTestUtils.setField(customer, "id", 1L);
@@ -44,8 +46,9 @@ class ComplaintServiceUnitTests {
     }
 
     @Test
-    void submitsAComplaintAgainstAnExistingDesigner() {
+    void submitsAComplaintAgainstAnExistingDesignerTheyveBooked() {
         when(designerRepository.findById(2L)).thenReturn(Optional.of(designer));
+        when(bookingRepository.existsByCustomerIdAndDesignerId(1L, 2L)).thenReturn(true);
         when(complaintRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         Complaint result = service.submit(customer, 2L, new ComplaintForm("They never showed up."));
@@ -68,6 +71,32 @@ class ComplaintServiceUnitTests {
         assertThatThrownBy(() -> service.submit(customer, 99L, new ComplaintForm("Issue")))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("no longer exists");
+    }
+
+    // ADM-10 - no booking, no complaint
+    @Test
+    void rejectsAComplaintAboutADesignerNeverBooked() {
+        when(designerRepository.findById(2L)).thenReturn(Optional.of(designer));
+        when(bookingRepository.existsByCustomerIdAndDesignerId(1L, 2L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.submit(customer, 2L, new ComplaintForm("Issue")))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("booked");
+        verifyNoInteractions(complaintRepository);
+    }
+
+    // ADM-10 - at most one open complaint per customer per designer at a time
+    @Test
+    void rejectsASecondOpenComplaintAboutTheSameDesigner() {
+        when(designerRepository.findById(2L)).thenReturn(Optional.of(designer));
+        when(bookingRepository.existsByCustomerIdAndDesignerId(1L, 2L)).thenReturn(true);
+        when(complaintRepository.existsByCustomerIdAndDesignerIdAndStatus(1L, 2L, ComplaintStatus.OPEN))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.submit(customer, 2L, new ComplaintForm("Another issue")))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("already have an open complaint");
+        verify(complaintRepository, never()).save(any());
     }
 
     @Test

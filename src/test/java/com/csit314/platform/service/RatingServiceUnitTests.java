@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,13 +51,24 @@ class RatingServiceUnitTests {
 
     @Test
     void ratingRequiresAnAcceptedBooking() {
-        when(bookingRepository.existsByCustomerIdAndDesignerIdAndStatus(1L, 2L, BookingStatus.ACCEPTED))
-                .thenReturn(false);
+        when(bookingRepository.existsByCustomerIdAndDesignerIdAndStatusAndPreferredDateLessThanEqual(
+                eq(1L), eq(2L), eq(BookingStatus.ACCEPTED), any(LocalDate.class))).thenReturn(false);
 
         assertThatThrownBy(() -> service.rate(customer, 2L, new RatingForm(5, "Great!")))
                 .isInstanceOf(ServiceException.class)
-                .hasMessageContaining("accepted a booking");
+                .hasMessageContaining("accepted booking");
         verifyNoInteractions(designerRepository);
+    }
+
+    // CUS-13 - a booking that hasn't happened yet shouldn't be ratable even if accepted
+    @Test
+    void ratingRequiresTheBookingDateToHavePassed() {
+        when(bookingRepository.existsByCustomerIdAndDesignerIdAndStatusAndPreferredDateLessThanEqual(
+                eq(1L), eq(2L), eq(BookingStatus.ACCEPTED), eq(LocalDate.now()))).thenReturn(false);
+
+        assertThatThrownBy(() -> service.rate(customer, 2L, new RatingForm(5, "Great!")))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("taken place");
     }
 
     @Test
@@ -70,8 +82,8 @@ class RatingServiceUnitTests {
 
     @Test
     void savesANewRatingWhenEligible() {
-        when(bookingRepository.existsByCustomerIdAndDesignerIdAndStatus(1L, 2L, BookingStatus.ACCEPTED))
-                .thenReturn(true);
+        when(bookingRepository.existsByCustomerIdAndDesignerIdAndStatusAndPreferredDateLessThanEqual(
+                eq(1L), eq(2L), eq(BookingStatus.ACCEPTED), any(LocalDate.class))).thenReturn(true);
         when(designerRepository.findById(2L)).thenReturn(Optional.of(designer));
         when(ratingRepository.findByCustomerIdAndDesignerId(1L, 2L)).thenReturn(Optional.empty());
 
@@ -82,8 +94,8 @@ class RatingServiceUnitTests {
 
     @Test
     void reRatingUpdatesTheExistingRatingInsteadOfCreatingASecondOne() {
-        when(bookingRepository.existsByCustomerIdAndDesignerIdAndStatus(1L, 2L, BookingStatus.ACCEPTED))
-                .thenReturn(true);
+        when(bookingRepository.existsByCustomerIdAndDesignerIdAndStatusAndPreferredDateLessThanEqual(
+                eq(1L), eq(2L), eq(BookingStatus.ACCEPTED), any(LocalDate.class))).thenReturn(true);
         when(designerRepository.findById(2L)).thenReturn(Optional.of(designer));
         Rating existing = new Rating(customer, designer, 3, "Okay");
         when(ratingRepository.findByCustomerIdAndDesignerId(1L, 2L)).thenReturn(Optional.of(existing));

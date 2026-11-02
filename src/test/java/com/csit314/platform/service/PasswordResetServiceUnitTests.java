@@ -110,4 +110,22 @@ class PasswordResetServiceUnitTests {
         service.resetPassword("raw", "1234567a", "1234567a");
         assertThat(customer.getPasswordHash()).isEqualTo("boundary-hash");
     }
+
+    // ADM-09/13 - resetting the password proves account ownership, so it also clears a lock
+    @Test void resettingThePasswordClearsAnyAccountLock() {
+        customer.recordFailedLogin();
+        customer.recordFailedLogin();
+        customer.recordFailedLogin();
+        customer.recordFailedLogin();
+        customer.recordFailedLogin();
+        assertThat(customer.isLocked()).isTrue();
+
+        var token = usable();
+        when(tokens.findByTokenHash(anyString())).thenReturn(Optional.of(token));
+        when(encoder.encode("password123")).thenReturn("new-hash");
+        service.resetPassword("raw", "password123", "password123");
+
+        assertThat(customer.isLocked()).isFalse();
+        assertThat(customer.getFailedLoginAttempts()).isZero();
+    }
 }

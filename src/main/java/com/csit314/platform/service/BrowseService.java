@@ -23,23 +23,31 @@ public class BrowseService {
         this.projectViewRepository = projectViewRepository;
     }
 
-    // CUS-04/CUS-09 - maxBudget/minRoomSize/verifiedOnly are all optional filters; a
-    // project with no budget/size data of its own gets excluded once that filter is in
-    // use, since there's nothing to check it against
+    // CUS-04/CUS-09/PM-05 - maxBudget/minRoomSize/verifiedOnly/location are all optional
+    // filters; a project with no budget/size data of its own gets excluded once that filter
+    // is in use, since there's nothing to check it against
     public List<Project> search(String query, String categoryName, Integer maxBudget, Integer minRoomSize,
-                                boolean verifiedOnly) {
+                                boolean verifiedOnly, String location) {
         String cleanQuery = blankToNull(query);
         String cleanCategory = blankToNull(categoryName);
-        return projectRepository.search(cleanQuery, cleanCategory, maxBudget, minRoomSize, verifiedOnly);
+        String cleanLocation = blankToNull(location);
+        return projectRepository.search(cleanQuery, cleanCategory, maxBudget, minRoomSize, verifiedOnly, cleanLocation);
     }
 
+    // IDR-10 - viewerDesignerId is the logged-in designer's own id, if any, so they can
+    // browse their own project without inflating its count; countThisView is decided by
+    // the caller (one view per session per project), since that's session state, not
+    // something this service should track
     @Transactional
-    public Project viewProject(Long projectId) {
+    public Project viewProject(Long projectId, Long viewerDesignerId, boolean countThisView) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ServiceException("That project couldn't be found."));
-        project.incrementViewCount();
-        // IDR-08 - also logged as its own row so a weekly delta is possible later
-        projectViewRepository.save(new ProjectView(project));
+        boolean isOwnProject = viewerDesignerId != null && viewerDesignerId.equals(project.getDesigner().getId());
+        if (countThisView && !isOwnProject) {
+            project.incrementViewCount();
+            // IDR-08 - also logged as its own row so a weekly delta is possible later
+            projectViewRepository.save(new ProjectView(project));
+        }
         return project;
     }
 

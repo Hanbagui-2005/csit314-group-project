@@ -13,7 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -138,5 +140,36 @@ class AuthServiceUnitTests {
         when(encoder.matches("valid-password", "encoded")).thenReturn(true);
         service.loginCustomer(user.getEmail(), "valid-password", "127.0.0.1");
         verify(users).save(user);
+    }
+
+    // ADM-09/13 - the fifth wrong password actually locks the account, whatever its role
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
+    void theAccountLocksAfterFiveFailedAttempts(Role role) {
+        UserAccount user = account(role);
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        for (int i = 0; i < 4; i++) {
+            assertThatThrownBy(() -> login(role, user.getEmail(), "wrong")).isInstanceOf(ServiceException.class);
+        }
+        assertThat(user.isLocked()).isFalse();
+
+        assertThatThrownBy(() -> login(role, user.getEmail(), "wrong")).isInstanceOf(ServiceException.class);
+
+        assertThat(user.isLocked()).isTrue();
+        assertThatThrownBy(() -> login(role, user.getEmail(), "valid-password"))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("Too many failed login attempts");
+    }
+
+    // ADM-09/13 - a lock isn't permanent, including for the only admin account: it expires
+    // on its own rather than needing a database edit to recover
+    @Test void theLockExpiresOnItsOwnAfterFifteenMinutes() {
+        UserAccount user = account(Role.ADMIN);
+        ReflectionTestUtils.setField(user, "failedLoginAttempts", 5);
+        ReflectionTestUtils.setField(user, "lockedAt", LocalDateTime.now().minusMinutes(16));
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(encoder.matches("valid-password", "encoded")).thenReturn(true);
+
+        assertThat(user.isLocked()).isFalse();
+        assertThat(login(Role.ADMIN, user.getEmail(), "valid-password")).isSameAs(user);
     }
 }

@@ -4,12 +4,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 
 // saves the uploaded photo locally and gives back the url to save on the project
@@ -18,8 +21,14 @@ public class FileStorageService {
 
     // IDR-15
     private static final long MAX_FILE_SIZE_BYTES = 5L * 1024 * 1024;
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml");
+    // SVG is deliberately excluded - it can carry a <script>, and would be served back
+    // from our own origin as stored XSS. The extension always comes from this map, never
+    // from the uploaded filename, so a file can't be smuggled in under a different type.
+    private static final Map<String, String> ALLOWED_CONTENT_TYPES = Map.of(
+            "image/jpeg", ".jpg",
+            "image/png", ".png",
+            "image/webp", ".webp",
+            "image/gif", ".gif");
 
     private final Path uploadDir;
 
@@ -37,8 +46,8 @@ public class FileStorageService {
     public void validate(MultipartFile file) {
         String name = file.getOriginalFilename() == null ? "That file" : "\"" + file.getOriginalFilename() + "\"";
         String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-            throw new ServiceException(name + " isn't a supported image type. Use JPG, PNG, WEBP, GIF or SVG.");
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.containsKey(contentType.toLowerCase(Locale.ROOT))) {
+            throw new ServiceException(name + " isn't a supported image type. Use JPG, PNG, WEBP or GIF.");
         }
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
             throw new ServiceException(name + " is too large. Photos must be under 5MB each.");
@@ -47,14 +56,28 @@ public class FileStorageService {
 
     public String store(MultipartFile file) {
         validate(file);
-        String extension = "";
-        String original = file.getOriginalFilename();
-        if (original != null && original.contains(".")) {
-            extension = original.substring(original.lastIndexOf('.'));
+        byte[] bytes;
+        try {
+            bytes = file.getInputStream().readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
+        // the claimed content type can be spoofed, so also decode the bytes as an image -
+        // this is what actually blocks an HTML/script file relabelled with an image type
+        BufferedImage decoded;
+        try {
+            decoded = ImageIO.read(new ByteArrayInputStream(bytes));
+        } catch (IOException e) {
+            decoded = null;
+        }
+        if (decoded == null) {
+            String name = file.getOriginalFilename() == null ? "That file" : "\"" + file.getOriginalFilename() + "\"";
+            throw new ServiceException(name + " isn't a valid image file.");
+        }
+        String extension = ALLOWED_CONTENT_TYPES.get(file.getContentType().toLowerCase(Locale.ROOT));
         String filename = UUID.randomUUID() + extension;
         try {
-            Files.copy(file.getInputStream(), uploadDir.resolve(filename));
+            Files.write(uploadDir.resolve(filename), bytes);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
