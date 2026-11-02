@@ -106,8 +106,8 @@ class PasswordResetServiceUnitTests {
     @Test void minimumLengthPasswordIsAccepted() {
         var token = usable();
         when(tokens.findByTokenHash(anyString())).thenReturn(Optional.of(token));
-        when(encoder.encode("12345678")).thenReturn("boundary-hash");
-        service.resetPassword("raw", "12345678", "12345678");
+        when(encoder.encode("1234567a")).thenReturn("boundary-hash");
+        service.resetPassword("raw", "1234567a", "1234567a");
         assertThat(customer.getPasswordHash()).isEqualTo("boundary-hash");
     }
 }

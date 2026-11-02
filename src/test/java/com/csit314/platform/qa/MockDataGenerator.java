@@ -26,7 +26,7 @@ public final class MockDataGenerator {
                 "QA Designer %03d".formatted(i), "qa.designer%03d@example.test".formatted(i),
                 "QaDesigner!%06dA".formatted(i), "QaDesigner!%06dA".formatted(i),
                 "QA Design Company %03d".formatted(i), "Synthetic studio for registration testing.",
-                "555%07d".formatted(i))).toList();
+                "555%07d".formatted(i), "LIC-%06d".formatted(i))).toList();
     }
     public static void export(Path directory, int count) throws IOException {
         Files.createDirectories(directory);

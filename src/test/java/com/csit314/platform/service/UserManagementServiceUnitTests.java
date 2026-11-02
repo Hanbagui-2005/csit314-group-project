@@ -53,6 +53,20 @@ class UserManagementServiceUnitTests {
         assertThat(designer.getReviewedAt()).isNotNull();
         assertThat(designer.getRejectionReason()).isNull();
     }
+    // CUS-09
+    @Test void approvingWithNoLicenseNumberLeavesDesignerUnverified() {
+        InteriorDesigner designer = pending();
+        when(designers.findById(1L)).thenReturn(Optional.of(designer));
+        service.approveDesigner(1L);
+        assertThat(designer.isVerified()).isFalse();
+    }
+    @Test void approvingWithALicenseNumberMarksDesignerVerified() {
+        InteriorDesigner designer = pending();
+        designer.getCompany().setLicenseNumber("LIC-12345");
+        when(designers.findById(1L)).thenReturn(Optional.of(designer));
+        service.approveDesigner(1L);
+        assertThat(designer.isVerified()).isTrue();
+    }
     @Test void missingDesignerCannotBeApprovedOrRejected() {
         when(designers.findById(42L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.approveDesigner(42L)).hasMessageContaining("not found");

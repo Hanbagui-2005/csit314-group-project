@@ -28,9 +28,15 @@ class InputRulesUnitTests {
         assertThatThrownBy(() -> InputRules.optionalText("abcd", 3, "Text")).isInstanceOf(ServiceException.class);
     }
     @Test void passwordBoundaryAndConfirmationAreEnforced() {
-        assertThatCode(() -> InputRules.checkNewPassword("12345678", "12345678")).doesNotThrowAnyException();
-        assertThatThrownBy(() -> InputRules.checkNewPassword("1234567", "1234567")).isInstanceOf(ServiceException.class);
+        assertThatCode(() -> InputRules.checkNewPassword("abcd1234", "abcd1234")).doesNotThrowAnyException();
+        assertThatThrownBy(() -> InputRules.checkNewPassword("abcd123", "abcd123")).isInstanceOf(ServiceException.class);
         assertThatThrownBy(() -> InputRules.checkNewPassword(null, null)).isInstanceOf(ServiceException.class);
-        assertThatThrownBy(() -> InputRules.checkNewPassword("12345678", "different")).isInstanceOf(ServiceException.class);
+        assertThatThrownBy(() -> InputRules.checkNewPassword("abcd1234", "different")).isInstanceOf(ServiceException.class);
+    }
+    // CUS-16
+    @Test void passwordNeedsBothALetterAndADigit() {
+        assertThatThrownBy(() -> InputRules.checkNewPassword("12345678", "12345678")).isInstanceOf(ServiceException.class);
+        assertThatThrownBy(() -> InputRules.checkNewPassword("abcdefgh", "abcdefgh")).isInstanceOf(ServiceException.class);
+        assertThatCode(() -> InputRules.checkNewPassword("abcdefg1", "abcdefg1")).doesNotThrowAnyException();
     }
 }

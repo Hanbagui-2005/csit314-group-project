@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Bookings')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 720px;">
+
+    <h4 class="mb-3">Booking requests</h4>
+
+    <div class="list-group">
+        <div class="list-group-item" th:each="booking : ${bookings}">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <span class="fw-semibold" th:text="${booking.customer.fullName}">Customer</span>
+                    <span class="badge bg-light ms-2" th:if="${booking.project != null}"
+                          th:text="${booking.project.title}">Project</span>
+                    <span class="badge ms-2"
+                          th:classappend="${booking.status.name() == 'PENDING'} ? 'bg-dark' : (${booking.status.name() == 'ACCEPTED'} ? 'bg-success' : 'bg-secondary')"
+                          th:text="${booking.status}">Status</span>
+                </div>
+                <span class="text-muted small" th:text="${#temporals.format(booking.preferredDate, 'dd MMM yyyy')}">date</span>
+            </div>
+            <p class="mb-2 mt-2 text-muted small" th:if="${booking.notes != null}" th:text="${booking.notes}">Notes</p>
+            <div th:if="${booking.status.name() == 'PENDING'}" class="d-flex gap-2">
+                <form method="post" th:action="@{/designer/bookings/{id}/accept(id=${booking.id})}" class="mb-0">
+                    <button type="submit" class="btn btn-sm btn-success">Accept</button>
+                </form>
+                <form method="post" th:action="@{/designer/bookings/{id}/decline(id=${booking.id})}" class="mb-0">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Decline</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(bookings)}" class="text-muted">No booking requests yet.</p>
+
+</div>
+</body>
+</html>

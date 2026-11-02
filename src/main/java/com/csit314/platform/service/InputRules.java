@@ -48,12 +48,24 @@ final class InputRules {
         return trimmed;
     }
 
+    // CUS-16 - length alone isn't "strength", so this also needs a letter and a digit
     static void checkNewPassword(String password, String confirmPassword) {
         if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
             throw new ServiceException("Password must be at least " + MIN_PASSWORD_LENGTH + " characters.");
         }
+        if (!containsLetter(password) || !containsDigit(password)) {
+            throw new ServiceException("Password must include at least one letter and one number.");
+        }
         if (!password.equals(confirmPassword)) {
             throw new ServiceException("Passwords do not match.");
         }
+    }
+
+    private static boolean containsLetter(String value) {
+        return value.chars().anyMatch(Character::isLetter);
+    }
+
+    private static boolean containsDigit(String value) {
+        return value.chars().anyMatch(Character::isDigit);
     }
 }

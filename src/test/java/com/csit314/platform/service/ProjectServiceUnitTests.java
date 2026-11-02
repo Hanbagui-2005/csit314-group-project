@@ -61,7 +61,7 @@ class ProjectServiceUnitTests {
     }
 
     private ProjectForm form(String title, Integer budgetMin, Integer budgetMax, String estimatedTimeline) {
-        return new ProjectForm(title, "Updated description", 10L, budgetMin, budgetMax, estimatedTimeline);
+        return new ProjectForm(title, "Updated description", 10L, budgetMin, budgetMax, estimatedTimeline, null);
     }
 
     @Test

@@ -5,7 +5,10 @@
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
 <div class="container" style="max-width: 640px;">
 
-    <h4 class="mb-3">My favourites</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">My favourites</h4>
+        <a href="/favourites/compare" class="btn btn-outline-dark btn-sm">Compare designers</a>
+    </div>
 
     <div class="list-group">
         <div class="list-group-item d-flex align-items-center gap-3" th:each="item : ${favourites}">
@@ -24,6 +27,23 @@
     </div>
 
     <p th:if="${#lists.isEmpty(favourites)}" class="text-muted">You haven't saved any projects yet.</p>
+
+    <!-- CUS-05 -->
+    <div th:if="${not #lists.isEmpty(recommendations)}" class="mt-5">
+        <h6 class="mb-3">Recommended for you</h6>
+        <div class="row row-cols-1 row-cols-md-3 g-3">
+            <div class="col" th:each="project : ${recommendations}">
+                <div class="card h-100">
+                    <img th:src="${project.photoUrls[0]}" class="card-img-top" alt="Project photo"/>
+                    <div class="card-body">
+                        <h6 class="card-title mb-1" th:text="${project.title}">Project title</h6>
+                        <p class="card-text text-muted small mb-2" th:text="${project.designer.company.name}">Designer name</p>
+                        <a th:href="@{/projects/{id}(id=${project.id})}" class="btn btn-sm btn-outline-dark">View</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </div>
 </body>

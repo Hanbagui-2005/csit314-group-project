@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${designer.company.name})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 720px;">
+
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+            <h4 class="mb-1">
+                <span th:text="${designer.company.name}">Studio name</span>
+                <span class="badge bg-light text-dark border" th:if="${designer.verified}">Verified</span>
+            </h4>
+            <div class="text-muted small" th:text="${designer.company.phone}">Phone</div>
+            <div class="small mt-1" th:if="${ratingSummary.average != null}">
+                <span class="fw-semibold" th:text="${#numbers.formatDecimal(ratingSummary.average, 1, 1)} + ' / 5'">0 / 5</span>
+                <span class="text-muted">(<span th:text="${ratingSummary.count}">0</span> review(s))</span>
+            </div>
+            <div class="small mt-1 text-muted" th:if="${ratingSummary.average == null}">No ratings yet</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a th:href="@{/designers/{id}/contact(id=${designer.id})}" class="btn btn-sm btn-outline-dark">Message</a>
+            <a th:href="@{/designers/{id}/book(id=${designer.id})}" class="btn btn-sm btn-dark">Book consultation</a>
+        </div>
+    </div>
+
+    <p th:text="${designer.company.description}">Company description.</p>
+
+    <h6 class="mt-4 mb-3">Portfolio</h6>
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        <div class="col" th:each="project : ${projects}">
+            <div class="card h-100">
+                <img th:src="${project.photoUrls[0]}" class="card-img-top" alt="Project photo"/>
+                <div class="card-body">
+                    <h6 class="card-title mb-1" th:text="${project.title}">Project title</h6>
+                    <p class="card-text text-muted small mb-2" th:text="${project.category.name}">Category</p>
+                    <a th:href="@{/projects/{id}(id=${project.id})}" class="btn btn-sm btn-outline-dark">View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(projects)}" class="text-muted">No projects listed yet.</p>
+
+    <!-- CUS-13 -->
+    <h6 class="mt-5 mb-3">Reviews</h6>
+
+    <div th:if="${canRate}" class="card mb-3">
+        <div class="card-body">
+            <form method="post" th:action="@{/designers/{id}/rate(id=${designer.id})}">
+                <div class="mb-2">
+                    <label class="form-label small">Your rating</label>
+                    <select name="score" class="form-select form-select-sm" style="max-width: 100px;">
+                        <option value="5">5</option>
+                        <option value="4">4</option>
+                        <option value="3">3</option>
+                        <option value="2">2</option>
+                        <option value="1">1</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <textarea name="comment" class="form-control form-control-sm" rows="2"
+                              placeholder="Optional comment"></textarea>
+                </div>
+                <button type="submit" class="btn btn-sm btn-dark">Submit rating</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="list-group">
+        <div class="list-group-item" th:each="review : ${ratingSummary.reviews}">
+            <div class="d-flex justify-content-between">
+                <span class="fw-semibold" th:text="${review.customer.fullName}">Customer</span>
+                <span th:text="${review.score} + ' / 5'">0 / 5</span>
+            </div>
+            <p class="text-muted small mb-0" th:if="${review.comment != null}" th:text="${review.comment}">Comment</p>
+        </div>
+    </div>
+
+    <p th:if="${#lists.isEmpty(ratingSummary.reviews)}" class="text-muted">No reviews yet.</p>
+
+</div>
+</body>
+</html>

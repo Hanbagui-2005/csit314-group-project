@@ -169,7 +169,7 @@ class SprintOneFlowTests {
 
     @Test
     void customerCanResetForgottenPassword() throws Exception {
-        registerCustomer("Forgetful", "forgetful@example.com", "oldpassword");
+        registerCustomer("Forgetful", "forgetful@example.com", "oldpassword1");
 
         // unknown emails get the same response
         mvc.perform(post("/forgot-password").param("email", "nobody@example.com"))
@@ -180,11 +180,11 @@ class SprintOneFlowTests {
 
         mvc.perform(get("/reset-password").param("token", token)).andExpect(status().isOk());
         mvc.perform(post("/reset-password").param("token", token)
-                        .param("password", "newpassword").param("confirmPassword", "newpassword"))
+                        .param("password", "newpassword1").param("confirmPassword", "newpassword1"))
                 .andExpect(redirectedUrl("/search"));
 
-        login("/login", "forgetful@example.com", "newpassword", "/favourites");
-        mvc.perform(post("/login").param("email", "forgetful@example.com").param("password", "oldpassword"))
+        login("/login", "forgetful@example.com", "newpassword1", "/favourites");
+        mvc.perform(post("/login").param("email", "forgetful@example.com").param("password", "oldpassword1"))
                 .andExpect(flash().attribute("errorMessage", "Invalid email or password."));
 
         // link is single-use

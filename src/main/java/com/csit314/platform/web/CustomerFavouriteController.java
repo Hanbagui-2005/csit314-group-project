@@ -34,7 +34,16 @@ public class CustomerFavouriteController {
     public String favourites(HttpServletRequest request, Model model) {
         Customer customer = currentCustomer(request);
         model.addAttribute("favourites", favouriteService.listForCustomer(customer));
+        model.addAttribute("recommendations", favouriteService.recommendationsFor(customer));
         return "favourites";
+    }
+
+    // CUS-06
+    @GetMapping("/favourites/compare")
+    public String compare(HttpServletRequest request, Model model) {
+        Customer customer = currentCustomer(request);
+        model.addAttribute("comparisons", favouriteService.compareShortlistedDesigners(customer));
+        return "favourites-compare";
     }
 
     @PostMapping("/favourites/add")

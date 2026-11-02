@@ -33,12 +33,14 @@ public class DesignerService {
         String companyName = InputRules.requireText(form.companyName(), "Company name", 150);
         String description = InputRules.optionalText(form.companyDescription(), 5000, "Company description");
         String phone = InputRules.optionalText(form.companyPhone(), 30, "Contact phone");
+        String licenseNumber = InputRules.optionalText(form.licenseNumber(), 60, "License number");
 
         if (userAccountRepository.existsByEmail(email)) {
             throw new ServiceException("An account with this email already exists.");
         }
 
         Company company = new Company(companyName, description, phone);
+        company.setLicenseNumber(licenseNumber);
         InteriorDesigner designer = new InteriorDesigner(contactName, email,
                 passwordEncoder.encode(form.password()), company);
         return designerRepository.save(designer);
