@@ -7,9 +7,12 @@ import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.InteriorDesignerRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.service.CategorySuggestionService;
+import com.csit314.platform.service.FavouriteService;
+import com.csit314.platform.service.MessageService;
 import com.csit314.platform.service.PortfolioAnalyticsService;
 import com.csit314.platform.service.ProjectService;
 import com.csit314.platform.service.ServiceException;
+import com.csit314.platform.service.WeeklySummaryService;
 import com.csit314.platform.web.dto.CategorySuggestionResponse;
 import com.csit314.platform.web.dto.ProjectForm;
 import com.csit314.platform.web.session.LoginSession;
@@ -40,6 +43,9 @@ public class DesignerController {
     private final ProjectService projectService;
     private final CategorySuggestionService categorySuggestionService;
     private final PortfolioAnalyticsService portfolioAnalyticsService;
+    private final MessageService messageService;
+    private final FavouriteService favouriteService;
+    private final WeeklySummaryService weeklySummaryService;
     private final LoginSession loginSession;
 
     public DesignerController(ProjectRepository projectRepository,
@@ -48,6 +54,9 @@ public class DesignerController {
                               ProjectService projectService,
                               CategorySuggestionService categorySuggestionService,
                               PortfolioAnalyticsService portfolioAnalyticsService,
+                              MessageService messageService,
+                              FavouriteService favouriteService,
+                              WeeklySummaryService weeklySummaryService,
                               LoginSession loginSession) {
         this.projectRepository = projectRepository;
         this.categoryRepository = categoryRepository;
@@ -55,6 +64,9 @@ public class DesignerController {
         this.projectService = projectService;
         this.categorySuggestionService = categorySuggestionService;
         this.portfolioAnalyticsService = portfolioAnalyticsService;
+        this.messageService = messageService;
+        this.favouriteService = favouriteService;
+        this.weeklySummaryService = weeklySummaryService;
         this.loginSession = loginSession;
     }
 
@@ -62,6 +74,8 @@ public class DesignerController {
     public String dashboard(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
         model.addAttribute("projects", projectRepository.findByDesignerIdOrderByCreatedAtDesc(current.id()));
+        InteriorDesigner designer = designerRepository.findById(current.id()).orElseThrow();
+        model.addAttribute("unreadMessageCount", messageService.unreadCount(designer));
         return "designer-dashboard";
     }
 
@@ -127,12 +141,24 @@ public class DesignerController {
         return "redirect:/designer/dashboard";
     }
 
-    // IDR-03
+    // IDR-03 / IDR-11 / IDR-12
     @GetMapping("/analytics")
     public String analytics(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
+        InteriorDesigner designer = designerRepository.findById(current.id()).orElseThrow();
         model.addAttribute("breakdown", portfolioAnalyticsService.categoryBreakdown(current.id()));
+        model.addAttribute("shortlisters", favouriteService.shortlistersFor(designer));
+        model.addAttribute("shortlistTrend", favouriteService.shortlistTrend(designer));
         return "designer-analytics";
+    }
+
+    // IDR-08
+    @GetMapping("/weekly-summary")
+    public String weeklySummary(HttpServletRequest request, Model model) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        InteriorDesigner designer = designerRepository.findById(current.id()).orElseThrow();
+        model.addAttribute("summary", weeklySummaryService.summarise(designer));
+        return "designer-weekly-summary";
     }
 
     // IDR-06 - called from the new-project form while the designer is typing

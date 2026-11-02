@@ -69,6 +69,29 @@
             </div>
         </div>
 
+        <!-- IDR-14 - both optional, so customers can gauge fit before reaching out -->
+        <div class="mb-3">
+            <label class="form-label">Budget range</label>
+            <div class="row g-2">
+                <div class="col">
+                    <input type="number" name="budgetMin" class="form-control" min="0" placeholder="Min"
+                           th:value="${isEdit} ? ${project.budgetMin} : null"/>
+                </div>
+                <div class="col">
+                    <input type="number" name="budgetMax" class="form-control" min="0" placeholder="Max"
+                           th:value="${isEdit} ? ${project.budgetMax} : null"/>
+                </div>
+            </div>
+            <div class="form-text">Optional - fill in both or leave both blank.</div>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label">Estimated timeline</label>
+            <input type="text" name="estimatedTimeline" class="form-control" placeholder="e.g. 4-6 weeks"
+                   th:value="${isEdit} ? ${project.estimatedTimeline} : null"/>
+            <div class="form-text">Optional.</div>
+        </div>
+
         <button type="submit" class="btn btn-dark">Save</button>
         <a href="/designer/dashboard" class="btn btn-outline-secondary">Cancel</a>
 

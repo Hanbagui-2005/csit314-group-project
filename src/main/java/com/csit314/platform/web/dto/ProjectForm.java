@@ -1,4 +1,6 @@
 package com.csit314.platform.web.dto;
 
-public record ProjectForm(String title, String description, Long categoryId) {
+// IDR-14 - budgetMin/budgetMax/estimatedTimeline are all optional
+public record ProjectForm(String title, String description, Long categoryId,
+                          Integer budgetMin, Integer budgetMax, String estimatedTimeline) {
 }

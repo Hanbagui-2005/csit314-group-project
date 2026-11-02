@@ -40,5 +40,9 @@ public class WebConfig implements WebMvcConfigurer {
         // the customer login is a modal on every page, so send them to browse where the navbar has it
         registry.addInterceptor(new AuthInterceptor(loginSession, Role.CUSTOMER, "/search"))
                 .addPathPatterns("/favourites", "/favourites/**");
+
+        // IDR-13 - only a logged-in customer can message a designer
+        registry.addInterceptor(new AuthInterceptor(loginSession, Role.CUSTOMER, "/search"))
+                .addPathPatterns("/designers/*/contact");
     }
 }

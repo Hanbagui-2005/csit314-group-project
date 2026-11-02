@@ -6,10 +6,7 @@
 <div class="container" style="max-width: 720px;">
 
     <h4 class="mb-1">Portfolio analytics</h4>
-    <p class="text-muted small mb-4">
-        Breakdown of your portfolio by category. View/shortlist engagement isn't tracked yet
-        (browse and favourites are still placeholder pages), so this is based on project count for now.
-    </p>
+    <p class="text-muted small mb-4">Breakdown of your portfolio by category, plus who's been saving your work.</p>
 
     <div th:if="${#lists.isEmpty(breakdown)}" class="text-muted">
         Add a project to see your category breakdown here.
@@ -22,6 +19,32 @@
         </div>
         <div class="progress" style="height: 8px;">
             <div class="progress-bar bg-dark" th:style="'width: ' + ${row.percentage} + '%'"></div>
+        </div>
+    </div>
+
+    <!-- IDR-12 -->
+    <h5 class="mt-5 mb-3">Shortlists, last 30 days</h5>
+    <p class="text-muted small" th:if="${#lists.isEmpty(shortlistTrend) or shortlistTrend.?[count > 0].isEmpty()}">
+        No shortlist activity in the last 30 days.
+    </p>
+    <div class="list-group" th:unless="${#lists.isEmpty(shortlistTrend) or shortlistTrend.?[count > 0].isEmpty()}">
+        <div class="list-group-item d-flex justify-content-between align-items-center py-2"
+             th:each="point : ${shortlistTrend}" th:if="${point.count > 0}">
+            <span th:text="${#temporals.format(point.date, 'dd MMM')}">date</span>
+            <span class="badge bg-dark" th:text="${point.count}">0</span>
+        </div>
+    </div>
+
+    <!-- IDR-11 -->
+    <h5 class="mt-5 mb-3">Who's shortlisted your work</h5>
+    <p class="text-muted small" th:if="${#lists.isEmpty(shortlisters)}">No one has saved your projects yet.</p>
+    <div class="list-group" th:unless="${#lists.isEmpty(shortlisters)}">
+        <div class="list-group-item" th:each="shortlist : ${shortlisters}">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-semibold" th:text="${shortlist.customer.fullName}">Customer</span>
+                <span class="text-muted small" th:text="${#temporals.format(shortlist.createdAt, 'dd MMM, HH:mm')}">date</span>
+            </div>
+            <div class="text-muted small" th:text="${shortlist.project.title}">Project</div>
         </div>
     </div>
 

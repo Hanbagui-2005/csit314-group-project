@@ -8,7 +8,12 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">My portfolio</h4>
         <div class="d-flex gap-2">
+            <a href="/designer/messages" class="btn btn-outline-dark btn-sm">
+                Messages
+                <span class="badge bg-dark" th:if="${unreadMessageCount > 0}" th:text="${unreadMessageCount}">0</span>
+            </a>
             <a href="/designer/analytics" class="btn btn-outline-dark btn-sm">Analytics</a>
+            <a href="/designer/weekly-summary" class="btn btn-outline-dark btn-sm">Weekly summary</a>
             <a href="/designer/projects/new" class="btn btn-dark btn-sm">+ New project</a>
         </div>
     </div>
@@ -23,6 +28,8 @@
                     <span th:text="'Views: ' + ${project.viewCount}">Views</span>
                     <span th:text="'Shortlists: ' + ${project.shortlistCount}">Shortlists</span>
                     <span class="badge bg-light" th:text="${project.milestoneStage.label}">Milestone</span>
+                    <span class="badge bg-light" th:if="${project.budgetMin != null}"
+                          th:text="'$' + ${project.budgetMin} + ' - $' + ${project.budgetMax}">Budget</span>
                 </div>
             </div>
             <form th:if="${not project.milestoneStage.lastStage}" method="post"
