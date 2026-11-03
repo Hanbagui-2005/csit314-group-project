@@ -67,11 +67,19 @@ public class Booking {
         }
     }
 
+    // a designer can only respond to a request once - an already-accepted or
+    // already-declined booking can't flip to the other state afterwards
     public void accept() {
+        if (status != BookingStatus.PENDING) {
+            throw new IllegalStateException("Only a pending booking can be accepted.");
+        }
         status = BookingStatus.ACCEPTED;
     }
 
     public void decline() {
+        if (status != BookingStatus.PENDING) {
+            throw new IllegalStateException("Only a pending booking can be declined.");
+        }
         status = BookingStatus.DECLINED;
     }
 

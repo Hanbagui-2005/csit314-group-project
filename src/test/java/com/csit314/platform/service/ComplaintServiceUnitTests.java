@@ -126,4 +126,27 @@ class ComplaintServiceUnitTests {
         when(complaintRepository.findById(404L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.resolve(404L)).isInstanceOf(ServiceException.class);
     }
+
+    // an admin shouldn't be able to flip a decided complaint back and forth
+    @Test
+    void anAlreadyDismissedComplaintCannotBeResolved() {
+        Complaint complaint = new Complaint(customer, designer, "Issue");
+        ReflectionTestUtils.setField(complaint, "id", 10L);
+        when(complaintRepository.findById(10L)).thenReturn(Optional.of(complaint));
+        service.dismiss(10L);
+
+        assertThatThrownBy(() -> service.resolve(10L)).isInstanceOf(ServiceException.class);
+        assertThat(complaint.getStatus()).isEqualTo(ComplaintStatus.DISMISSED);
+    }
+
+    @Test
+    void anAlreadyResolvedComplaintCannotBeDismissed() {
+        Complaint complaint = new Complaint(customer, designer, "Issue");
+        ReflectionTestUtils.setField(complaint, "id", 10L);
+        when(complaintRepository.findById(10L)).thenReturn(Optional.of(complaint));
+        service.resolve(10L);
+
+        assertThatThrownBy(() -> service.dismiss(10L)).isInstanceOf(ServiceException.class);
+        assertThat(complaint.getStatus()).isEqualTo(ComplaintStatus.RESOLVED);
+    }
 }

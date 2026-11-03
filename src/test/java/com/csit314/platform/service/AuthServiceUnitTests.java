@@ -155,9 +155,40 @@ class AuthServiceUnitTests {
         assertThatThrownBy(() -> login(role, user.getEmail(), "wrong")).isInstanceOf(ServiceException.class);
 
         assertThat(user.isLocked()).isTrue();
+        when(encoder.matches("valid-password", "encoded")).thenReturn(true);
         assertThatThrownBy(() -> login(role, user.getEmail(), "valid-password"))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("Too many failed login attempts");
+    }
+
+    // the locked message is only shown once the password is already known to be right -
+    // otherwise it's a second way (besides "invalid credentials" vs. silence) for a
+    // guesser to learn that an email has an account at all
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
+    void aLockedAccountGivenTheWrongPasswordDoesNotRevealThatItsLocked(Role role) {
+        UserAccount user = account(role);
+        ReflectionTestUtils.setField(user, "failedLoginAttempts", 5);
+        ReflectionTestUtils.setField(user, "lockedAt", LocalDateTime.now());
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> login(role, user.getEmail(), "wrong"))
+                .isInstanceOf(ServiceException.class)
+                .hasMessage("Invalid email or password.");
+    }
+
+    // repeated wrong guesses against an already-locked account shouldn't keep pushing
+    // the 15-minute expiry back out indefinitely
+    @Test void furtherWrongGuessesOnceLockedDontExtendTheLockWindow() {
+        UserAccount user = account(Role.CUSTOMER);
+        LocalDateTime firstLockedAt = LocalDateTime.now().minusMinutes(10);
+        ReflectionTestUtils.setField(user, "failedLoginAttempts", 5);
+        ReflectionTestUtils.setField(user, "lockedAt", firstLockedAt);
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.loginCustomer(user.getEmail(), "wrong", "127.0.0.1"))
+                .isInstanceOf(ServiceException.class);
+
+        assertThat(user.getLockedAt()).isEqualTo(firstLockedAt);
     }
 
     // ADM-09/13 - a lock isn't permanent, including for the only admin account: it expires

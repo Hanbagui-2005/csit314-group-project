@@ -57,11 +57,19 @@ public class Complaint {
         }
     }
 
+    // only an OPEN complaint can be decided - otherwise an admin could resolve an
+    // already-dismissed complaint, or flip a resolved one back and forth
     public void resolve() {
+        if (status != ComplaintStatus.OPEN) {
+            throw new IllegalStateException("This complaint has already been decided.");
+        }
         status = ComplaintStatus.RESOLVED;
     }
 
     public void dismiss() {
+        if (status != ComplaintStatus.OPEN) {
+            throw new IllegalStateException("This complaint has already been decided.");
+        }
         status = ComplaintStatus.DISMISSED;
     }
 

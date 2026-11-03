@@ -3,6 +3,7 @@ package com.csit314.platform.web;
 import com.csit314.platform.model.UserAccount;
 import com.csit314.platform.service.AuthService;
 import com.csit314.platform.service.ServiceException;
+import com.csit314.platform.web.session.ClientIp;
 import com.csit314.platform.web.session.LoginSession;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
@@ -30,7 +31,7 @@ public class PlatformManagerAuthController {
                         HttpServletRequest request,
                         RedirectAttributes redirect) {
         try {
-            UserAccount manager = authService.loginPlatformManager(email, password, request.getRemoteAddr());
+            UserAccount manager = authService.loginPlatformManager(email, password, ClientIp.resolve(request));
             loginSession.start(request, manager);
             return "redirect:/platform-manager/categories";
         } catch (ServiceException e) {

@@ -109,6 +109,19 @@ class BookingServiceUnitTests {
                 .isInstanceOf(ServiceException.class);
     }
 
+    // without this, a customer could spam the same designer with pending requests
+    @Test
+    void rejectsASecondPendingRequestToTheSameDesigner() {
+        when(designerRepository.findById(2L)).thenReturn(Optional.of(designer));
+        when(bookingRepository.existsByCustomerIdAndDesignerIdAndStatus(1L, 2L, BookingStatus.PENDING))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.requestBooking(customer, 2L, form(LocalDate.now().plusDays(7))))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("pending request");
+        verify(bookingRepository, never()).save(any());
+    }
+
     @Test
     void ownerDesignerCanAcceptTheirOwnBooking() {
         Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
@@ -130,6 +143,31 @@ class BookingServiceUnitTests {
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("your own bookings");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
+    }
+
+    // a designer can only respond to a request once
+    @Test
+    void anAlreadyAcceptedBookingCannotBeDeclined() {
+        Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
+        ReflectionTestUtils.setField(booking, "id", 500L);
+        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        service.accept(designer, 500L);
+
+        assertThatThrownBy(() -> service.decline(designer, 500L))
+                .isInstanceOf(ServiceException.class);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.ACCEPTED);
+    }
+
+    @Test
+    void anAlreadyDeclinedBookingCannotBeAccepted() {
+        Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
+        ReflectionTestUtils.setField(booking, "id", 500L);
+        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        service.decline(designer, 500L);
+
+        assertThatThrownBy(() -> service.accept(designer, 500L))
+                .isInstanceOf(ServiceException.class);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.DECLINED);
     }
 
     // ADM-11

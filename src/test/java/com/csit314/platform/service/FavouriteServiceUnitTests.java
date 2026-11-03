@@ -77,6 +77,21 @@ class FavouriteServiceUnitTests {
         verify(projectRepository, never()).findById(any());
     }
 
+    // the exists-check-then-insert isn't atomic, so a double-click can slip past the
+    // exists() check twice before either insert commits; the unique constraint catches
+    // it instead of a raw 500 error reaching the customer
+    @Test
+    void losingTheRaceToSaveTheSameShortlistTwiceIsHandledGracefully() {
+        when(shortlistRepository.existsByCustomerIdAndProjectId(1L, 100L)).thenReturn(false);
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(shortlistRepository.save(any(Shortlist.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate"));
+
+        service.add(customer, 100L);
+
+        assertThat(project.getShortlistCount()).isZero();
+    }
+
     @Test
     void removingDeletesTheShortlistAndDropsTheCount() {
         project.incrementShortlistCount();
