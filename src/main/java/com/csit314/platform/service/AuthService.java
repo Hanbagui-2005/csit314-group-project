@@ -17,8 +17,6 @@ import java.util.Optional;
 public class AuthService {
 
     private static final String INVALID_CREDENTIALS = "Invalid email or password.";
-    private static final String LOCKED_MESSAGE =
-            "Too many failed login attempts. Try again in 15 minutes, or ask an admin to unlock your account sooner.";
 
     private final UserAccountRepository userAccountRepository;
     private final FailedLoginAttemptRepository failedLoginAttemptRepository;
@@ -58,19 +56,22 @@ public class AuthService {
         Optional<UserAccount> maybeUser = userAccountRepository.findByEmail(normalisedEmail);
         UserAccount user = maybeUser.orElse(null);
 
-        // the password is checked before the lock, not after - otherwise the locked
-        // message itself would tell a guesser the email has an account at all, locked
-        // or not, without them ever having to get the password right
-        if (user == null || password == null || !passwordEncoder.matches(password, user.getPasswordHash())
-                || user.getRole() != expectedRole) {
+        // ADM-09/13 - a locked account rejects every attempt with the exact same message,
+        // whatever password is given. Checking the password first (and only showing the
+        // lock once it's right) would let an attacker tell, from the response alone, the
+        // moment they'd guessed correctly - which defeats the point of locking the account
+        // in the first place. Showing a distinct "locked" message before checking the
+        // password at all would instead reveal that the email has an account, locked or
+        // not. Returning the identical INVALID_CREDENTIALS message either way avoids both
+        if (user != null && user.getRole() == expectedRole && user.isLocked()) {
             recordFailedAttempt(normalisedEmail, ipAddress, user);
             throw new ServiceException(INVALID_CREDENTIALS);
         }
 
-        // ADM-09/13 - only checked once the password is already known to be right, so
-        // it isn't a second way to find out whether an email has an account
-        if (user.isLocked()) {
-            throw new ServiceException(LOCKED_MESSAGE);
+        if (user == null || password == null || !passwordEncoder.matches(password, user.getPasswordHash())
+                || user.getRole() != expectedRole) {
+            recordFailedAttempt(normalisedEmail, ipAddress, user);
+            throw new ServiceException(INVALID_CREDENTIALS);
         }
 
         switch (user.getStatus()) {

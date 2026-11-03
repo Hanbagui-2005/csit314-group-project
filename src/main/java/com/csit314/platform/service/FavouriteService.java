@@ -31,12 +31,14 @@ public class FavouriteService {
     private final ShortlistRepository shortlistRepository;
     private final ProjectRepository projectRepository;
     private final RatingService ratingService;
+    private final ShortlistWriter shortlistWriter;
 
     public FavouriteService(ShortlistRepository shortlistRepository, ProjectRepository projectRepository,
-                            RatingService ratingService) {
+                            RatingService ratingService, ShortlistWriter shortlistWriter) {
         this.shortlistRepository = shortlistRepository;
         this.projectRepository = projectRepository;
         this.ratingService = ratingService;
+        this.shortlistWriter = shortlistWriter;
     }
 
     @Transactional
@@ -47,10 +49,12 @@ public class FavouriteService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ServiceException("That project couldn't be found."));
         try {
-            shortlistRepository.save(new Shortlist(customer, project));
+            shortlistWriter.insert(customer, project);
         } catch (DataIntegrityViolationException e) {
-            // lost a race with another request for the same (customer, project) pair -
-            // the unique constraint caught it, so it's already shortlisted either way
+            // lost a race with another request for the same (customer, project) pair.
+            // ShortlistWriter's own (separate, REQUIRES_NEW) transaction already rolled
+            // back cleanly before this exception reached us, so catching it here doesn't
+            // touch this method's own transaction - it's already shortlisted either way
             return;
         }
         project.incrementShortlistCount();

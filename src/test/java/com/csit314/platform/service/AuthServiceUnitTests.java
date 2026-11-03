@@ -155,10 +155,16 @@ class AuthServiceUnitTests {
         assertThatThrownBy(() -> login(role, user.getEmail(), "wrong")).isInstanceOf(ServiceException.class);
 
         assertThat(user.isLocked()).isTrue();
-        when(encoder.matches("valid-password", "encoded")).thenReturn(true);
+        // even the correct password gets the same generic rejection while locked - a
+        // distinct "locked" message here would tell a guesser the moment they got the
+        // password right, which is exactly what the lock is meant to stop
         assertThatThrownBy(() -> login(role, user.getEmail(), "valid-password"))
                 .isInstanceOf(ServiceException.class)
-                .hasMessageContaining("Too many failed login attempts");
+                .hasMessage("Invalid email or password.");
+        // the earlier wrong-password attempts (before the lock triggered) did reach the
+        // encoder - what matters is that the correct password never got as far as being
+        // checked once the account was locked
+        verify(encoder, never()).matches("valid-password", "encoded");
     }
 
     // the locked message is only shown once the password is already known to be right -
@@ -174,6 +180,21 @@ class AuthServiceUnitTests {
         assertThatThrownBy(() -> login(role, user.getEmail(), "wrong"))
                 .isInstanceOf(ServiceException.class)
                 .hasMessage("Invalid email or password.");
+    }
+
+    // the whole point of locking the account is to stop the guessing - a locked account
+    // must never confirm that a submitted password was actually correct
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
+    void aLockedAccountGivenTheRightPasswordDoesNotRevealItEitherAndNeverChecksIt(Role role) {
+        UserAccount user = account(role);
+        ReflectionTestUtils.setField(user, "failedLoginAttempts", 5);
+        ReflectionTestUtils.setField(user, "lockedAt", LocalDateTime.now());
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> login(role, user.getEmail(), "valid-password"))
+                .isInstanceOf(ServiceException.class)
+                .hasMessage("Invalid email or password.");
+        verifyNoInteractions(encoder);
     }
 
     // repeated wrong guesses against an already-locked account shouldn't keep pushing

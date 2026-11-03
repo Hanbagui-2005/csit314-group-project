@@ -5,7 +5,6 @@ import com.csit314.platform.model.UserAccount;
 import com.csit314.platform.service.AuthService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.service.UserManagementService;
-import com.csit314.platform.web.session.ClientIp;
 import com.csit314.platform.web.session.LoginSession;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
@@ -42,7 +41,7 @@ public class AdminController {
                         HttpServletRequest request,
                         RedirectAttributes redirect) {
         try {
-            UserAccount admin = authService.loginAdmin(email, password, ClientIp.resolve(request));
+            UserAccount admin = authService.loginAdmin(email, password, request.getRemoteAddr());
             loginSession.start(request, admin);
             return "redirect:/admin/users";
         } catch (ServiceException e) {

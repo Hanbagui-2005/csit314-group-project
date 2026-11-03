@@ -33,6 +33,7 @@ class FavouriteServiceUnitTests {
     @Mock ShortlistRepository shortlistRepository;
     @Mock ProjectRepository projectRepository;
     @Mock RatingService ratingService;
+    @Mock ShortlistWriter shortlistWriter;
     FavouriteService service;
 
     Customer customer;
@@ -41,7 +42,7 @@ class FavouriteServiceUnitTests {
 
     @BeforeEach
     void setUp() {
-        service = new FavouriteService(shortlistRepository, projectRepository, ratingService);
+        service = new FavouriteService(shortlistRepository, projectRepository, ratingService, shortlistWriter);
 
         customer = new Customer("Jordan Lee", "jordan@example.test", "encoded");
         ReflectionTestUtils.setField(customer, "id", 1L);
@@ -65,7 +66,7 @@ class FavouriteServiceUnitTests {
 
         service.add(customer, 100L);
 
-        verify(shortlistRepository).save(any(Shortlist.class));
+        verify(shortlistWriter).insert(customer, project);
         assertThat(project.getShortlistCount()).isEqualTo(1);
     }
 
@@ -75,19 +76,20 @@ class FavouriteServiceUnitTests {
 
         service.add(customer, 100L);
 
-        verify(shortlistRepository, never()).save(any());
+        verifyNoInteractions(shortlistWriter);
         verify(projectRepository, never()).findById(any());
     }
 
     // the exists-check-then-insert isn't atomic, so a double-click can slip past the
-    // exists() check twice before either insert commits; the unique constraint catches
-    // it instead of a raw 500 error reaching the customer
+    // exists() check twice before either insert commits; ShortlistWriter's own (separate)
+    // transaction rolls back cleanly on the constraint violation and FavouriteService
+    // catches it here, instead of a raw 500 error reaching the customer
     @Test
     void losingTheRaceToSaveTheSameShortlistTwiceIsHandledGracefully() {
         when(shortlistRepository.existsByCustomerIdAndProjectId(1L, 100L)).thenReturn(false);
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
-        when(shortlistRepository.save(any(Shortlist.class)))
-                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate"));
+        doThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate"))
+                .when(shortlistWriter).insert(customer, project);
 
         service.add(customer, 100L);
 

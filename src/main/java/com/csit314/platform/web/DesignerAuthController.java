@@ -5,7 +5,6 @@ import com.csit314.platform.service.AuthService;
 import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.dto.DesignerRegistrationForm;
-import com.csit314.platform.web.session.ClientIp;
 import com.csit314.platform.web.session.LoginSession;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
@@ -36,7 +35,7 @@ public class DesignerAuthController {
     public String register(@ModelAttribute DesignerRegistrationForm form, HttpServletRequest request,
                            RedirectAttributes redirect) {
         try {
-            designerService.register(form, ClientIp.resolve(request));
+            designerService.register(form, request.getRemoteAddr());
             redirect.addFlashAttribute("successMessage",
                     "Thanks for registering! We'll review your company details and you can log in once you're approved.");
             return "redirect:/designer/login";
@@ -53,7 +52,7 @@ public class DesignerAuthController {
                         HttpServletRequest request,
                         RedirectAttributes redirect) {
         try {
-            UserAccount designer = authService.loginDesigner(email, password, ClientIp.resolve(request));
+            UserAccount designer = authService.loginDesigner(email, password, request.getRemoteAddr());
             loginSession.start(request, designer);
             return "redirect:/designer/dashboard";
         } catch (ServiceException e) {
