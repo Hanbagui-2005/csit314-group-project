@@ -28,9 +28,9 @@ public class BrowseService {
     // is in use, since there's nothing to check it against
     public List<Project> search(String query, String categoryName, Integer maxBudget, Integer minRoomSize,
                                 boolean verifiedOnly, String location) {
-        String cleanQuery = blankToNull(query);
+        String cleanQuery = escapeLike(blankToNull(query));
         String cleanCategory = blankToNull(categoryName);
-        String cleanLocation = blankToNull(location);
+        String cleanLocation = escapeLike(blankToNull(location));
         return projectRepository.search(cleanQuery, cleanCategory, maxBudget, minRoomSize, verifiedOnly, cleanLocation);
     }
 
@@ -74,5 +74,13 @@ public class BrowseService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    // escapes LIKE wildcards (and the escape character itself) so a % or _ typed into a
+    // search box is matched literally instead of acting as a wildcard - otherwise "%"
+    // alone would match every project/designer
+    private String escapeLike(String value) {
+        return value == null ? null
+                : value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }

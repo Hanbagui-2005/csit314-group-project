@@ -30,12 +30,15 @@ public class AuthInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         Optional<SessionUser> user = loginSession.current(request);
-        if (user.isPresent() && user.get().hasRole(requiredRole) && stillActive(user.get())) {
-            return true;
-        }
-        if (user.isPresent()) {
+        if (user.isPresent() && user.get().hasRole(requiredRole)) {
+            if (stillActive(user.get())) {
+                return true;
+            }
             // ADM-06/08 - re-checked against the database on every request, so a suspension
-            // takes effect immediately instead of waiting for the session to expire on its own
+            // takes effect immediately instead of waiting for the session to expire on its
+            // own. Only reached once the role already matched - a user with the wrong role
+            // for this route (e.g. a designer clicking a customer-only link) is still just
+            // redirected, not logged out everywhere
             loginSession.end(request);
         }
 
@@ -47,9 +50,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     private boolean stillActive(SessionUser user) {
-        return userAccountRepository.findById(user.id())
-                .map(account -> account.getStatus() == AccountStatus.ACTIVE)
-                .orElse(false);
+        return userAccountRepository.existsByIdAndStatus(user.id(), AccountStatus.ACTIVE);
     }
 
     private static String article(Role role) {

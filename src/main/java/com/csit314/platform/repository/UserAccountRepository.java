@@ -15,6 +15,11 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
 
     boolean existsByEmail(String email);
 
+    // ADM-06/08 - checked on every request behind AuthInterceptor; only the status is
+    // needed, so this avoids loading the full account (and, for a designer, the joined
+    // subclass and its eager company) just to check one field
+    boolean existsByIdAndStatus(Long id, AccountStatus status);
+
     boolean existsByRole(Role role);
 
     long countByRoleAndStatus(Role role, AccountStatus status);

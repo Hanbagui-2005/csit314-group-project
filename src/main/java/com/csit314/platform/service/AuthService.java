@@ -18,7 +18,7 @@ public class AuthService {
 
     private static final String INVALID_CREDENTIALS = "Invalid email or password.";
     private static final String LOCKED_MESSAGE =
-            "Too many failed login attempts. Ask an admin to unlock your account.";
+            "Too many failed login attempts. Try again in 15 minutes, or ask an admin to unlock your account sooner.";
 
     private final UserAccountRepository userAccountRepository;
     private final FailedLoginAttemptRepository failedLoginAttemptRepository;

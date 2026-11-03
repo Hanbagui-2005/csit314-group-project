@@ -191,6 +191,21 @@ class AuthServiceUnitTests {
         assertThat(user.getLockedAt()).isEqualTo(firstLockedAt);
     }
 
+    // once the lock has already lapsed, the stale failed-attempt count shouldn't let a
+    // single further mistake instantly re-lock the account for another 15 minutes
+    @Test void aWrongGuessAfterTheLockExpiresStartsCountingFreshInsteadOfInstantlyRelocking() {
+        UserAccount user = account(Role.CUSTOMER);
+        ReflectionTestUtils.setField(user, "failedLoginAttempts", 5);
+        ReflectionTestUtils.setField(user, "lockedAt", LocalDateTime.now().minusMinutes(16));
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.loginCustomer(user.getEmail(), "wrong", "127.0.0.1"))
+                .isInstanceOf(ServiceException.class);
+
+        assertThat(user.isLocked()).isFalse();
+        assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
+    }
+
     // ADM-09/13 - a lock isn't permanent, including for the only admin account: it expires
     // on its own rather than needing a database edit to recover
     @Test void theLockExpiresOnItsOwnAfterFifteenMinutes() {
