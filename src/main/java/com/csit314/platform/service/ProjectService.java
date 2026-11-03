@@ -6,6 +6,7 @@ import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.dto.ProjectForm;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,9 +32,10 @@ public class ProjectService {
         this.fileStorageService = fileStorageService;
     }
 
-    // IDR-04/07 - category dropdown on the new/edit project form
+    // IDR-04/07/PM-13 - category dropdown on the new/edit project form; a deactivated
+    // category isn't offered for new work, though a project that already uses one keeps it
     public List<Category> listCategories() {
-        return categoryRepository.findAll();
+        return categoryRepository.findByActiveTrue(Sort.unsorted());
     }
 
     // a designer's own dashboard list

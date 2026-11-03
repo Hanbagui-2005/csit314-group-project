@@ -12,8 +12,9 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
 
-    // supports PM-01 - a category still used by at least one project can't be deleted
-    long countByCategoryId(Long categoryId);
+    // PM-03 - every project in a category being merged away, so they can be
+    // reassigned to the surviving category
+    List<Project> findByCategoryId(Long categoryId);
 
     // PM-06/PM-08 - activity reports
     long countByCreatedAtAfter(LocalDateTime since);

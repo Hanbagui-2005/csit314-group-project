@@ -1,5 +1,6 @@
 package com.csit314.platform.web;
 
+import com.csit314.platform.model.Category;
 import com.csit314.platform.service.CategoryManagementService;
 import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.PlatformReportService;
@@ -36,12 +37,18 @@ public class PlatformManagerController {
         return "platform-manager-categories";
     }
 
-    // PM-01
+    // PM-01/PM-03
     @PostMapping("/categories")
     public String addCategory(@RequestParam(required = false) String name, RedirectAttributes redirect) {
         try {
-            categoryManagementService.addCategory(name);
-            redirect.addFlashAttribute("successMessage", "Category added.");
+            Category result = categoryManagementService.addCategory(name);
+            // a merged near-duplicate comes back with the existing category's own
+            // spelling, not the one just typed in - that's how the controller tells
+            // the two cases apart without the service needing its own result type
+            boolean merged = name != null && !result.getName().equals(name.trim());
+            redirect.addFlashAttribute("successMessage", merged
+                    ? "That's close to an existing category (\"" + result.getName() + "\") - using it instead of creating a near-duplicate."
+                    : "Category added.");
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());
         }
@@ -62,16 +69,25 @@ public class PlatformManagerController {
         return "redirect:/platform-manager/categories";
     }
 
-    // category management - supports PM-01; a hard delete-with-guard, not PM-13's
-    // soft-delete (not yet implemented)
+    // PM-13 - soft delete; a scheduled job also runs this on a cron, but it's exposed
+    // here too so it doesn't depend on waiting for 3am to see it work
     @PostMapping("/categories/{id}/delete")
     public String deleteCategory(@PathVariable Long id, RedirectAttributes redirect) {
         try {
             categoryManagementService.deleteCategory(id);
-            redirect.addFlashAttribute("successMessage", "Category deleted.");
+            redirect.addFlashAttribute("successMessage", "Category deactivated.");
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());
         }
+        return "redirect:/platform-manager/categories";
+    }
+
+    // PM-03 - CategoryDuplicateMergeScheduler already runs this nightly; this button is
+    // just so the merge is demonstrable on demand instead of waiting for the cron
+    @PostMapping("/categories/merge-duplicates")
+    public String mergeDuplicateCategories(RedirectAttributes redirect) {
+        categoryManagementService.mergeDuplicateCategories();
+        redirect.addFlashAttribute("successMessage", "Checked for near-duplicate categories and merged any found.");
         return "redirect:/platform-manager/categories";
     }
 

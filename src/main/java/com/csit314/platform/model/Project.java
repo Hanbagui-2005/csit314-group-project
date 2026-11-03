@@ -128,6 +128,12 @@ public class Project {
         this.roomSizeSqm = roomSizeSqm;
     }
 
+    // PM-03 - used when Platform Management merges a near-duplicate category into this
+    // project's existing one; updateDetails is the designer's own edit path, not this
+    public void reassignCategory(Category category) {
+        this.category = category;
+    }
+
     public void advanceMilestone() {
         MilestoneStage next = milestoneStage.next();
         if (next == null) {
