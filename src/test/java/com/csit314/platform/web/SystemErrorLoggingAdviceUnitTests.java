@@ -8,8 +8,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -28,7 +30,7 @@ class SystemErrorLoggingAdviceUnitTests {
     }
 
     @Test
-    void logsTheExceptionAndRedirectsWithAFlashMessage() {
+    void logsTheExceptionAndRedirectsWithAFlashMessage() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/designer/projects/new");
         RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
@@ -46,7 +48,7 @@ class SystemErrorLoggingAdviceUnitTests {
     }
 
     @Test
-    void truncatesAVeryLongStackTrace() {
+    void truncatesAVeryLongStackTrace() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/search");
         RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
@@ -57,5 +59,21 @@ class SystemErrorLoggingAdviceUnitTests {
         ArgumentCaptor<SystemErrorLog> captor = ArgumentCaptor.forClass(SystemErrorLog.class);
         verify(systemErrorLogRepository).save(captor.capture());
         assertThat(captor.getValue().getDetails().length()).isLessThanOrEqualTo(4000);
+    }
+
+    // a missing static file (the browser's automatic /favicon.ico request, a broken
+    // /uploads/... link, a typo'd URL) is a normal 404, not a bug - it shouldn't fill
+    // up the error log or bounce the visitor to /search with a false error message
+    @Test
+    void rethrowsFrameworkErrorsInsteadOfLoggingThem() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/favicon.ico");
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        NoResourceFoundException notFound = new NoResourceFoundException(HttpMethod.GET, "/favicon.ico");
+
+        assertThatThrownBy(() -> advice.handleUnexpectedException(notFound, request, redirect))
+                .isSameAs(notFound);
+
+        verifyNoInteractions(systemErrorLogRepository);
     }
 }

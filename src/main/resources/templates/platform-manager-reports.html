@@ -7,10 +7,10 @@
 
     <h4 class="mb-3">Platform activity reports</h4>
 
-    <!-- PM-14 -->
+    <!-- PM-14 - checked against yesterday (the most recent complete day), not today -->
     <div class="alert alert-warning" th:each="alert : ${anomalyAlerts}">
-        <strong th:text="${alert.metricLabel}">Metric</strong> looks unusual today:
-        <span th:text="${alert.todayValue}">0</span> today vs a recent daily average of
+        <strong th:text="${alert.metricLabel}">Metric</strong> looked unusual yesterday:
+        <span th:text="${alert.value}">0</span> vs a recent daily average of
         <span th:text="${#numbers.formatDecimal(alert.recentAverage, 1, 1)}">0.0</span>.
     </div>
 
@@ -154,6 +154,21 @@
         </tr>
         </tbody>
     </table>
+
+    <h4 class="mb-3 mt-5">Generated reports</h4>
+    <p class="text-muted small mb-3">PM-12 - one of these is written automatically every morning, covering
+        the previous complete day. Download without needing server access.</p>
+
+    <ul class="list-group" style="max-width: 400px;">
+        <li class="list-group-item d-flex justify-content-between align-items-center"
+            th:each="filename : ${generatedReports}">
+            <span th:text="${filename}">platform-activity-2026-01-01.csv</span>
+            <a class="btn btn-sm btn-outline-dark"
+               th:href="@{/platform-manager/reports/generated/{filename}(filename=${filename})}">Download</a>
+        </li>
+    </ul>
+    <p th:if="${#lists.isEmpty(generatedReports)}" class="text-muted">
+        No reports generated yet - the first one appears after tomorrow morning's run.</p>
 
 </div>
 </body>

@@ -5,6 +5,7 @@ import com.csit314.platform.repository.SystemErrorLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -30,7 +31,16 @@ public class SystemErrorLoggingAdvice {
 
     @ExceptionHandler(Exception.class)
     public String handleUnexpectedException(Exception exception, HttpServletRequest request,
-                                            RedirectAttributes redirect) {
+                                            RedirectAttributes redirect) throws Exception {
+        // ErrorResponse covers framework/client errors with their own correct status -
+        // a missing static file (NoResourceFoundException, e.g. the browser's automatic
+        // /favicon.ico request), a bad method, a type mismatch in a path variable, and
+        // so on. None of those are bugs, so let Spring's own handling deal with them
+        // instead of logging every one as a "system error" and bouncing the visitor to
+        // /search with a false "something went wrong" message
+        if (exception instanceof ErrorResponse) {
+            throw exception;
+        }
         log.error("Unhandled exception on {}", request.getRequestURI(), exception);
         systemErrorLogRepository.save(new SystemErrorLog(request.getRequestURI(), stackTraceOf(exception)));
         redirect.addFlashAttribute("errorMessage", "Something went wrong on our end. Please try again.");

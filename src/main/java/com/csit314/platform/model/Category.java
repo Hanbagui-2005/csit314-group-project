@@ -40,6 +40,13 @@ public class Category {
         this.active = false;
     }
 
+    // PM-13 - adding a category with the same name as a deactivated one reactivates it
+    // instead of erroring or creating a duplicate; this is the only way back since
+    // there's no separate reactivate button
+    public void activate() {
+        this.active = true;
+    }
+
     public Long getId() {
         return id;
     }

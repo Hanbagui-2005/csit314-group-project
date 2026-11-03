@@ -38,7 +38,7 @@ class CategoryManagementServiceUnitTests {
 
     @Test
     void addCategorySavesATrimmedName() {
-        when(categoryRepository.existsByNameIgnoreCase("Kitchen")).thenReturn(false);
+        when(categoryRepository.findByNameIgnoreCase("Kitchen")).thenReturn(Optional.empty());
         when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of());
         when(categoryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -55,8 +55,22 @@ class CategoryManagementServiceUnitTests {
 
     @Test
     void addCategoryRejectsADuplicateName() {
-        when(categoryRepository.existsByNameIgnoreCase("Kitchen")).thenReturn(true);
+        when(categoryRepository.findByNameIgnoreCase("Kitchen")).thenReturn(Optional.of(category(1L, "Kitchen")));
         assertThatThrownBy(() -> service.addCategory("Kitchen")).isInstanceOf(ServiceException.class);
+        verify(categoryRepository, never()).save(any());
+    }
+
+    // PM-13 - the only way back from a deactivation, since there's no reactivate button
+    @Test
+    void addCategoryReactivatesADeactivatedCategoryWithTheSameNameInsteadOfErroring() {
+        Category deactivated = category(1L, "Kitchen");
+        deactivated.deactivate();
+        when(categoryRepository.findByNameIgnoreCase("Kitchen")).thenReturn(Optional.of(deactivated));
+
+        Category result = service.addCategory("Kitchen");
+
+        assertThat(result).isSameAs(deactivated);
+        assertThat(result.isActive()).isTrue();
         verify(categoryRepository, never()).save(any());
     }
 
@@ -65,7 +79,7 @@ class CategoryManagementServiceUnitTests {
     @Test
     void addCategoryReusesAnExistingNearDuplicateInsteadOfCreatingANewOne() {
         Category existing = category(1L, "Kitchen");
-        when(categoryRepository.existsByNameIgnoreCase("Kitchens")).thenReturn(false);
+        when(categoryRepository.findByNameIgnoreCase("Kitchens")).thenReturn(Optional.empty());
         when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(existing));
 
         Category result = service.addCategory("Kitchens");
@@ -77,7 +91,7 @@ class CategoryManagementServiceUnitTests {
     @Test
     void addCategoryIgnoresCaseAndSpacingWhenCheckingForANearDuplicate() {
         Category existing = category(1L, "Living Room");
-        when(categoryRepository.existsByNameIgnoreCase("living   room")).thenReturn(false);
+        when(categoryRepository.findByNameIgnoreCase("living   room")).thenReturn(Optional.empty());
         when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(existing));
 
         Category result = service.addCategory("living   room");
@@ -89,7 +103,7 @@ class CategoryManagementServiceUnitTests {
     @Test
     void addCategoryDoesNotMergeCategoriesThatJustSoundAlike() {
         Category existing = category(1L, "Kitchen");
-        when(categoryRepository.existsByNameIgnoreCase("Kitchenette")).thenReturn(false);
+        when(categoryRepository.findByNameIgnoreCase("Kitchenette")).thenReturn(Optional.empty());
         when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(existing));
         when(categoryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -103,7 +117,7 @@ class CategoryManagementServiceUnitTests {
     void renameCategoryUpdatesTheName() {
         Category category = category(1L, "Old name");
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
-        when(categoryRepository.existsByNameIgnoreCaseAndIdNot("New name", 1L)).thenReturn(false);
+        when(categoryRepository.findByNameIgnoreCaseAndIdNot("New name", 1L)).thenReturn(Optional.empty());
 
         Category result = service.renameCategory(1L, "New name");
 
@@ -111,12 +125,30 @@ class CategoryManagementServiceUnitTests {
     }
 
     @Test
-    void renameCategoryRejectsANameAlreadyUsedByAnotherCategory() {
+    void renameCategoryRejectsANameAlreadyUsedByAnotherActiveCategory() {
         Category category = category(1L, "Old name");
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
-        when(categoryRepository.existsByNameIgnoreCaseAndIdNot("Living Room", 1L)).thenReturn(true);
+        when(categoryRepository.findByNameIgnoreCaseAndIdNot("Living Room", 1L))
+                .thenReturn(Optional.of(category(2L, "Living Room")));
 
         assertThatThrownBy(() -> service.renameCategory(1L, "Living Room")).isInstanceOf(ServiceException.class);
+        assertThat(category.getName()).isEqualTo("Old name");
+    }
+
+    // PM-13 - renaming into a deactivated category's name can't just reactivate it the
+    // way addCategory does, since that would leave two different rows with the same
+    // (unique) name - so this needs a clearer message instead of the generic one
+    @Test
+    void renameCategoryRejectsANameBelongingToADeactivatedCategoryWithAClearerMessage() {
+        Category category = category(1L, "Old name");
+        Category deactivated = category(2L, "Kitchen");
+        deactivated.deactivate();
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(categoryRepository.findByNameIgnoreCaseAndIdNot("Kitchen", 1L)).thenReturn(Optional.of(deactivated));
+
+        assertThatThrownBy(() -> service.renameCategory(1L, "Kitchen"))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("deactivated");
         assertThat(category.getName()).isEqualTo("Old name");
     }
 

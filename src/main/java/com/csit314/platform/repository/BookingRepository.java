@@ -15,6 +15,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // PM-06/PM-08 - activity reports
     long countByCreatedAtAfter(LocalDateTime since);
 
+    // PM-12 - new bookings within an arbitrary (bounded) window, for the scheduled
+    // report's "yesterday" figures
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
     List<Booking> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
 
     // CUS-13 - the closest thing this app has to "actually worked with this designer"

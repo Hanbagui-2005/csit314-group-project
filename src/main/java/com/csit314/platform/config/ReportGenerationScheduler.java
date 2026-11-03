@@ -1,55 +1,46 @@
 package com.csit314.platform.config;
 
+import com.csit314.platform.service.GeneratedReportService;
 import com.csit314.platform.service.PlatformReportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 
 // PM-12 - "I want reports to generate automatically on a schedule so I don't have to
-// run them by hand." Writes the same CSV PM-09's export link produces to a file on disk
-// every morning, so a report actually appears without anyone clicking anything - not
-// just a log line claiming it ran, which is easy to fake and hard to demo
+// run them by hand." Writes yesterday's complete activity report to a file every
+// morning via GeneratedReportService, where Platform Management can list and download
+// it (PlatformManagerController) instead of needing server access to find the file
 @Component
 public class ReportGenerationScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(ReportGenerationScheduler.class);
 
     private final PlatformReportService platformReportService;
-    private final Path reportsDir;
+    private final GeneratedReportService generatedReportService;
 
     public ReportGenerationScheduler(PlatformReportService platformReportService,
-                                     @Value("${app.reports-dir:generated-reports}") String reportsDir) {
+                                     GeneratedReportService generatedReportService) {
         this.platformReportService = platformReportService;
-        this.reportsDir = Path.of(reportsDir);
-        try {
-            Files.createDirectories(this.reportsDir);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        this.generatedReportService = generatedReportService;
     }
 
     @Scheduled(cron = "${app.report-generation.cron:0 0 6 * * *}")
     public void generateDailyReport() {
-        generateReportFor(LocalDate.now());
+        // yesterday, not today: run at 6am, "today" is only 6 hours old so far, and the
+        // same calendar-boundary logic as PM-06/08's own reports means a window since
+        // midnight today would make the file nearly empty
+        generateReportFor(LocalDate.now().minusDays(1));
     }
 
-    // pulled out so a scheduler test can call it directly instead of waiting for 6am
+    // pulled out so a scheduler test can call it directly instead of waiting for 6am.
+    // date is the day the report covers and the file is named after - always
+    // "yesterday" relative to when the scheduled job actually runs
     void generateReportFor(LocalDate date) {
-        String csv = platformReportService.exportReportsAsCsv();
-        Path file = reportsDir.resolve("platform-activity-" + date + ".csv");
-        try {
-            Files.writeString(file, csv);
-            log.info("Generated the daily platform activity report automatically: {}", file);
-        } catch (IOException e) {
-            log.error("Failed to write the scheduled platform activity report", e);
-        }
+        String csv = platformReportService.exportYesterdayReportAsCsv();
+        generatedReportService.write(date, csv);
+        log.info("Generated the daily platform activity report automatically for {}", date);
     }
 }

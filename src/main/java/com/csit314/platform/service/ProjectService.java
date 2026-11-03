@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,10 +38,26 @@ public class ProjectService {
         this.imageSimilarityService = imageSimilarityService;
     }
 
-    // IDR-04/07/PM-13 - category dropdown on the new/edit project form; a deactivated
-    // category isn't offered for new work, though a project that already uses one keeps it
+    // IDR-04/PM-13 - category dropdown on the new-project form; a deactivated category
+    // isn't offered for new work
     public List<Category> listCategories() {
         return categoryRepository.findByActiveTrue(Sort.unsorted());
+    }
+
+    // IDR-07/PM-13 - category dropdown on the edit form: active categories, plus the
+    // project's own category even if it's since been deactivated. Without that, a
+    // deactivated category wouldn't be selected in the dropdown at all, the browser
+    // would default to whatever option happens to be first, and saving the edit - even
+    // just to fix a typo - would silently move the project to an unrelated category
+    public List<Category> listCategoriesForEdit(Project project) {
+        List<Category> active = listCategories();
+        Category current = project.getCategory();
+        if (current.isActive() || active.stream().anyMatch(c -> c.getId().equals(current.getId()))) {
+            return active;
+        }
+        List<Category> withCurrent = new ArrayList<>(active);
+        withCurrent.add(current);
+        return withCurrent;
     }
 
     // a designer's own dashboard list
@@ -66,6 +83,11 @@ public class ProjectService {
         }
         Category category = categoryRepository.findById(form.categoryId())
                 .orElseThrow(() -> new ServiceException("That category no longer exists."));
+        // PM-13 - a new project can't be given a deactivated category, hand-crafted POST
+        // or not; there's no "it already had this one" exception to make here
+        if (!category.isActive()) {
+            throw new ServiceException("That category is no longer available.");
+        }
 
         List<MultipartFile> uploaded = cleanUploads(photos);
         if (uploaded.isEmpty()) {
@@ -91,9 +113,12 @@ public class ProjectService {
         uploadedBefore.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 
         Project saved = projectRepository.save(project);
-        // PM-04 - checked once the project (and so its photo URLs) actually has an id;
-        // photoUrls is in upload order and was empty beforehand, so it lines up 1:1 with uploaded
+        // PM-04 - checked once the project (and so its photo URLs) actually has an id.
+        // Both lists line up 1:1 with their own upload list since each was empty
+        // beforehand - before-photos are checked too, not just the "after" shots,
+        // since a re-uploaded photo can be plagiarised either way
         checkForPlagiarism(saved, uploaded, saved.getPhotoUrls());
+        checkForPlagiarism(saved, uploadedBefore, saved.getBeforePhotoUrls());
         return saved;
     }
 
@@ -112,6 +137,13 @@ public class ProjectService {
         }
         Category category = categoryRepository.findById(form.categoryId())
                 .orElseThrow(() -> new ServiceException("That category no longer exists."));
+        // PM-13 - switching TO a deactivated category is blocked, but keeping the
+        // project's current one (even if it's since been deactivated) is still allowed -
+        // otherwise there'd be no way to edit anything else about an older project
+        // without being forced to also change its category
+        if (!category.isActive() && !category.getId().equals(project.getCategory().getId())) {
+            throw new ServiceException("That category is no longer available.");
+        }
         validateBudgetRange(form.budgetMin(), form.budgetMax());
         validateRoomSize(form.roomSizeSqm());
 
@@ -130,11 +162,15 @@ public class ProjectService {
         newAfterPhotos.forEach(file -> project.addPhoto(fileStorageService.store(file)));
         newBeforePhotos.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 
-        // PM-04 - only the newly-added photos (the last newAfterPhotos.size() entries),
-        // not the ones the project already had before this edit
-        List<String> allUrls = project.getPhotoUrls();
-        List<String> newUrls = allUrls.subList(allUrls.size() - newAfterPhotos.size(), allUrls.size());
-        checkForPlagiarism(project, newAfterPhotos, newUrls);
+        // PM-04 - only the newly-added photos (the last N entries of each list), not
+        // the ones the project already had before this edit. Before-photos are checked
+        // too, same as in createProject
+        List<String> allAfterUrls = project.getPhotoUrls();
+        List<String> newAfterUrls = allAfterUrls.subList(allAfterUrls.size() - newAfterPhotos.size(), allAfterUrls.size());
+        checkForPlagiarism(project, newAfterPhotos, newAfterUrls);
+        List<String> allBeforeUrls = project.getBeforePhotoUrls();
+        List<String> newBeforeUrls = allBeforeUrls.subList(allBeforeUrls.size() - newBeforePhotos.size(), allBeforeUrls.size());
+        checkForPlagiarism(project, newBeforePhotos, newBeforeUrls);
 
         return project;
     }

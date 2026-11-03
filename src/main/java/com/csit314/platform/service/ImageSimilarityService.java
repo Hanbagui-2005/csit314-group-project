@@ -57,6 +57,16 @@ public class ImageSimilarityService {
         photoHashRepository.save(new PhotoHash(project, photoUrl, hash));
     }
 
+    // PM-04 - backfill-only: hashes a photo that predates this feature so later uploads
+    // can be compared against it, without flagging anything for it retroactively. A
+    // one-off scan over old (and, for a group project, probably-similar seed/demo) data
+    // isn't a real plagiarism signal the same way a brand new upload matching something
+    // already-known is - it would just be noise in PM-11's review queue
+    @Transactional
+    public void recordOnly(Project project, String photoUrl, byte[] imageBytes) {
+        photoHashRepository.save(new PhotoHash(project, photoUrl, computeHash(imageBytes)));
+    }
+
     // average hash (aHash): shrink to 8x8 greyscale, then one bit per pixel for
     // whether it's lighter or darker than the image's own average brightness. Crude
     // compared to a perceptual (DCT-based) hash, but simple, fast, and good enough to

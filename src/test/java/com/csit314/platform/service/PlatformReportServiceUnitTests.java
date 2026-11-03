@@ -179,28 +179,45 @@ class PlatformReportServiceUnitTests {
         assertThat(forecast.projectedNewListings()).isEqualTo(6L);
     }
 
-    // PM-14
+    // PM-14 - checks yesterday (a complete day), not today, against the 7 complete
+    // days before that - see PlatformReportService's own notes on why
     @Test
-    void anomalyAlertsFlagsATodayValueMuchHigherThanTheRecentAverage() {
-        // 7 trailing days average to 2 new sign-ups/day, today has 10 (a 5x spike)
+    void anomalyAlertsFlagsYesterdayMuchHigherThanTheRecentAverage() {
+        // the 7 days before yesterday average to 2 new sign-ups/day, yesterday had 10 (a 5x spike)
         when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(10L, 2L, 2L, 2L, 2L, 2L, 2L, 2L);
         when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
 
         List<AnomalyAlert> alerts = service.anomalyAlerts();
 
         assertThat(alerts).extracting(AnomalyAlert::metricLabel).containsExactly("New sign-ups");
-        assertThat(alerts.get(0).todayValue()).isEqualTo(10L);
+        assertThat(alerts.get(0).value()).isEqualTo(10L);
     }
 
     @Test
-    void anomalyAlertsFlagsATodayValueMuchLowerThanTheRecentAverage() {
-        // 7 trailing days average to 10 new sign-ups/day, today has 0 (a total drop)
+    void anomalyAlertsFlagsYesterdayMuchLowerThanTheRecentAverage() {
+        // the 7 days before yesterday average to 10 new sign-ups/day, yesterday had 0 (a total drop)
         when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 10L, 10L, 10L, 10L, 10L, 10L, 10L);
         when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
 
         List<AnomalyAlert> alerts = service.anomalyAlerts();
 
         assertThat(alerts).extracting(AnomalyAlert::metricLabel).containsExactly("New sign-ups");
+    }
+
+    // the exact bug Anthony flagged: today's partial count compared against a
+    // full-day baseline used to look like a drop on every single call, regardless of
+    // the actual (unstubbed, so defaults to 0) activity - now it's never consulted at all
+    @Test
+    void anomalyAlertsNeverLooksAtTodayAtAll() {
+        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
+
+        service.anomalyAlerts();
+
+        ArgumentCaptor<LocalDateTime> startCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(userAccountRepository, atLeastOnce()).countByCreatedAtBetween(startCaptor.capture(), any());
+        LocalDateTime today = LocalDate.now().atStartOfDay();
+        assertThat(startCaptor.getAllValues()).doesNotContain(today);
     }
 
     @Test
@@ -233,5 +250,25 @@ class PlatformReportServiceUnitTests {
         assertThat(csv).startsWith("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n");
         assertThat(csv).contains("Today,1,1,2,3,4\n");
         assertThat(csv.lines().count()).isEqualTo(4); // header + 3 periods
+    }
+
+    // PM-12 - a complete (midnight-to-midnight) day, not "since midnight today" like
+    // exportReportsAsCsv()'s "Today" row - that would make the scheduled job's 6am
+    // output nearly empty
+    @Test
+    void exportYesterdayReportAsCsvCoversExactlyYesterday() {
+        when(userAccountRepository.countByRoleAndCreatedAtBetween(any(), any(), any())).thenReturn(2L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(3L);
+        when(bookingRepository.countByCreatedAtBetween(any(), any())).thenReturn(4L);
+        when(complaintRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
+
+        String csv = service.exportYesterdayReportAsCsv();
+
+        assertThat(csv).isEqualTo("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n"
+                + "Yesterday,2,2,3,4,5\n");
+
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime yesterdayStart = todayStart.minusDays(1);
+        verify(projectRepository).countByCreatedAtBetween(yesterdayStart, todayStart);
     }
 }

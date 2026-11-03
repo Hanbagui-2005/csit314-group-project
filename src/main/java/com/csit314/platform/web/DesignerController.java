@@ -90,7 +90,7 @@ public class DesignerController {
             redirect.addFlashAttribute("errorMessage", "That project couldn't be found.");
             return "redirect:/designer/dashboard";
         }
-        model.addAttribute("categories", projectService.listCategories());
+        model.addAttribute("categories", projectService.listCategoriesForEdit(project));
         model.addAttribute("isEdit", true);
         model.addAttribute("projectId", id);
         model.addAttribute("project", project);

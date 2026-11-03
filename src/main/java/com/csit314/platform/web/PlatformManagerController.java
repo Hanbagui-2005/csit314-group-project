@@ -3,6 +3,7 @@ package com.csit314.platform.web;
 import com.csit314.platform.model.Category;
 import com.csit314.platform.service.CategoryManagementService;
 import com.csit314.platform.service.DesignerService;
+import com.csit314.platform.service.GeneratedReportService;
 import com.csit314.platform.service.PlatformReportService;
 import com.csit314.platform.service.ProjectFlagService;
 import com.csit314.platform.service.ServiceException;
@@ -28,17 +29,20 @@ public class PlatformManagerController {
     private final DesignerService designerService;
     private final ProjectFlagService projectFlagService;
     private final SystemErrorLogService systemErrorLogService;
+    private final GeneratedReportService generatedReportService;
 
     public PlatformManagerController(CategoryManagementService categoryManagementService,
                                      PlatformReportService platformReportService,
                                      DesignerService designerService,
                                      ProjectFlagService projectFlagService,
-                                     SystemErrorLogService systemErrorLogService) {
+                                     SystemErrorLogService systemErrorLogService,
+                                     GeneratedReportService generatedReportService) {
         this.categoryManagementService = categoryManagementService;
         this.platformReportService = platformReportService;
         this.designerService = designerService;
         this.projectFlagService = projectFlagService;
         this.systemErrorLogService = systemErrorLogService;
+        this.generatedReportService = generatedReportService;
     }
 
     // PM-01
@@ -114,6 +118,9 @@ public class PlatformManagerController {
         model.addAttribute("topDesigners", platformReportService.topDesigners());
         model.addAttribute("topProjects", platformReportService.topProjects());
         model.addAttribute("anomalyAlerts", platformReportService.anomalyAlerts());
+        // PM-12 - so the scheduled job's output is reachable from the UI, not just the
+        // server's local disk
+        model.addAttribute("generatedReports", generatedReportService.listReportFilenames());
         return "platform-manager-reports";
     }
 
@@ -126,6 +133,19 @@ public class PlatformManagerController {
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"platform-activity-report.csv\"")
                 .body(csv);
+    }
+
+    // PM-12 - downloads one of the scheduler's previously-generated reports; the
+    // filename is validated by GeneratedReportService itself before it ever touches the
+    // filesystem, so this can't be used to read an arbitrary file off the server
+    @GetMapping("/reports/generated/{filename}")
+    public ResponseEntity<String> downloadGeneratedReport(@PathVariable String filename) {
+        return generatedReportService.read(filename)
+                .map(csv -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                        .body(csv))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // PM-11

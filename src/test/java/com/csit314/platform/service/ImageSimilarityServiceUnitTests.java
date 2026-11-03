@@ -103,4 +103,16 @@ class ImageSimilarityServiceUnitTests {
         verify(photoHashRepository).findByProjectDesignerIdNot(2L);
         verifyNoInteractions(projectFlagService);
     }
+
+    // PM-04 - the backfill runner uses this for pre-existing photos: a hash is still
+    // recorded (so later uploads can be compared against it), but nothing gets flagged
+    // retroactively just because old/seed data happens to collide
+    @Test
+    void recordOnlySavesTheHashWithoutEverChecking() throws Exception {
+        service.recordOnly(project, "/uploads/old.png", realPngBytes(0x336699));
+
+        verify(photoHashRepository).save(any(PhotoHash.class));
+        verifyNoInteractions(projectFlagService);
+        verify(photoHashRepository, never()).findByProjectDesignerIdNot(any());
+    }
 }

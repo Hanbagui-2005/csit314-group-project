@@ -33,14 +33,23 @@ public class CategoryManagementService {
         return categoryRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC, "name"));
     }
 
-    // PM-01/PM-03 - a near-duplicate of an existing category (e.g. "Kitchens" when
-    // "Kitchen" already exists) reuses that category instead of fragmenting the
-    // taxonomy with a second, near-identical one
+    // PM-01/PM-03/PM-13 - a near-duplicate of an existing category (e.g. "Kitchens"
+    // when "Kitchen" already exists) reuses that category instead of fragmenting the
+    // taxonomy with a second, near-identical one. An exact match against a deactivated
+    // category reactivates it instead of erroring - that's the only way back, since
+    // there's no separate reactivate button, and the old projects pointing at it
+    // immediately pick back up instead of ending up duplicated under a new row
     @Transactional
     public Category addCategory(String name) {
         String trimmed = InputRules.requireText(name, "Category name", 60);
-        if (categoryRepository.existsByNameIgnoreCase(trimmed)) {
-            throw new ServiceException("A category with that name already exists.");
+        Optional<Category> existing = categoryRepository.findByNameIgnoreCase(trimmed);
+        if (existing.isPresent()) {
+            Category category = existing.get();
+            if (category.isActive()) {
+                throw new ServiceException("A category with that name already exists.");
+            }
+            category.activate();
+            return category;
         }
         Optional<Category> nearDuplicate = findNearDuplicate(trimmed, null);
         if (nearDuplicate.isPresent()) {
@@ -54,8 +63,18 @@ public class CategoryManagementService {
     public Category renameCategory(Long categoryId, String newName) {
         Category category = findCategory(categoryId);
         String trimmed = InputRules.requireText(newName, "Category name", 60);
-        if (categoryRepository.existsByNameIgnoreCaseAndIdNot(trimmed, categoryId)) {
-            throw new ServiceException("A category with that name already exists.");
+        Optional<Category> clash = categoryRepository.findByNameIgnoreCaseAndIdNot(trimmed, categoryId);
+        if (clash.isPresent()) {
+            // PM-13 - renaming into a deactivated category's name can't just reactivate
+            // it the way addCategory does: that would leave two different rows (this
+            // one, and the deactivated one) both wanting the same unique name. Simplest
+            // safe answer is to say so and let them add a new category with that name
+            // instead, which does reactivate it
+            if (clash.get().isActive()) {
+                throw new ServiceException("A category with that name already exists.");
+            }
+            throw new ServiceException("A deactivated category already has that name. "
+                    + "Add a new category with that name to reactivate it instead of renaming this one.");
         }
         category.rename(trimmed);
         return category;

@@ -143,9 +143,13 @@ public class PlatformReportService {
     private static final double ANOMALY_DROP_RATIO = 0.5;
     private static final double ANOMALY_MIN_BASELINE_FOR_DROP = 2.0;
 
-    // PM-14 - flags any tracked metric whose today's value deviates significantly from
-    // its trailing 7-day average, so PM can respond quickly to unusual activity instead
-    // of only noticing it later in a weekly/monthly report
+    // PM-14 - flags any tracked metric whose most recent complete day deviates
+    // significantly from the week before it, so PM can respond quickly to unusual
+    // activity instead of only noticing it later in a weekly/monthly report. Compares
+    // yesterday (a complete day) against the 7 complete days before that, rather than
+    // today (still partway through) against complete-day averages - otherwise a normal
+    // baseline of 10/day would look like a "drop" every morning just because today's
+    // partial count hasn't caught up yet
     @Transactional(readOnly = true)
     public List<AnomalyAlert> anomalyAlerts() {
         List<AnomalyAlert> alerts = new ArrayList<>();
@@ -157,20 +161,22 @@ public class PlatformReportService {
     }
 
     private void checkForAnomaly(List<AnomalyAlert> alerts, String metricLabel, Function<LocalDate, Long> dailyCount) {
-        LocalDate today = LocalDate.now();
-        long todayValue = dailyCount.apply(today);
-        double average = averageOverPastDays(dailyCount, today, ANOMALY_BASELINE_DAYS);
-        boolean spike = average > 0 && todayValue >= average * ANOMALY_SPIKE_RATIO;
-        boolean drop = average >= ANOMALY_MIN_BASELINE_FOR_DROP && todayValue <= average * ANOMALY_DROP_RATIO;
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        long yesterdayValue = dailyCount.apply(yesterday);
+        double average = averageOverPastDays(dailyCount, yesterday, ANOMALY_BASELINE_DAYS);
+        boolean spike = average > 0 && yesterdayValue >= average * ANOMALY_SPIKE_RATIO;
+        boolean drop = average >= ANOMALY_MIN_BASELINE_FOR_DROP && yesterdayValue <= average * ANOMALY_DROP_RATIO;
         if (spike || drop) {
-            alerts.add(new AnomalyAlert(metricLabel, todayValue, average));
+            alerts.add(new AnomalyAlert(metricLabel, yesterdayValue, average));
         }
     }
 
-    private double averageOverPastDays(Function<LocalDate, Long> dailyCount, LocalDate today, int days) {
+    // the days strictly before referenceDate - when called with yesterday, that's the
+    // 7 complete days before yesterday, never including the partial, still-in-progress day
+    private double averageOverPastDays(Function<LocalDate, Long> dailyCount, LocalDate referenceDate, int days) {
         long total = 0;
         for (int daysAgo = 1; daysAgo <= days; daysAgo++) {
-            total += dailyCount.apply(today.minusDays(daysAgo));
+            total += dailyCount.apply(referenceDate.minusDays(daysAgo));
         }
         return (double) total / days;
     }
@@ -202,5 +208,32 @@ public class PlatformReportService {
         long newBookings = bookingRepository.countByCreatedAtAfter(since);
         long newComplaints = complaintRepository.countByCreatedAtAfter(since);
         return new PlatformReport(periodLabel, newCustomers, newDesigners, newProjects, newBookings, newComplaints);
+    }
+
+    // PM-12 - the scheduled job's own report: exactly yesterday (midnight to midnight),
+    // not "since midnight" like reports()'s "Today" row, which at 6am would only cover
+    // the 6 hours so far and make the file mostly empty
+    @Transactional(readOnly = true)
+    public String exportYesterdayReportAsCsv() {
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime yesterdayStart = todayStart.minusDays(1);
+        long newCustomers = userAccountRepository.countByRoleAndCreatedAtBetween(Role.CUSTOMER, yesterdayStart, todayStart);
+        long newDesigners = userAccountRepository.countByRoleAndCreatedAtBetween(
+                Role.INTERIOR_DESIGNER, yesterdayStart, todayStart);
+        long newProjects = projectRepository.countByCreatedAtBetween(yesterdayStart, todayStart);
+        long newBookings = bookingRepository.countByCreatedAtBetween(yesterdayStart, todayStart);
+        long newComplaints = complaintRepository.countByCreatedAtBetween(yesterdayStart, todayStart);
+        PlatformReport yesterday = new PlatformReport("Yesterday", newCustomers, newDesigners, newProjects,
+                newBookings, newComplaints);
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n");
+        csv.append(yesterday.periodLabel()).append(',')
+                .append(yesterday.newCustomers()).append(',')
+                .append(yesterday.newDesigners()).append(',')
+                .append(yesterday.newProjects()).append(',')
+                .append(yesterday.newBookings()).append(',')
+                .append(yesterday.newComplaints()).append('\n');
+        return csv.toString();
     }
 }
