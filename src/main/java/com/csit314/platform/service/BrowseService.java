@@ -28,9 +28,9 @@ public class BrowseService {
     // is in use, since there's nothing to check it against
     public List<Project> search(String query, String categoryName, Integer maxBudget, Integer minRoomSize,
                                 boolean verifiedOnly, String location) {
-        String cleanQuery = blankToNull(query);
+        String cleanQuery = escapeLike(blankToNull(query));
         String cleanCategory = blankToNull(categoryName);
-        String cleanLocation = blankToNull(location);
+        String cleanLocation = escapeLike(blankToNull(location));
         return projectRepository.search(cleanQuery, cleanCategory, maxBudget, minRoomSize, verifiedOnly, cleanLocation);
     }
 
@@ -42,7 +42,13 @@ public class BrowseService {
     public Project viewProject(Long projectId, Long viewerDesignerId, boolean countThisView) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ServiceException("That project couldn't be found."));
+        // a suspended/pending/rejected designer's project isn't browsable anywhere else
+        // (search, their profile) - treat it the same way here, before the view is even
+        // counted, instead of only hiding it from search and the profile page
         boolean isOwnProject = viewerDesignerId != null && viewerDesignerId.equals(project.getDesigner().getId());
+        if (!project.isVisible() && !isOwnProject) {
+            throw new ServiceException("That project couldn't be found.");
+        }
         if (countThisView && !isOwnProject) {
             project.incrementViewCount();
             // IDR-08 - also logged as its own row so a weekly delta is possible later
@@ -74,5 +80,13 @@ public class BrowseService {
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    // escapes LIKE wildcards (and the escape character itself) so a % or _ typed into a
+    // search box is matched literally instead of acting as a wildcard - otherwise "%"
+    // alone would match every project/designer
+    private String escapeLike(String value) {
+        return value == null ? null
+                : value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 }

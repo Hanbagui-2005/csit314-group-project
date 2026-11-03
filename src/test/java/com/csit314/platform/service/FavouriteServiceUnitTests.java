@@ -1,5 +1,6 @@
 package com.csit314.platform.service;
 
+import com.csit314.platform.model.AccountStatus;
 import com.csit314.platform.model.Category;
 import com.csit314.platform.model.Company;
 import com.csit314.platform.model.Customer;
@@ -32,6 +33,7 @@ class FavouriteServiceUnitTests {
     @Mock ShortlistRepository shortlistRepository;
     @Mock ProjectRepository projectRepository;
     @Mock RatingService ratingService;
+    @Mock ShortlistWriter shortlistWriter;
     FavouriteService service;
 
     Customer customer;
@@ -40,7 +42,7 @@ class FavouriteServiceUnitTests {
 
     @BeforeEach
     void setUp() {
-        service = new FavouriteService(shortlistRepository, projectRepository, ratingService);
+        service = new FavouriteService(shortlistRepository, projectRepository, ratingService, shortlistWriter);
 
         customer = new Customer("Jordan Lee", "jordan@example.test", "encoded");
         ReflectionTestUtils.setField(customer, "id", 1L);
@@ -48,6 +50,7 @@ class FavouriteServiceUnitTests {
         designer = new InteriorDesigner("Designer", "designer@example.test", "encoded",
                 new Company("Studio", "Description", "12345"));
         ReflectionTestUtils.setField(designer, "id", 2L);
+        designer.setStatus(AccountStatus.ACTIVE);
 
         Category category = new Category("Kitchen");
         ReflectionTestUtils.setField(category, "id", 10L);
@@ -63,7 +66,7 @@ class FavouriteServiceUnitTests {
 
         service.add(customer, 100L);
 
-        verify(shortlistRepository).save(any(Shortlist.class));
+        verify(shortlistWriter).insert(customer, project);
         assertThat(project.getShortlistCount()).isEqualTo(1);
     }
 
@@ -73,19 +76,20 @@ class FavouriteServiceUnitTests {
 
         service.add(customer, 100L);
 
-        verify(shortlistRepository, never()).save(any());
+        verifyNoInteractions(shortlistWriter);
         verify(projectRepository, never()).findById(any());
     }
 
     // the exists-check-then-insert isn't atomic, so a double-click can slip past the
-    // exists() check twice before either insert commits; the unique constraint catches
-    // it instead of a raw 500 error reaching the customer
+    // exists() check twice before either insert commits; ShortlistWriter's own (separate)
+    // transaction rolls back cleanly on the constraint violation and FavouriteService
+    // catches it here, instead of a raw 500 error reaching the customer
     @Test
     void losingTheRaceToSaveTheSameShortlistTwiceIsHandledGracefully() {
         when(shortlistRepository.existsByCustomerIdAndProjectId(1L, 100L)).thenReturn(false);
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
-        when(shortlistRepository.save(any(Shortlist.class)))
-                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate"));
+        doThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate"))
+                .when(shortlistWriter).insert(customer, project);
 
         service.add(customer, 100L);
 
@@ -111,6 +115,18 @@ class FavouriteServiceUnitTests {
         service.remove(customer, 100L);
 
         verify(shortlistRepository, never()).delete(any(Shortlist.class));
+    }
+
+    // a customer shouldn't see a suspended/pending/rejected designer's project on their
+    // favourites list just because they saved it before the designer's status changed -
+    // same visibility rule as search and the project detail page
+    @Test
+    void favouritesListHidesProjectsFromDesignersWhoArentActive() {
+        designer.setStatus(AccountStatus.SUSPENDED);
+        Shortlist shortlist = new Shortlist(customer, project);
+        when(shortlistRepository.findByCustomerIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(shortlist));
+
+        assertThat(service.listForCustomer(customer)).isEmpty();
     }
 
     @Test
@@ -148,6 +164,23 @@ class FavouriteServiceUnitTests {
         List<Project> recommendations = service.recommendationsFor(customer);
 
         assertThat(recommendations).containsExactly(other);
+    }
+
+    // a suspended/pending/rejected designer's project shouldn't surface as a recommendation
+    @Test
+    void recommendationsExcludeProjectsFromDesignersWhoArentActive() {
+        Shortlist shortlist = new Shortlist(customer, project);
+        when(shortlistRepository.findByCustomerIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(shortlist));
+        InteriorDesigner suspended = new InteriorDesigner("Other", "other@example.test", "encoded",
+                new Company("Other Studio", "Description", "67890"));
+        ReflectionTestUtils.setField(suspended, "id", 3L);
+        suspended.setStatus(AccountStatus.SUSPENDED);
+        Project fromSuspendedDesigner = new Project("Suspended designer's project", "x", project.getCategory(), suspended);
+        ReflectionTestUtils.setField(fromSuspendedDesigner, "id", 200L);
+        when(projectRepository.findByCategoryIdInAndIdNotInOrderByCreatedAtDesc(List.of(10L), List.of(100L)))
+                .thenReturn(List.of(fromSuspendedDesigner));
+
+        assertThat(service.recommendationsFor(customer)).isEmpty();
     }
 
     @Test

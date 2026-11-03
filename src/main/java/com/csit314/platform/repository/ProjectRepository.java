@@ -28,14 +28,17 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // pending or rejected designer's work shouldn't be browsable. The location filter is what
     // actually puts PM-05's service-area check in front of customers, instead of it only being
     // visible on the Platform Management page.
+    // :query and :location are escaped by the caller (BrowseService) before being passed
+    // in here, so a % or _ typed into a search box is matched literally instead of acting
+    // as a wildcard
     @Query("select p from Project p where "
-            + "(:query is null or lower(p.title) like lower(concat('%', :query, '%')) "
-            + "or lower(p.description) like lower(concat('%', :query, '%'))) "
+            + "(:query is null or lower(p.title) like lower(concat('%', :query, '%')) escape '\\' "
+            + "or lower(p.description) like lower(concat('%', :query, '%')) escape '\\') "
             + "and (:categoryName is null or p.category.name = :categoryName) "
             + "and (:maxBudget is null or p.budgetMax <= :maxBudget) "
             + "and (:minRoomSize is null or p.roomSizeSqm <= :minRoomSize) "
             + "and (:verifiedOnly = false or p.designer.verified = true) "
-            + "and (:location is null or lower(p.designer.company.serviceArea) like lower(concat('%', :location, '%'))) "
+            + "and (:location is null or lower(p.designer.company.serviceArea) like lower(concat('%', :location, '%')) escape '\\') "
             + "and p.designer.status = com.csit314.platform.model.AccountStatus.ACTIVE "
             + "order by p.createdAt desc")
     List<Project> search(@Param("query") String query, @Param("categoryName") String categoryName,
@@ -48,7 +51,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // CUS-05 - other projects in categories the customer already likes
     List<Project> findByCategoryIdInAndIdNotInOrderByCreatedAtDesc(List<Long> categoryIds, List<Long> excludeIds);
 
-    // PM-04 - total views across all of a category's projects, so PM can see what's popular
+    // PM-10 - total views across all of a category's projects, so PM can see what's popular
     @Query("select coalesce(sum(p.viewCount), 0) from Project p where p.category.id = :categoryId")
     long sumViewCountByCategoryId(@Param("categoryId") Long categoryId);
 }

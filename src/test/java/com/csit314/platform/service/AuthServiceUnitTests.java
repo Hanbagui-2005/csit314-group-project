@@ -155,10 +155,16 @@ class AuthServiceUnitTests {
         assertThatThrownBy(() -> login(role, user.getEmail(), "wrong")).isInstanceOf(ServiceException.class);
 
         assertThat(user.isLocked()).isTrue();
-        when(encoder.matches("valid-password", "encoded")).thenReturn(true);
+        // even the correct password gets the same generic rejection while locked - a
+        // distinct "locked" message here would tell a guesser the moment they got the
+        // password right, which is exactly what the lock is meant to stop
         assertThatThrownBy(() -> login(role, user.getEmail(), "valid-password"))
                 .isInstanceOf(ServiceException.class)
-                .hasMessageContaining("Too many failed login attempts");
+                .hasMessage("Invalid email or password.");
+        // the earlier wrong-password attempts (before the lock triggered) did reach the
+        // encoder - what matters is that the correct password never got as far as being
+        // checked once the account was locked
+        verify(encoder, never()).matches("valid-password", "encoded");
     }
 
     // the locked message is only shown once the password is already known to be right -
@@ -176,6 +182,21 @@ class AuthServiceUnitTests {
                 .hasMessage("Invalid email or password.");
     }
 
+    // the whole point of locking the account is to stop the guessing - a locked account
+    // must never confirm that a submitted password was actually correct
+    @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER", "PLATFORM_MANAGER"})
+    void aLockedAccountGivenTheRightPasswordDoesNotRevealItEitherAndNeverChecksIt(Role role) {
+        UserAccount user = account(role);
+        ReflectionTestUtils.setField(user, "failedLoginAttempts", 5);
+        ReflectionTestUtils.setField(user, "lockedAt", LocalDateTime.now());
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> login(role, user.getEmail(), "valid-password"))
+                .isInstanceOf(ServiceException.class)
+                .hasMessage("Invalid email or password.");
+        verifyNoInteractions(encoder);
+    }
+
     // repeated wrong guesses against an already-locked account shouldn't keep pushing
     // the 15-minute expiry back out indefinitely
     @Test void furtherWrongGuessesOnceLockedDontExtendTheLockWindow() {
@@ -189,6 +210,21 @@ class AuthServiceUnitTests {
                 .isInstanceOf(ServiceException.class);
 
         assertThat(user.getLockedAt()).isEqualTo(firstLockedAt);
+    }
+
+    // once the lock has already lapsed, the stale failed-attempt count shouldn't let a
+    // single further mistake instantly re-lock the account for another 15 minutes
+    @Test void aWrongGuessAfterTheLockExpiresStartsCountingFreshInsteadOfInstantlyRelocking() {
+        UserAccount user = account(Role.CUSTOMER);
+        ReflectionTestUtils.setField(user, "failedLoginAttempts", 5);
+        ReflectionTestUtils.setField(user, "lockedAt", LocalDateTime.now().minusMinutes(16));
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.loginCustomer(user.getEmail(), "wrong", "127.0.0.1"))
+                .isInstanceOf(ServiceException.class);
+
+        assertThat(user.isLocked()).isFalse();
+        assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
     }
 
     // ADM-09/13 - a lock isn't permanent, including for the only admin account: it expires

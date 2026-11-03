@@ -77,7 +77,7 @@ public class PlatformReportService {
                 .toList();
     }
 
-    // PM-04 - categories ranked by total views across their projects, so PM can see what's popular
+    // PM-10 - categories ranked by total views across their projects, so PM can see what's popular
     @Transactional(readOnly = true)
     public List<CategoryViewRanking> categoryViewRanking() {
         return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name")).stream()
