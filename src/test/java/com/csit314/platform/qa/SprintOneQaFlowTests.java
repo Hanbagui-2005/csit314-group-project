@@ -558,7 +558,8 @@ class SprintOneQaFlowTests {
 
         mvc.perform(post("/admin/users/" + id + "/approve")
                         .session(admin))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isFound())
+.andExpect(redirectedUrl("/search?csrfExpired"));
 
         users.flush();
         entityManager.clear();
@@ -578,7 +579,8 @@ class SprintOneQaFlowTests {
         mvc.perform(post("/admin/users/" + id + "/approve")
                         .with(csrf().useInvalidToken())
                         .session(admin))
-                .andExpect(status().isForbidden());
+               .andExpect(status().isFound())
+.andExpect(redirectedUrl("/search?csrfExpired"));
 
         users.flush();
         entityManager.clear();
