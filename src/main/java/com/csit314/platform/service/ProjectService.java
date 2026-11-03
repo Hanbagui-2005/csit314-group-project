@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,13 +25,16 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final CategoryRepository categoryRepository;
     private final FileStorageService fileStorageService;
+    private final ImageSimilarityService imageSimilarityService;
 
     public ProjectService(ProjectRepository projectRepository,
                           CategoryRepository categoryRepository,
-                          FileStorageService fileStorageService) {
+                          FileStorageService fileStorageService,
+                          ImageSimilarityService imageSimilarityService) {
         this.projectRepository = projectRepository;
         this.categoryRepository = categoryRepository;
         this.fileStorageService = fileStorageService;
+        this.imageSimilarityService = imageSimilarityService;
     }
 
     // IDR-04/07/PM-13 - category dropdown on the new/edit project form; a deactivated
@@ -85,7 +90,11 @@ public class ProjectService {
         uploaded.forEach(file -> project.addPhoto(fileStorageService.store(file)));
         uploadedBefore.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 
-        return projectRepository.save(project);
+        Project saved = projectRepository.save(project);
+        // PM-04 - checked once the project (and so its photo URLs) actually has an id;
+        // photoUrls is in upload order and was empty beforehand, so it lines up 1:1 with uploaded
+        checkForPlagiarism(saved, uploaded, saved.getPhotoUrls());
+        return saved;
     }
 
     // IDR-07 - also where "project edit permission checks" (task 19.4) actually happen:
@@ -121,6 +130,12 @@ public class ProjectService {
         newAfterPhotos.forEach(file -> project.addPhoto(fileStorageService.store(file)));
         newBeforePhotos.forEach(file -> project.addBeforePhoto(fileStorageService.store(file)));
 
+        // PM-04 - only the newly-added photos (the last newAfterPhotos.size() entries),
+        // not the ones the project already had before this edit
+        List<String> allUrls = project.getPhotoUrls();
+        List<String> newUrls = allUrls.subList(allUrls.size() - newAfterPhotos.size(), allUrls.size());
+        checkForPlagiarism(project, newAfterPhotos, newUrls);
+
         return project;
     }
 
@@ -143,6 +158,20 @@ public class ProjectService {
             throw new ServiceException("You can only manage your own projects.");
         }
         return project;
+    }
+
+    // PM-04 - files and newUrls are the same size and in the same order (both built by
+    // iterating the same upload list), so they're paired up by index
+    private void checkForPlagiarism(Project project, List<MultipartFile> files, List<String> newUrls) {
+        for (int i = 0; i < files.size(); i++) {
+            byte[] bytes;
+            try {
+                bytes = files.get(i).getBytes();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            imageSimilarityService.checkAndRecord(project, newUrls.get(i), bytes);
+        }
     }
 
     private List<MultipartFile> cleanUploads(List<MultipartFile> files) {

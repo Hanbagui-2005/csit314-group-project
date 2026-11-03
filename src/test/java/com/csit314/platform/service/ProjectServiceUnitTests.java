@@ -30,6 +30,7 @@ class ProjectServiceUnitTests {
     @Mock ProjectRepository projectRepository;
     @Mock CategoryRepository categoryRepository;
     @Mock FileStorageService fileStorageService;
+    @Mock ImageSimilarityService imageSimilarityService;
     ProjectService service;
 
     InteriorDesigner owner;
@@ -39,7 +40,7 @@ class ProjectServiceUnitTests {
 
     @BeforeEach
     void setUp() {
-        service = new ProjectService(projectRepository, categoryRepository, fileStorageService);
+        service = new ProjectService(projectRepository, categoryRepository, fileStorageService, imageSimilarityService);
 
         owner = new InteriorDesigner("Owner", "owner@example.test", "encoded",
                 new Company("Studio", "Description", "12345"));
@@ -240,5 +241,35 @@ class ProjectServiceUnitTests {
                 .hasMessageContaining("supported image type");
         verify(fileStorageService, never()).store(any());
         verify(projectRepository, never()).save(any());
+    }
+
+    // PM-04 - every uploaded photo is checked against the rest of the platform once the
+    // project has been saved (and so has an id/real photo URLs to check with)
+    @Test
+    void createChecksEveryUploadedPhotoForPlagiarism() {
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        MockMultipartFile photo = new MockMultipartFile("photos", "a.png", "image/png", "real-bytes".getBytes());
+        when(fileStorageService.store(photo)).thenReturn("/uploads/projects/a.png");
+        when(projectRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createProject(owner, form("Title"), List.of(photo), null);
+
+        verify(imageSimilarityService).checkAndRecord(any(Project.class), eq("/uploads/projects/a.png"),
+                eq("real-bytes".getBytes()));
+    }
+
+    @Test
+    void updateChecksOnlyTheNewlyAddedPhotosForPlagiarism() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        project.addPhoto("/uploads/projects/existing.png");
+        MockMultipartFile newPhoto = new MockMultipartFile("photos", "b.png", "image/png", "new-bytes".getBytes());
+        when(fileStorageService.store(newPhoto)).thenReturn("/uploads/projects/b.png");
+
+        service.updateProject(owner, 100L, form("Title"), List.of(newPhoto), null);
+
+        verify(imageSimilarityService).checkAndRecord(eq(project), eq("/uploads/projects/b.png"),
+                eq("new-bytes".getBytes()));
+        verify(imageSimilarityService, never()).checkAndRecord(any(), eq("/uploads/projects/existing.png"), any());
     }
 }
