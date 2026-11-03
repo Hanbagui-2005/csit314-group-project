@@ -88,9 +88,10 @@ class ProjectRepositorySearchIntegrationTests {
                 .doesNotContain("Suburb house");
     }
 
-    // BrowseService escapes a literal "%" typed by the user into "\%" before calling
-    // this - proves the query treats it as a literal character, not a wildcard that
-    // would otherwise match every designer's service area
+    // BrowseService escapes a literal "%" typed by the user into "100!%" before calling
+    // this (the escape character is '!', not a backslash - see BrowseService.escapeLike's
+    // own notes on why) - proves the query treats it as a literal character against a
+    // real database, not a wildcard that would otherwise match every designer's area
     @Test
     void locationFilterTreatsAnEscapedPercentSignLiterally() {
         Category category = categoryRepository.save(new Category("Office"));
@@ -99,7 +100,7 @@ class ProjectRepositorySearchIntegrationTests {
         projectRepository.save(new Project("Unrelated studio", "x", category,
                 saveDesigner(AccountStatus.ACTIVE, "Somewhere else")));
 
-        List<Project> results = projectRepository.search(null, null, null, null, false, "100\\%");
+        List<Project> results = projectRepository.search(null, null, null, null, false, "100!%");
 
         assertThat(results).extracting(Project::getTitle)
                 .contains("Literal percent studio")

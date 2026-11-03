@@ -173,14 +173,14 @@ class BrowseServiceUnitTests {
     void wildcardCharactersInTheSearchTermAreEscaped() {
         service.search("50% off_deal", null, null, null, false, null);
 
-        verify(projectRepository).search("50\\% off\\_deal", null, null, null, false, null);
+        verify(projectRepository).search("50!% off!_deal", null, null, null, false, null);
     }
 
     @Test
     void wildcardCharactersInTheLocationAreEscaped() {
         service.search(null, null, null, null, false, "100% _downtown_");
 
-        verify(projectRepository).search(null, null, null, null, false, "100\\% \\_downtown\\_");
+        verify(projectRepository).search(null, null, null, null, false, "100!% !_downtown!_");
     }
 
     // CUS-12

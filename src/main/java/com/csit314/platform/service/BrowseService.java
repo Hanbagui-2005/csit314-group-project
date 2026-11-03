@@ -84,9 +84,12 @@ public class BrowseService {
 
     // escapes LIKE wildcards (and the escape character itself) so a % or _ typed into a
     // search box is matched literally instead of acting as a wildcard - otherwise "%"
-    // alone would match every project/designer
+    // alone would match every project/designer. '!' is the escape character (matching
+    // ProjectRepository.search()'s escape '!' clause), not a backslash - MySQL treats a
+    // backslash inside a string literal as its own escape character, which risks an
+    // unterminated literal there even though H2 (what the tests run against) accepts it
     private String escapeLike(String value) {
         return value == null ? null
-                : value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+                : value.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }
 }
