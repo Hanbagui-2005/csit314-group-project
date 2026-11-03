@@ -2,6 +2,7 @@ package com.csit314.platform.service;
 
 import com.csit314.platform.model.AccountStatus;
 import com.csit314.platform.model.Booking;
+import com.csit314.platform.model.BookingStatus;
 import com.csit314.platform.model.Customer;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.model.Project;
@@ -45,6 +46,10 @@ public class BookingService {
                 .orElseThrow(() -> new ServiceException("That designer no longer exists."));
         if (designer.getStatus() != AccountStatus.ACTIVE) {
             throw new ServiceException("This designer isn't taking bookings right now.");
+        }
+        // without this, a customer could spam the same designer with pending requests
+        if (bookingRepository.existsByCustomerIdAndDesignerIdAndStatus(customer.getId(), designerId, BookingStatus.PENDING)) {
+            throw new ServiceException("You already have a pending request with this designer.");
         }
 
         Project project = null;
@@ -99,6 +104,10 @@ public class BookingService {
         if (!booking.getDesigner().getId().equals(designer.getId())) {
             throw new ServiceException("You can only manage your own bookings.");
         }
-        action.accept(booking);
+        try {
+            action.accept(booking);
+        } catch (IllegalStateException e) {
+            throw new ServiceException(e.getMessage());
+        }
     }
 }

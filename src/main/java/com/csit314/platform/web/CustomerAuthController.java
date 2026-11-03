@@ -6,6 +6,7 @@ import com.csit314.platform.service.AuthService;
 import com.csit314.platform.service.CustomerService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.dto.CustomerRegistrationForm;
+import com.csit314.platform.web.session.ClientIp;
 import com.csit314.platform.web.session.LoginSession;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
@@ -35,7 +36,7 @@ public class CustomerAuthController {
                            HttpServletRequest request,
                            RedirectAttributes redirect) {
         try {
-            Customer customer = customerService.register(form, request.getRemoteAddr());
+            Customer customer = customerService.register(form, ClientIp.resolve(request));
             loginSession.start(request, customer);
             redirect.addFlashAttribute("successMessage", "Welcome, " + customer.getFullName() + "! Your account is ready.");
             return "redirect:/search";
@@ -52,7 +53,7 @@ public class CustomerAuthController {
                         HttpServletRequest request,
                         RedirectAttributes redirect) {
         try {
-            UserAccount customer = authService.loginCustomer(email, password, request.getRemoteAddr());
+            UserAccount customer = authService.loginCustomer(email, password, ClientIp.resolve(request));
             loginSession.start(request, customer);
             return "redirect:/favourites";
         } catch (ServiceException e) {

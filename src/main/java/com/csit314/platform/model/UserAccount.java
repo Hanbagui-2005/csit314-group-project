@@ -124,7 +124,11 @@ public abstract class UserAccount {
 
     public void recordFailedLogin() {
         failedLoginAttempts++;
-        if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+        // only starts the clock the first time it crosses the threshold - once locked,
+        // further wrong guesses shouldn't keep pushing the 15-minute expiry back out,
+        // or a locked account could be kept locked indefinitely just by someone
+        // (or something) continuing to guess wrong
+        if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS && lockedAt == null) {
             lockedAt = LocalDateTime.now();
         }
     }

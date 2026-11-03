@@ -56,17 +56,21 @@ public class AuthService {
     private UserAccount login(String email, String password, Role expectedRole, String ipAddress) {
         String normalisedEmail = InputRules.normaliseEmail(email);
         Optional<UserAccount> maybeUser = userAccountRepository.findByEmail(normalisedEmail);
-
-        // ADM-09/13 - locked accounts are rejected before even checking the password
-        if (maybeUser.isPresent() && maybeUser.get().isLocked()) {
-            throw new ServiceException(LOCKED_MESSAGE);
-        }
-
         UserAccount user = maybeUser.orElse(null);
+
+        // the password is checked before the lock, not after - otherwise the locked
+        // message itself would tell a guesser the email has an account at all, locked
+        // or not, without them ever having to get the password right
         if (user == null || password == null || !passwordEncoder.matches(password, user.getPasswordHash())
                 || user.getRole() != expectedRole) {
             recordFailedAttempt(normalisedEmail, ipAddress, user);
             throw new ServiceException(INVALID_CREDENTIALS);
+        }
+
+        // ADM-09/13 - only checked once the password is already known to be right, so
+        // it isn't a second way to find out whether an email has an account
+        if (user.isLocked()) {
+            throw new ServiceException(LOCKED_MESSAGE);
         }
 
         switch (user.getStatus()) {

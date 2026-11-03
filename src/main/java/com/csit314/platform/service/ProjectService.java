@@ -75,6 +75,7 @@ public class ProjectService {
         }
         validateAll(uploaded, uploadedBefore);
         validateBudgetRange(form.budgetMin(), form.budgetMax());
+        validateRoomSize(form.roomSizeSqm());
 
         Project project = new Project(title, description, category, designer);
         project.updateDetails(title, description, category, form.budgetMin(), form.budgetMax(),
@@ -101,6 +102,7 @@ public class ProjectService {
         Category category = categoryRepository.findById(form.categoryId())
                 .orElseThrow(() -> new ServiceException("That category no longer exists."));
         validateBudgetRange(form.budgetMin(), form.budgetMax());
+        validateRoomSize(form.roomSizeSqm());
 
         List<MultipartFile> newAfterPhotos = cleanUploads(afterPhotos);
         List<MultipartFile> newBeforePhotos = cleanUploads(beforePhotos);
@@ -165,6 +167,12 @@ public class ProjectService {
         }
         if (budgetMin > budgetMax) {
             throw new ServiceException("Minimum budget can't be more than the maximum.");
+        }
+    }
+
+    private void validateRoomSize(Integer roomSizeSqm) {
+        if (roomSizeSqm != null && roomSizeSqm <= 0) {
+            throw new ServiceException("Room size must be greater than zero.");
         }
     }
 

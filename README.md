@@ -33,7 +33,7 @@ seeded on first start:
 | Role | Login page | Default email | Default password | Override via |
 |---|---|---|---|---|
 | User Admin | `/admin/login` | `admin@platform.local` | `Admin@12345` | `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
-| Platform Management | `/platform-manager/login` | `platform-manager@platform.local` | `Manager@12345` | `app.platform-manager.email` / `app.platform-manager.password` |
+| Platform Management | `/platform-manager/login` | `platform-manager@platform.local` | `Manager@12345` | `PLATFORM_MANAGER_EMAIL` / `PLATFORM_MANAGER_PASSWORD` |
 
 There's no mail server yet, so password reset links are printed in the app log.
 

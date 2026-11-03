@@ -50,12 +50,20 @@ public class ComplaintService {
 
     @Transactional
     public void resolve(Long complaintId) {
-        find(complaintId).resolve();
+        try {
+            find(complaintId).resolve();
+        } catch (IllegalStateException e) {
+            throw new ServiceException(e.getMessage());
+        }
     }
 
     @Transactional
     public void dismiss(Long complaintId) {
-        find(complaintId).dismiss();
+        try {
+            find(complaintId).dismiss();
+        } catch (IllegalStateException e) {
+            throw new ServiceException(e.getMessage());
+        }
     }
 
     private Complaint find(Long complaintId) {

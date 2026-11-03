@@ -8,6 +8,7 @@ import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.ShortlistRepository;
 import com.csit314.platform.dto.DesignerComparison;
 import com.csit314.platform.dto.ShortlistTrendPoint;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +46,13 @@ public class FavouriteService {
         }
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ServiceException("That project couldn't be found."));
-        shortlistRepository.save(new Shortlist(customer, project));
+        try {
+            shortlistRepository.save(new Shortlist(customer, project));
+        } catch (DataIntegrityViolationException e) {
+            // lost a race with another request for the same (customer, project) pair -
+            // the unique constraint caught it, so it's already shortlisted either way
+            return;
+        }
         project.incrementShortlistCount();
     }
 

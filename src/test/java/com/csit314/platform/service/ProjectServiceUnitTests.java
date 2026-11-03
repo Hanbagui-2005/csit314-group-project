@@ -202,6 +202,29 @@ class ProjectServiceUnitTests {
                 .hasMessageContaining("Minimum");
     }
 
+    @Test
+    void updateRejectsAZeroOrNegativeRoomSize() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        ProjectForm negativeRoomSize = new ProjectForm("Title", "Updated description", 10L, null, null, null, -5);
+
+        assertThatThrownBy(() -> service.updateProject(owner, 100L, negativeRoomSize, null, null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("Room size");
+    }
+
+    @Test
+    void createRejectsAZeroOrNegativeRoomSize() {
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        MockMultipartFile photo = new MockMultipartFile("photos", "a.png", "image/png", "x".getBytes());
+        ProjectForm zeroRoomSize = new ProjectForm("Title", "Updated description", 10L, null, null, null, 0);
+
+        assertThatThrownBy(() -> service.createProject(owner, zeroRoomSize, List.of(photo), null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("Room size");
+        verify(fileStorageService, never()).store(any());
+    }
+
     // IDR-15 - photo file validation is delegated to FileStorageService.validate();
     // this just confirms ProjectService checks every file before storing or saving anything
     // (the actual type/size rules are tested directly in FileStorageServiceUnitTests)
