@@ -7,8 +7,12 @@ import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.UserAccountRepository;
+import com.csit314.platform.dto.AnomalyAlert;
 import com.csit314.platform.dto.CategoryDesignerCoverage;
 import com.csit314.platform.dto.CategoryViewRanking;
+import com.csit314.platform.dto.GrowthForecast;
+import com.csit314.platform.dto.TopDesigner;
+import com.csit314.platform.dto.TopProject;
 import com.csit314.platform.dto.PlatformReport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.DayOfWeek;
@@ -77,7 +81,7 @@ class PlatformReportServiceUnitTests {
         ReflectionTestUtils.setField(kitchens, "id", 1L);
         Category bathrooms = new Category("Bathrooms");
         ReflectionTestUtils.setField(bathrooms, "id", 2L);
-        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(bathrooms, kitchens));
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(bathrooms, kitchens));
 
         when(projectRepository.countDistinctActiveDesignersByCategoryId(1L)).thenReturn(1L);
         when(bookingRepository.countByProjectCategoryId(1L)).thenReturn(5L);
@@ -101,7 +105,7 @@ class PlatformReportServiceUnitTests {
     void aSingleDesignerWithLightBookingLoadIsNotFlaggedAsAShortage() {
         Category kitchens = new Category("Kitchens");
         ReflectionTestUtils.setField(kitchens, "id", 1L);
-        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(kitchens));
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(kitchens));
         when(projectRepository.countDistinctActiveDesignersByCategoryId(1L)).thenReturn(1L);
         when(bookingRepository.countByProjectCategoryId(1L)).thenReturn(2L);
 
@@ -133,7 +137,7 @@ class PlatformReportServiceUnitTests {
         ReflectionTestUtils.setField(kitchens, "id", 1L);
         Category bathrooms = new Category("Bathrooms");
         ReflectionTestUtils.setField(bathrooms, "id", 2L);
-        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(bathrooms, kitchens));
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(bathrooms, kitchens));
 
         when(projectRepository.sumViewCountByCategoryId(1L)).thenReturn(50L);
         when(projectRepository.sumViewCountByCategoryId(2L)).thenReturn(120L);
@@ -143,5 +147,128 @@ class PlatformReportServiceUnitTests {
         assertThat(ranking).extracting(CategoryViewRanking::categoryName)
                 .containsExactly("Bathrooms", "Kitchens");
         assertThat(ranking.get(0).totalViews()).isEqualTo(120L);
+    }
+
+    // PM-10
+    @Test
+    void topDesignersDelegatesToTheRepositoryWithAFixedLimit() {
+        TopDesigner designer = new TopDesigner(1L, "Studio", 100L, 20L);
+        when(projectRepository.topDesigners(any(Pageable.class))).thenReturn(List.of(designer));
+
+        assertThat(service.topDesigners()).containsExactly(designer);
+    }
+
+    @Test
+    void topProjectsDelegatesToTheRepositoryWithAFixedLimit() {
+        TopProject project = new TopProject(1L, "Kitchen remodel", "Studio", 100L, 20L);
+        when(projectRepository.topProjects(any(Pageable.class))).thenReturn(List.of(project));
+
+        assertThat(service.topProjects()).containsExactly(project);
+    }
+
+    // PM-02
+    @Test
+    void growthForecastAveragesTheLastThreeCompletedMonths() {
+        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(10L, 20L, 30L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(4L, 6L, 8L);
+
+        GrowthForecast forecast = service.growthForecast();
+
+        assertThat(forecast.history()).hasSize(3);
+        assertThat(forecast.projectedNewUsers()).isEqualTo(20L);
+        assertThat(forecast.projectedNewListings()).isEqualTo(6L);
+    }
+
+    // PM-14 - checks yesterday (a complete day), not today, against the 7 complete
+    // days before that - see PlatformReportService's own notes on why
+    @Test
+    void anomalyAlertsFlagsYesterdayMuchHigherThanTheRecentAverage() {
+        // the 7 days before yesterday average to 2 new sign-ups/day, yesterday had 10 (a 5x spike)
+        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(10L, 2L, 2L, 2L, 2L, 2L, 2L, 2L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+
+        List<AnomalyAlert> alerts = service.anomalyAlerts();
+
+        assertThat(alerts).extracting(AnomalyAlert::metricLabel).containsExactly("New sign-ups");
+        assertThat(alerts.get(0).value()).isEqualTo(10L);
+    }
+
+    @Test
+    void anomalyAlertsFlagsYesterdayMuchLowerThanTheRecentAverage() {
+        // the 7 days before yesterday average to 10 new sign-ups/day, yesterday had 0 (a total drop)
+        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 10L, 10L, 10L, 10L, 10L, 10L, 10L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+
+        List<AnomalyAlert> alerts = service.anomalyAlerts();
+
+        assertThat(alerts).extracting(AnomalyAlert::metricLabel).containsExactly("New sign-ups");
+    }
+
+    // the exact bug Anthony flagged: today's partial count compared against a
+    // full-day baseline used to look like a drop on every single call, regardless of
+    // the actual (unstubbed, so defaults to 0) activity - now it's never consulted at all
+    @Test
+    void anomalyAlertsNeverLooksAtTodayAtAll() {
+        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
+
+        service.anomalyAlerts();
+
+        ArgumentCaptor<LocalDateTime> startCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(userAccountRepository, atLeastOnce()).countByCreatedAtBetween(startCaptor.capture(), any());
+        LocalDateTime today = LocalDate.now().atStartOfDay();
+        assertThat(startCaptor.getAllValues()).doesNotContain(today);
+    }
+
+    @Test
+    void anomalyAlertsStaysQuietWhenNothingIsUnusual() {
+        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(3L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(1L);
+
+        assertThat(service.anomalyAlerts()).isEmpty();
+    }
+
+    @Test
+    void anomalyAlertsIgnoresASmallBaselineDroppingToZero() {
+        // a baseline under 2/day dropping to zero isn't "significant" - it's noise
+        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L);
+
+        assertThat(service.anomalyAlerts()).isEmpty();
+    }
+
+    // PM-09
+    @Test
+    void exportReportsAsCsvIncludesAHeaderAndOneRowPerPeriod() {
+        when(userAccountRepository.countByRoleAndCreatedAtAfter(any(), any(LocalDateTime.class))).thenReturn(1L);
+        when(projectRepository.countByCreatedAtAfter(any())).thenReturn(2L);
+        when(bookingRepository.countByCreatedAtAfter(any())).thenReturn(3L);
+        when(complaintRepository.countByCreatedAtAfter(any())).thenReturn(4L);
+
+        String csv = service.exportReportsAsCsv();
+
+        assertThat(csv).startsWith("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n");
+        assertThat(csv).contains("Today,1,1,2,3,4\n");
+        assertThat(csv.lines().count()).isEqualTo(4); // header + 3 periods
+    }
+
+    // PM-12 - a complete (midnight-to-midnight) day, not "since midnight today" like
+    // exportReportsAsCsv()'s "Today" row - that would make the scheduled job's 6am
+    // output nearly empty
+    @Test
+    void exportYesterdayReportAsCsvCoversExactlyYesterday() {
+        when(userAccountRepository.countByRoleAndCreatedAtBetween(any(), any(), any())).thenReturn(2L);
+        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(3L);
+        when(bookingRepository.countByCreatedAtBetween(any(), any())).thenReturn(4L);
+        when(complaintRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
+
+        String csv = service.exportYesterdayReportAsCsv();
+
+        assertThat(csv).isEqualTo("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n"
+                + "Yesterday,2,2,3,4,5\n");
+
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime yesterdayStart = todayStart.minusDays(1);
+        verify(projectRepository).countByCreatedAtBetween(yesterdayStart, todayStart);
     }
 }

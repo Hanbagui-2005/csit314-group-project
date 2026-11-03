@@ -18,6 +18,11 @@ public class Category {
     @Column(nullable = false, unique = true, length = 60)
     private String name;
 
+    // PM-13 - deactivated instead of removed, so a project that still references this
+    // category keeps working; only active categories are offered for new projects
+    @Column(nullable = false)
+    private boolean active = true;
+
     protected Category() {
     }
 
@@ -30,11 +35,27 @@ public class Category {
         this.name = name;
     }
 
+    // PM-13
+    public void deactivate() {
+        this.active = false;
+    }
+
+    // PM-13 - adding a category with the same name as a deactivated one reactivates it
+    // instead of erroring or creating a duplicate; this is the only way back since
+    // there's no separate reactivate button
+    public void activate() {
+        this.active = true;
+    }
+
     public Long getId() {
         return id;
     }
 
     public String getName() {
         return name;
+    }
+
+    public boolean isActive() {
+        return active;
     }
 }

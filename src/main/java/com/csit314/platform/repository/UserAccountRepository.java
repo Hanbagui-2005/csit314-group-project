@@ -29,4 +29,12 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
 
     // PM-06/PM-08 - activity reports
     long countByRoleAndCreatedAtAfter(Role role, LocalDateTime since);
+
+    // PM-02/PM-14 - new accounts (any role) created within an arbitrary window, for the
+    // growth forecast's monthly history and the anomaly check's daily baseline
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    // PM-12 - new accounts of one role within an arbitrary (bounded) window, for the
+    // scheduled report's "yesterday" figures
+    long countByRoleAndCreatedAtBetween(Role role, LocalDateTime start, LocalDateTime end);
 }

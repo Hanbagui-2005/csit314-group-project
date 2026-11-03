@@ -30,6 +30,7 @@ class ProjectServiceUnitTests {
     @Mock ProjectRepository projectRepository;
     @Mock CategoryRepository categoryRepository;
     @Mock FileStorageService fileStorageService;
+    @Mock ImageSimilarityService imageSimilarityService;
     ProjectService service;
 
     InteriorDesigner owner;
@@ -39,7 +40,7 @@ class ProjectServiceUnitTests {
 
     @BeforeEach
     void setUp() {
-        service = new ProjectService(projectRepository, categoryRepository, fileStorageService);
+        service = new ProjectService(projectRepository, categoryRepository, fileStorageService, imageSimilarityService);
 
         owner = new InteriorDesigner("Owner", "owner@example.test", "encoded",
                 new Company("Studio", "Description", "12345"));
@@ -240,5 +241,131 @@ class ProjectServiceUnitTests {
                 .hasMessageContaining("supported image type");
         verify(fileStorageService, never()).store(any());
         verify(projectRepository, never()).save(any());
+    }
+
+    // PM-04 - every uploaded photo is checked against the rest of the platform once the
+    // project has been saved (and so has an id/real photo URLs to check with)
+    @Test
+    void createChecksEveryUploadedPhotoForPlagiarism() {
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        MockMultipartFile photo = new MockMultipartFile("photos", "a.png", "image/png", "real-bytes".getBytes());
+        when(fileStorageService.store(photo)).thenReturn("/uploads/projects/a.png");
+        when(projectRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createProject(owner, form("Title"), List.of(photo), null);
+
+        verify(imageSimilarityService).checkAndRecord(any(Project.class), eq("/uploads/projects/a.png"),
+                eq("real-bytes".getBytes()));
+    }
+
+    @Test
+    void updateChecksOnlyTheNewlyAddedPhotosForPlagiarism() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        project.addPhoto("/uploads/projects/existing.png");
+        MockMultipartFile newPhoto = new MockMultipartFile("photos", "b.png", "image/png", "new-bytes".getBytes());
+        when(fileStorageService.store(newPhoto)).thenReturn("/uploads/projects/b.png");
+
+        service.updateProject(owner, 100L, form("Title"), List.of(newPhoto), null);
+
+        verify(imageSimilarityService).checkAndRecord(eq(project), eq("/uploads/projects/b.png"),
+                eq("new-bytes".getBytes()));
+        verify(imageSimilarityService, never()).checkAndRecord(any(), eq("/uploads/projects/existing.png"), any());
+    }
+
+    // PM-04 - before photos can be plagiarised too, same as the "after" ones
+    @Test
+    void createChecksBeforePhotosForPlagiarismToo() {
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        MockMultipartFile after = new MockMultipartFile("photos", "a.png", "image/png", "after-bytes".getBytes());
+        MockMultipartFile before = new MockMultipartFile("beforePhotos", "b.png", "image/png", "before-bytes".getBytes());
+        when(fileStorageService.store(after)).thenReturn("/uploads/projects/a.png");
+        when(fileStorageService.store(before)).thenReturn("/uploads/projects/before.png");
+        when(projectRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.createProject(owner, form("Title"), List.of(after), List.of(before));
+
+        verify(imageSimilarityService).checkAndRecord(any(Project.class), eq("/uploads/projects/before.png"),
+                eq("before-bytes".getBytes()));
+    }
+
+    @Test
+    void updateChecksOnlyTheNewlyAddedBeforePhotosForPlagiarism() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        project.addBeforePhoto("/uploads/projects/existing-before.png");
+        MockMultipartFile newBefore = new MockMultipartFile("beforePhotos", "c.png", "image/png", "new-before".getBytes());
+        when(fileStorageService.store(newBefore)).thenReturn("/uploads/projects/c.png");
+
+        service.updateProject(owner, 100L, form("Title"), null, List.of(newBefore));
+
+        verify(imageSimilarityService).checkAndRecord(eq(project), eq("/uploads/projects/c.png"),
+                eq("new-before".getBytes()));
+        verify(imageSimilarityService, never())
+                .checkAndRecord(any(), eq("/uploads/projects/existing-before.png"), any());
+    }
+
+    // PM-13
+    @Test
+    void createRejectsADeactivatedCategory() {
+        category.deactivate();
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        MockMultipartFile photo = new MockMultipartFile("photos", "a.png", "image/png", "x".getBytes());
+
+        assertThatThrownBy(() -> service.createProject(owner, form("Title"), List.of(photo), null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("no longer available");
+        verify(fileStorageService, never()).store(any());
+    }
+
+    @Test
+    void updateAllowsKeepingTheProjectsCurrentCategoryEvenIfItsSinceBeenDeactivated() {
+        category.deactivate();
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        Project result = service.updateProject(owner, 100L, form("Updated title"), null, null);
+
+        assertThat(result.getCategory()).isEqualTo(category);
+    }
+
+    @Test
+    void updateRejectsSwitchingToADifferentDeactivatedCategory() {
+        Category otherCategory = new Category("Bathroom");
+        ReflectionTestUtils.setField(otherCategory, "id", 20L);
+        otherCategory.deactivate();
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        when(categoryRepository.findById(20L)).thenReturn(Optional.of(otherCategory));
+        ProjectForm switchToDeactivated = new ProjectForm("Title", "Updated description", 20L, null, null, null, null);
+
+        assertThatThrownBy(() -> service.updateProject(owner, 100L, switchToDeactivated, null, null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("no longer available");
+        assertThat(project.getCategory()).isEqualTo(category);
+    }
+
+    // PM-13 - without this, the edit form's dropdown wouldn't include the project's
+    // current category once it's deactivated, nothing would be selected, the browser
+    // would default to the first option, and saving any other edit would silently
+    // move the project to an unrelated category
+    @Test
+    void listCategoriesForEditIncludesTheProjectsOwnDeactivatedCategory() {
+        category.deactivate();
+        Category activeOne = new Category("Bathroom");
+        ReflectionTestUtils.setField(activeOne, "id", 20L);
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(activeOne));
+
+        List<Category> result = service.listCategoriesForEdit(project);
+
+        assertThat(result).containsExactlyInAnyOrder(activeOne, category);
+    }
+
+    @Test
+    void listCategoriesForEditDoesNotDuplicateAnAlreadyActiveCategory() {
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(category));
+
+        List<Category> result = service.listCategoriesForEdit(project);
+
+        assertThat(result).containsExactly(category);
     }
 }

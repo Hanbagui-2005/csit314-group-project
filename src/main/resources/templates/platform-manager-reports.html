@@ -6,7 +6,16 @@
 <div class="container">
 
     <h4 class="mb-3">Platform activity reports</h4>
-    <p class="text-muted small mb-3">Each window counts activity from now back to the start of that period.</p>
+
+    <!-- PM-14 - checked against yesterday (the most recent complete day), not today -->
+    <div class="alert alert-warning" th:each="alert : ${anomalyAlerts}">
+        <strong th:text="${alert.metricLabel}">Metric</strong> looked unusual yesterday:
+        <span th:text="${alert.value}">0</span> vs a recent daily average of
+        <span th:text="${#numbers.formatDecimal(alert.recentAverage, 1, 1)}">0.0</span>.
+    </div>
+
+    <p class="text-muted small mb-3">Each window counts activity from now back to the start of that period.
+        <a th:href="@{/platform-manager/reports/export.csv}">Export as CSV</a> (PM-09).</p>
 
     <table class="table table-hover align-middle">
         <thead>
@@ -58,7 +67,7 @@
     </table>
 
     <h4 class="mb-3 mt-5">Most-viewed categories</h4>
-    <p class="text-muted small mb-3">PM-10 - categories ranked by total views across their projects, so
+    <p class="text-muted small mb-3">Categories ranked by total views across their projects, so
         PM can see what's popular with customers.</p>
 
     <table class="table table-hover align-middle">
@@ -75,6 +84,91 @@
         </tr>
         </tbody>
     </table>
+
+    <h4 class="mb-3 mt-5">Top-performing designers and projects</h4>
+    <p class="text-muted small mb-3">PM-10 - ranked by views + shortlists, so PM can consider featuring them.</p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <table class="table table-hover align-middle">
+                <thead>
+                <tr>
+                    <th>Designer</th>
+                    <th>Views</th>
+                    <th>Shortlists</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="designer : ${topDesigners}">
+                    <td th:text="${designer.companyName}">Studio</td>
+                    <td th:text="${designer.totalViews}">0</td>
+                    <td th:text="${designer.totalShortlists}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-6">
+            <table class="table table-hover align-middle">
+                <thead>
+                <tr>
+                    <th>Project</th>
+                    <th>Designer</th>
+                    <th>Views</th>
+                    <th>Shortlists</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="project : ${topProjects}">
+                    <td th:text="${project.title}">Project</td>
+                    <td th:text="${project.companyName}">Studio</td>
+                    <td th:text="${project.viewCount}">0</td>
+                    <td th:text="${project.shortlistCount}">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <h4 class="mb-3 mt-5">Growth forecast</h4>
+    <p class="text-muted small mb-3">PM-02 - next month's projection is the average of the last
+        <span th:text="${#lists.size(growthForecast.history)}">3</span> completed months, for capacity planning.</p>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Month</th>
+            <th>New users</th>
+            <th>New listings</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="month : ${growthForecast.history}">
+            <td th:text="${month.monthLabel}">Month</td>
+            <td th:text="${month.newUsers}">0</td>
+            <td th:text="${month.newListings}">0</td>
+        </tr>
+        <tr class="table-active">
+            <td><strong>Projected next month</strong></td>
+            <td th:text="${growthForecast.projectedNewUsers}">0</td>
+            <td th:text="${growthForecast.projectedNewListings}">0</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h4 class="mb-3 mt-5">Generated reports</h4>
+    <p class="text-muted small mb-3">PM-12 - one of these is written automatically every morning, covering
+        the previous complete day. Download without needing server access.</p>
+
+    <ul class="list-group" style="max-width: 400px;">
+        <li class="list-group-item d-flex justify-content-between align-items-center"
+            th:each="filename : ${generatedReports}">
+            <span th:text="${filename}">platform-activity-2026-01-01.csv</span>
+            <a class="btn btn-sm btn-outline-dark"
+               th:href="@{/platform-manager/reports/generated/{filename}(filename=${filename})}">Download</a>
+        </li>
+    </ul>
+    <p th:if="${#lists.isEmpty(generatedReports)}" class="text-muted">
+        No reports generated yet - the first one appears after tomorrow morning's run.</p>
 
 </div>
 </body>

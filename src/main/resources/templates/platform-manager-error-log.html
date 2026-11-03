@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('System error log')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container">
+
+    <h4 class="mb-3">System error log</h4>
+    <p class="text-muted small mb-3">PM-15 - unexpected errors are logged here automatically; the
+        last 50, most recent first.</p>
+
+    <table class="table table-hover align-middle">
+        <thead>
+        <tr>
+            <th>When</th>
+            <th>Request path</th>
+            <th>Details</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="error : ${errors}">
+            <td th:text="${#temporals.format(error.occurredAt, 'dd MMM yyyy HH:mm')}">date</td>
+            <td th:text="${error.requestPath}">/path</td>
+            <td><pre class="small mb-0" th:text="${error.details}">Stack trace</pre></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p th:if="${#lists.isEmpty(errors)}" class="text-muted">No errors logged - platform's healthy.</p>
+
+</div>
+</body>
+</html>

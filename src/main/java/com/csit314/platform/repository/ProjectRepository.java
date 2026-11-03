@@ -1,6 +1,9 @@
 package com.csit314.platform.repository;
 
+import com.csit314.platform.dto.TopDesigner;
+import com.csit314.platform.dto.TopProject;
 import com.csit314.platform.model.Project;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,11 +15,16 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
 
-    // supports PM-01 - a category still used by at least one project can't be deleted
-    long countByCategoryId(Long categoryId);
+    // PM-03 - every project in a category being merged away, so they can be
+    // reassigned to the surviving category
+    List<Project> findByCategoryId(Long categoryId);
 
     // PM-06/PM-08 - activity reports
     long countByCreatedAtAfter(LocalDateTime since);
+
+    // PM-02/PM-14 - new projects within an arbitrary window, for the growth forecast's
+    // monthly history and the anomaly check's daily baseline
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     // PM-07 - active designers who have at least one project in this category
     @Query("select count(distinct p.designer.id) from Project p "
@@ -55,7 +63,24 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // CUS-05 - other projects in categories the customer already likes
     List<Project> findByCategoryIdInAndIdNotInOrderByCreatedAtDesc(List<Long> categoryIds, List<Long> excludeIds);
 
-    // PM-10 - total views across all of a category's projects, so PM can see what's popular
+    // extra, not its own tracked story - total views across all of a category's
+    // projects, so PM can see what's popular
     @Query("select coalesce(sum(p.viewCount), 0) from Project p where p.category.id = :categoryId")
     long sumViewCountByCategoryId(@Param("categoryId") Long categoryId);
+
+    // PM-10 - designers ranked by their whole portfolio's views + shortlists, highest
+    // first; Pageable caps how many come back (the service asks for a fixed top N)
+    @Query("select new com.csit314.platform.dto.TopDesigner(d.id, c.name, sum(p.viewCount), sum(p.shortlistCount)) "
+            + "from Project p join p.designer d join d.company c "
+            + "where d.status = com.csit314.platform.model.AccountStatus.ACTIVE "
+            + "group by d.id, c.name "
+            + "order by sum(p.viewCount) + sum(p.shortlistCount) desc")
+    List<TopDesigner> topDesigners(Pageable limit);
+
+    // PM-10 - individual projects ranked by their own views + shortlists, highest first
+    @Query("select new com.csit314.platform.dto.TopProject(p.id, p.title, c.name, p.viewCount, p.shortlistCount) "
+            + "from Project p join p.designer d join d.company c "
+            + "where d.status = com.csit314.platform.model.AccountStatus.ACTIVE "
+            + "order by p.viewCount + p.shortlistCount desc")
+    List<TopProject> topProjects(Pageable limit);
 }
