@@ -4,6 +4,7 @@ import com.csit314.platform.model.Category;
 import com.csit314.platform.service.CategoryManagementService;
 import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.PlatformReportService;
+import com.csit314.platform.service.ProjectFlagService;
 import com.csit314.platform.service.ServiceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -24,13 +25,16 @@ public class PlatformManagerController {
     private final CategoryManagementService categoryManagementService;
     private final PlatformReportService platformReportService;
     private final DesignerService designerService;
+    private final ProjectFlagService projectFlagService;
 
     public PlatformManagerController(CategoryManagementService categoryManagementService,
                                      PlatformReportService platformReportService,
-                                     DesignerService designerService) {
+                                     DesignerService designerService,
+                                     ProjectFlagService projectFlagService) {
         this.categoryManagementService = categoryManagementService;
         this.platformReportService = platformReportService;
         this.designerService = designerService;
+        this.projectFlagService = projectFlagService;
     }
 
     // PM-01
@@ -118,6 +122,37 @@ public class PlatformManagerController {
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"platform-activity-report.csv\"")
                 .body(csv);
+    }
+
+    // PM-11
+    @GetMapping("/flagged-projects")
+    public String flaggedProjects(Model model) {
+        model.addAttribute("flags", projectFlagService.all());
+        return "platform-manager-flagged-projects";
+    }
+
+    // PM-11
+    @PostMapping("/flagged-projects/{id}/review")
+    public String reviewFlaggedProject(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            projectFlagService.review(id);
+            redirect.addFlashAttribute("successMessage", "Marked as reviewed.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/platform-manager/flagged-projects";
+    }
+
+    // PM-11
+    @PostMapping("/flagged-projects/{id}/dismiss")
+    public String dismissFlaggedProject(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            projectFlagService.dismiss(id);
+            redirect.addFlashAttribute("successMessage", "Flag dismissed.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/platform-manager/flagged-projects";
     }
 
     // PM-05
