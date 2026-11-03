@@ -51,7 +51,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // CUS-05 - other projects in categories the customer already likes
     List<Project> findByCategoryIdInAndIdNotInOrderByCreatedAtDesc(List<Long> categoryIds, List<Long> excludeIds);
 
-    // PM-04 - total views across all of a category's projects, so PM can see what's popular
+    // PM-10 - total views across all of a category's projects, so PM can see what's popular
     @Query("select coalesce(sum(p.viewCount), 0) from Project p where p.category.id = :categoryId")
     long sumViewCountByCategoryId(@Param("categoryId") Long categoryId);
 }
