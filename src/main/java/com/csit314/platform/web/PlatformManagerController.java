@@ -6,6 +6,7 @@ import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.PlatformReportService;
 import com.csit314.platform.service.ProjectFlagService;
 import com.csit314.platform.service.ServiceException;
+import com.csit314.platform.service.SystemErrorLogService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,15 +27,18 @@ public class PlatformManagerController {
     private final PlatformReportService platformReportService;
     private final DesignerService designerService;
     private final ProjectFlagService projectFlagService;
+    private final SystemErrorLogService systemErrorLogService;
 
     public PlatformManagerController(CategoryManagementService categoryManagementService,
                                      PlatformReportService platformReportService,
                                      DesignerService designerService,
-                                     ProjectFlagService projectFlagService) {
+                                     ProjectFlagService projectFlagService,
+                                     SystemErrorLogService systemErrorLogService) {
         this.categoryManagementService = categoryManagementService;
         this.platformReportService = platformReportService;
         this.designerService = designerService;
         this.projectFlagService = projectFlagService;
+        this.systemErrorLogService = systemErrorLogService;
     }
 
     // PM-01
@@ -153,6 +157,13 @@ public class PlatformManagerController {
             redirect.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/platform-manager/flagged-projects";
+    }
+
+    // PM-15
+    @GetMapping("/error-log")
+    public String errorLog(Model model) {
+        model.addAttribute("errors", systemErrorLogService.recent());
+        return "platform-manager-error-log";
     }
 
     // PM-05
