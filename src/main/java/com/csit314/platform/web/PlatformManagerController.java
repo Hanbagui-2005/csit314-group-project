@@ -5,6 +5,9 @@ import com.csit314.platform.service.CategoryManagementService;
 import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.PlatformReportService;
 import com.csit314.platform.service.ServiceException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -92,14 +95,29 @@ public class PlatformManagerController {
     }
 
     // PM-06 (daily figures) / PM-08 (monthly summary) combined into one report with a
-    // bonus weekly window; PM-09 (PDF/CSV export) and PM-12 (scheduled generation) aren't implemented
+    // bonus weekly window. PM-02 (growth forecast), PM-10 (top performers) and PM-14
+    // (anomaly alerts) all surface here too since they're all report-page content
     @GetMapping("/reports")
     public String reports(Model model) {
         model.addAttribute("reports", platformReportService.reports());
         model.addAttribute("categoryCoverage", platformReportService.categoryDesignerCoverage());
-        // PM-10
         model.addAttribute("categoryViewRanking", platformReportService.categoryViewRanking());
+        model.addAttribute("growthForecast", platformReportService.growthForecast());
+        model.addAttribute("topDesigners", platformReportService.topDesigners());
+        model.addAttribute("topProjects", platformReportService.topProjects());
+        model.addAttribute("anomalyAlerts", platformReportService.anomalyAlerts());
         return "platform-manager-reports";
+    }
+
+    // PM-09 - CSV export of the activity report (the "or CSV" half of "PDF or CSV" -
+    // see PlatformReportService.exportReportsAsCsv for why PDF isn't implemented)
+    @GetMapping("/reports/export.csv")
+    public ResponseEntity<String> exportReportsAsCsv() {
+        String csv = platformReportService.exportReportsAsCsv();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"platform-activity-report.csv\"")
+                .body(csv);
     }
 
     // PM-05
