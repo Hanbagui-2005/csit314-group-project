@@ -87,4 +87,26 @@ class AdminInsightsServiceUnitTests {
         assertThat(result.get(0).designer()).isEqualTo(busy);
         assertThat(result.get(1).designer()).isEqualTo(quiet);
     }
+
+    // ADM-11 - a designer with complaints but zero bookings has a null disputeRate
+    // (nothing to divide by), but shouldn't rank the same as one with no complaints at all
+    @Test
+    void aDesignerWithComplaintsButNoBookingsOutranksOneWithNeither() {
+        InteriorDesigner complainedAbout = new InteriorDesigner("Flagged", "flagged@example.test", "encoded",
+                new Company("Flagged Studio", "d", "p"));
+        ReflectionTestUtils.setField(complainedAbout, "id", 3L);
+
+        when(designerRepository.findAll()).thenReturn(List.of(quiet, complainedAbout));
+        when(complaintRepository.countByDesignerId(2L)).thenReturn(0L);
+        when(bookingRepository.countByDesignerId(2L)).thenReturn(0L);
+        when(bookingRepository.countByDesignerIdAndStatus(2L, BookingStatus.CANCELLED)).thenReturn(0L);
+        when(complaintRepository.countByDesignerId(3L)).thenReturn(4L);
+        when(bookingRepository.countByDesignerId(3L)).thenReturn(0L);
+        when(bookingRepository.countByDesignerIdAndStatus(3L, BookingStatus.CANCELLED)).thenReturn(0L);
+
+        List<DesignerQualitySummary> result = service.designerQualitySummaries();
+
+        assertThat(result.get(0).designer()).isEqualTo(complainedAbout);
+        assertThat(result.get(1).designer()).isEqualTo(quiet);
+    }
 }

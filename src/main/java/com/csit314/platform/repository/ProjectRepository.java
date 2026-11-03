@@ -23,22 +23,32 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             + "where p.category.id = :categoryId and p.designer.status = com.csit314.platform.model.AccountStatus.ACTIVE")
     long countDistinctActiveDesignersByCategoryId(@Param("categoryId") Long categoryId);
 
-    // IDR-10/CUS-04/CUS-09 - Browse search, filters on keyword/category/budget/room size/verified when given
+    // IDR-10/CUS-04/CUS-09/CUS-10/PM-05 - Browse search, filters on keyword/category/budget/room
+    // size/verified/location when given. Only shows projects from ACTIVE designers - a suspended,
+    // pending or rejected designer's work shouldn't be browsable. The location filter is what
+    // actually puts PM-05's service-area check in front of customers, instead of it only being
+    // visible on the Platform Management page.
     @Query("select p from Project p where "
             + "(:query is null or lower(p.title) like lower(concat('%', :query, '%')) "
             + "or lower(p.description) like lower(concat('%', :query, '%'))) "
             + "and (:categoryName is null or p.category.name = :categoryName) "
             + "and (:maxBudget is null or p.budgetMax <= :maxBudget) "
-            + "and (:minRoomSize is null or p.roomSizeSqm >= :minRoomSize) "
+            + "and (:minRoomSize is null or p.roomSizeSqm <= :minRoomSize) "
             + "and (:verifiedOnly = false or p.designer.verified = true) "
+            + "and (:location is null or lower(p.designer.company.serviceArea) like lower(concat('%', :location, '%'))) "
+            + "and p.designer.status = com.csit314.platform.model.AccountStatus.ACTIVE "
             + "order by p.createdAt desc")
     List<Project> search(@Param("query") String query, @Param("categoryName") String categoryName,
                          @Param("maxBudget") Integer maxBudget, @Param("minRoomSize") Integer minRoomSize,
-                         @Param("verifiedOnly") boolean verifiedOnly);
+                         @Param("verifiedOnly") boolean verifiedOnly, @Param("location") String location);
 
     // CUS-12 - only listings that actually gave a budget, to estimate a range from
     List<Project> findByCategoryNameAndBudgetMinIsNotNull(String categoryName);
 
     // CUS-05 - other projects in categories the customer already likes
     List<Project> findByCategoryIdInAndIdNotInOrderByCreatedAtDesc(List<Long> categoryIds, List<Long> excludeIds);
+
+    // PM-04 - total views across all of a category's projects, so PM can see what's popular
+    @Query("select coalesce(sum(p.viewCount), 0) from Project p where p.category.id = :categoryId")
+    long sumViewCountByCategoryId(@Param("categoryId") Long categoryId);
 }

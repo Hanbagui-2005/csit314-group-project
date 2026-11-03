@@ -8,15 +8,19 @@ import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.UserAccountRepository;
 import com.csit314.platform.dto.CategoryDesignerCoverage;
+import com.csit314.platform.dto.CategoryViewRanking;
 import com.csit314.platform.dto.PlatformReport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -89,5 +93,55 @@ class PlatformReportServiceUnitTests {
         CategoryDesignerCoverage bathroomCoverage = coverage.stream()
                 .filter(c -> c.categoryId().equals(2L)).findFirst().orElseThrow();
         assertThat(bathroomCoverage.shortage()).isFalse();
+    }
+
+    // PM-07 - a single designer with 2 bookings isn't short-staffed just because
+    // 2 (bookings) > 1 (designer); the ratio is what should matter
+    @Test
+    void aSingleDesignerWithLightBookingLoadIsNotFlaggedAsAShortage() {
+        Category kitchens = new Category("Kitchens");
+        ReflectionTestUtils.setField(kitchens, "id", 1L);
+        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(kitchens));
+        when(projectRepository.countDistinctActiveDesignersByCategoryId(1L)).thenReturn(1L);
+        when(bookingRepository.countByProjectCategoryId(1L)).thenReturn(2L);
+
+        List<CategoryDesignerCoverage> coverage = service.categoryDesignerCoverage();
+
+        assertThat(coverage.get(0).shortage()).isFalse();
+    }
+
+    // PM-06/PM-08 - "Today" means since midnight, "This week" since Monday, "This month"
+    // since the 1st, not a rolling 24h/7d/30d window
+    @Test
+    void reportPeriodsUseCalendarBoundariesNotRollingWindows() {
+        when(projectRepository.countByCreatedAtAfter(any())).thenReturn(0L);
+        ArgumentCaptor<LocalDateTime> sinceCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+
+        service.reports();
+
+        verify(projectRepository, times(3)).countByCreatedAtAfter(sinceCaptor.capture());
+        LocalDate today = LocalDate.now();
+        List<LocalDateTime> captured = sinceCaptor.getAllValues();
+        assertThat(captured.get(0)).isEqualTo(today.atStartOfDay());
+        assertThat(captured.get(1)).isEqualTo(today.with(DayOfWeek.MONDAY).atStartOfDay());
+        assertThat(captured.get(2)).isEqualTo(today.withDayOfMonth(1).atStartOfDay());
+    }
+
+    @Test
+    void ranksCategoriesWithMostViewsFirst() {
+        Category kitchens = new Category("Kitchens");
+        ReflectionTestUtils.setField(kitchens, "id", 1L);
+        Category bathrooms = new Category("Bathrooms");
+        ReflectionTestUtils.setField(bathrooms, "id", 2L);
+        when(categoryRepository.findAll(any(Sort.class))).thenReturn(List.of(bathrooms, kitchens));
+
+        when(projectRepository.sumViewCountByCategoryId(1L)).thenReturn(50L);
+        when(projectRepository.sumViewCountByCategoryId(2L)).thenReturn(120L);
+
+        List<CategoryViewRanking> ranking = service.categoryViewRanking();
+
+        assertThat(ranking).extracting(CategoryViewRanking::categoryName)
+                .containsExactly("Bathrooms", "Kitchens");
+        assertThat(ranking.get(0).totalViews()).isEqualTo(120L);
     }
 }

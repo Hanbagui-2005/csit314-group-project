@@ -1,5 +1,6 @@
 package com.csit314.platform.web;
 
+import com.csit314.platform.model.AccountStatus;
 import com.csit314.platform.model.Customer;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.model.Role;
@@ -41,7 +42,8 @@ public class DesignerProfileController {
     @GetMapping("/designers/{id}")
     public String profile(@PathVariable Long id, HttpServletRequest request, Model model, RedirectAttributes redirect) {
         InteriorDesigner designer = designerService.findById(id).orElse(null);
-        if (designer == null) {
+        // CUS-10 - a pending, rejected or suspended designer shouldn't have a public profile
+        if (designer == null || designer.getStatus() != AccountStatus.ACTIVE) {
             redirect.addFlashAttribute("errorMessage", "That designer couldn't be found.");
             return "redirect:/search";
         }

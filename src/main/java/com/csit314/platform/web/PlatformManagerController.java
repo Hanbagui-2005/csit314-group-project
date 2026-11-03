@@ -81,6 +81,8 @@ public class PlatformManagerController {
     public String reports(Model model) {
         model.addAttribute("reports", platformReportService.reports());
         model.addAttribute("categoryCoverage", platformReportService.categoryDesignerCoverage());
+        // PM-04
+        model.addAttribute("categoryViewRanking", platformReportService.categoryViewRanking());
         return "platform-manager-reports";
     }
 

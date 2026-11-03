@@ -40,9 +40,12 @@ public class AdminInsightsService {
     public List<DesignerQualitySummary> designerQualitySummaries() {
         return designerRepository.findAll().stream()
                 .map(this::summarise)
-                // highest dispute rate first, nulls (no bookings at all) go last
+                // highest dispute rate first; a designer with complaints but no bookings has
+                // a null rate (nothing to divide by), so raw complaint count breaks ties among
+                // nulls instead of all of them sinking to the bottom regardless of complaints
                 .sorted(Comparator.comparing(DesignerQualitySummary::disputeRate,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
+                                Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(DesignerQualitySummary::complaintCount, Comparator.reverseOrder()))
                 .toList();
     }
 

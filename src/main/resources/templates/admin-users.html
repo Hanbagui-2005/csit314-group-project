@@ -10,13 +10,17 @@
         <span th:if="${pendingCount > 0}" class="badge bg-warning text-dark" th:text="${pendingCount} + ' pending'">0 pending</span>
     </div>
 
-    <form method="post" id="bulkForm">
-        <div class="d-flex gap-2 mb-2">
-            <button type="submit" formaction="/admin/users/bulk-approve" class="btn btn-sm btn-success">Approve selected</button>
-            <button type="submit" formaction="/admin/users/bulk-suspend" class="btn btn-sm btn-outline-danger">Suspend selected</button>
-        </div>
+    <!-- a per-row <form> below can't nest inside this one, so this form stays empty and
+         every control that submits to it (the checkboxes, the bulk buttons) points at it
+         by id with the form="bulkForm" attribute instead -->
+    <form method="post" id="bulkForm"></form>
 
-        <table class="table table-hover align-middle">
+    <div class="d-flex gap-2 mb-2">
+        <button type="submit" form="bulkForm" formaction="/admin/users/bulk-approve" class="btn btn-sm btn-success">Approve selected</button>
+        <button type="submit" form="bulkForm" formaction="/admin/users/bulk-suspend" class="btn btn-sm btn-outline-danger">Suspend selected</button>
+    </div>
+
+    <table class="table table-hover align-middle">
             <thead>
             <tr>
                 <th></th>
@@ -78,8 +82,7 @@
                 </td>
             </tr>
             </tbody>
-        </table>
-    </form>
+    </table>
 
     <p th:if="${#lists.isEmpty(users)}" class="text-muted">No users found.</p>
 

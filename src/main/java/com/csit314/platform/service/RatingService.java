@@ -12,6 +12,7 @@ import com.csit314.platform.dto.RatingSummary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 // CUS-13
@@ -34,8 +35,9 @@ public class RatingService {
         if (form.score() == null || form.score() < 1 || form.score() > 5) {
             throw new ServiceException("Rating must be between 1 and 5.");
         }
-        if (!bookingRepository.existsByCustomerIdAndDesignerIdAndStatus(customer.getId(), designerId, BookingStatus.ACCEPTED)) {
-            throw new ServiceException("You can only rate a designer after they've accepted a booking with you.");
+        if (!bookingRepository.existsByCustomerIdAndDesignerIdAndStatusAndPreferredDateLessThanEqual(
+                customer.getId(), designerId, BookingStatus.ACCEPTED, LocalDate.now())) {
+            throw new ServiceException("You can only rate a designer after an accepted booking with them has taken place.");
         }
         InteriorDesigner designer = designerRepository.findById(designerId)
                 .orElseThrow(() -> new ServiceException("That designer no longer exists."));
@@ -57,6 +59,7 @@ public class RatingService {
     }
 
     public boolean canRate(Customer customer, Long designerId) {
-        return bookingRepository.existsByCustomerIdAndDesignerIdAndStatus(customer.getId(), designerId, BookingStatus.ACCEPTED);
+        return bookingRepository.existsByCustomerIdAndDesignerIdAndStatusAndPreferredDateLessThanEqual(
+                customer.getId(), designerId, BookingStatus.ACCEPTED, LocalDate.now());
     }
 }

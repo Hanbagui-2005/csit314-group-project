@@ -77,6 +77,8 @@ public class PasswordResetService {
         InputRules.checkNewPassword(newPassword, confirmPassword);
 
         token.getUser().setPasswordHash(passwordEncoder.encode(newPassword));
+        // ADM-09/13 - a successful reset proves account ownership, so it also clears any lock
+        token.getUser().clearFailedLogins();
         token.markUsed();
     }
 

@@ -1,6 +1,7 @@
 package com.csit314.platform.repository;
 
 import com.csit314.platform.model.Complaint;
+import com.csit314.platform.model.ComplaintStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -16,4 +17,7 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
 
     // PM-06/PM-08 - activity reports
     long countByCreatedAtAfter(LocalDateTime since);
+
+    // ADM-10 - at most one open complaint per customer per designer at a time
+    boolean existsByCustomerIdAndDesignerIdAndStatus(Long customerId, Long designerId, ComplaintStatus status);
 }
