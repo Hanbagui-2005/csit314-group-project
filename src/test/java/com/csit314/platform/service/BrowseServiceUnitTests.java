@@ -1,5 +1,6 @@
 package com.csit314.platform.service;
 
+import com.csit314.platform.model.AccountStatus;
 import com.csit314.platform.model.Category;
 import com.csit314.platform.model.Company;
 import com.csit314.platform.model.InteriorDesigner;
@@ -37,6 +38,7 @@ class BrowseServiceUnitTests {
 
         designer = new InteriorDesigner("Designer", "designer@example.test", "encoded",
                 new Company("Studio", "Description", "12345"));
+        designer.setStatus(AccountStatus.ACTIVE);
         category = new Category("Kitchen");
         project = new Project("Kitchen remodel", "Description", category, designer);
         ReflectionTestUtils.setField(project, "id", 100L);
@@ -99,6 +101,32 @@ class BrowseServiceUnitTests {
 
         assertThat(project.getViewCount()).isEqualTo(0);
         verifyNoInteractions(projectViewRepository);
+    }
+
+    // a suspended/pending/rejected designer's project detail page should behave the same
+    // as it being missing from search - hidden, and not even counted as a view
+    @Test
+    void viewingAProjectFromADesignerWhoIsntActiveFails() {
+        designer.setStatus(AccountStatus.SUSPENDED);
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        assertThatThrownBy(() -> service.viewProject(100L, null, true))
+                .isInstanceOf(ServiceException.class);
+        assertThat(project.getViewCount()).isEqualTo(0);
+        verifyNoInteractions(projectViewRepository);
+    }
+
+    // the designer themself can still see their own project even while it's hidden from
+    // everyone else - same carve-out as the view-count check above
+    @Test
+    void theOwnerDesignerCanStillViewTheirOwnProjectWhileNotActive() {
+        ReflectionTestUtils.setField(designer, "id", 50L);
+        designer.setStatus(AccountStatus.SUSPENDED);
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        Project result = service.viewProject(100L, 50L, true);
+
+        assertThat(result).isSameAs(project);
     }
 
     @Test

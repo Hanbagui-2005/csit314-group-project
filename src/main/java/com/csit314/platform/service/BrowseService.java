@@ -42,7 +42,13 @@ public class BrowseService {
     public Project viewProject(Long projectId, Long viewerDesignerId, boolean countThisView) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ServiceException("That project couldn't be found."));
+        // a suspended/pending/rejected designer's project isn't browsable anywhere else
+        // (search, their profile) - treat it the same way here, before the view is even
+        // counted, instead of only hiding it from search and the profile page
         boolean isOwnProject = viewerDesignerId != null && viewerDesignerId.equals(project.getDesigner().getId());
+        if (!project.isVisible() && !isOwnProject) {
+            throw new ServiceException("That project couldn't be found.");
+        }
         if (countThisView && !isOwnProject) {
             project.incrementViewCount();
             // IDR-08 - also logged as its own row so a weekly delta is possible later

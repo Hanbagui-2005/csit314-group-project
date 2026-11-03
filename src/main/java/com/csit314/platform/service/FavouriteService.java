@@ -65,9 +65,13 @@ public class FavouriteService {
                 });
     }
 
+    // a suspended/pending/rejected designer's project is hidden here too, same as search
+    // and the project detail page - a customer shouldn't see it on their favourites list
+    // just because they saved it before the designer's status changed
     public List<Project> listForCustomer(Customer customer) {
         return shortlistRepository.findByCustomerIdOrderByCreatedAtDesc(customer.getId()).stream()
                 .map(Shortlist::getProject)
+                .filter(Project::isVisible)
                 .toList();
     }
 
@@ -85,6 +89,7 @@ public class FavouriteService {
         List<Long> categoryIds = shortlisted.stream().map(p -> p.getCategory().getId()).distinct().toList();
         List<Long> excludeIds = shortlisted.stream().map(Project::getId).toList();
         return projectRepository.findByCategoryIdInAndIdNotInOrderByCreatedAtDesc(categoryIds, excludeIds).stream()
+                .filter(Project::isVisible)
                 .limit(MAX_RECOMMENDATIONS)
                 .toList();
     }

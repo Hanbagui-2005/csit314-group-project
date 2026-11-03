@@ -171,6 +171,14 @@ public class Project {
         return designer;
     }
 
+    // a suspended, pending or rejected designer's work shouldn't be shown anywhere a
+    // customer can browse to it - this is the one rule every caller (search, project
+    // detail, favourites, recommendations) should check instead of each repeating its
+    // own designer-status filter
+    public boolean isVisible() {
+        return designer.getStatus() == AccountStatus.ACTIVE;
+    }
+
     public ProjectStatus getStatus() {
         return status;
     }
