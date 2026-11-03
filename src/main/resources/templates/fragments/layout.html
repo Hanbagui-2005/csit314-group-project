@@ -46,6 +46,12 @@
         </div>
     </div>
 </nav>
+    <div class="container" th:if="${param.csrfExpired != null}">
+    <div class="alert alert-warning" role="alert">
+        This form has expired or could not be verified.
+        Your action was not submitted. Please try again.
+    </div>
+</div>
 
 <div class="container" th:if="${errorMessage != null or successMessage != null}">
     <div th:if="${errorMessage != null}" class="alert alert-danger" th:text="${errorMessage}">Error</div>

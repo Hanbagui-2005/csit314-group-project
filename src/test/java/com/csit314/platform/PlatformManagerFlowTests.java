@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 // controller/routing coverage for the Platform Management portal: login, category
 // management (PM-01) and activity reports (PM-06/PM-08). Service-area verification
@@ -55,14 +56,14 @@ class PlatformManagerFlowTests {
 
     @Test
     void wrongPasswordAndWrongPortalCredentialsAreRejected() throws Exception {
-        mvc.perform(post("/platform-manager/login").param("email", PM_EMAIL).param("password", "nope"))
+        mvc.perform(post("/platform-manager/login").with(csrf()).param("email", PM_EMAIL).param("password", "nope"))
                 .andExpect(redirectedUrl("/platform-manager/login"))
                 .andExpect(flash().attribute("errorMessage", "Invalid email or password."));
 
         // admin credentials don't work on the platform manager portal, and vice versa
-        mvc.perform(post("/platform-manager/login").param("email", ADMIN_EMAIL).param("password", ADMIN_PASSWORD))
+       mvc.perform(post("/platform-manager/login").with(csrf()).param("email", ADMIN_EMAIL).param("password", ADMIN_PASSWORD))
                 .andExpect(flash().attribute("errorMessage", "Invalid email or password."));
-        mvc.perform(post("/admin/login").param("email", PM_EMAIL).param("password", PM_PASSWORD))
+        mvc.perform(post("/admin/login").with(csrf()).param("email", PM_EMAIL).param("password", PM_PASSWORD))
                 .andExpect(flash().attribute("errorMessage", "Invalid email or password."));
     }
 
@@ -72,7 +73,8 @@ class PlatformManagerFlowTests {
         mvc.perform(get("/platform-manager/reports")).andExpect(redirectedUrl("/platform-manager/login"));
 
         // an admin session can't use the platform manager's pages, and vice versa
-        MockHttpSession adminSession = (MockHttpSession) mvc.perform(post("/admin/login")
+              MockHttpSession adminSession = (MockHttpSession) mvc.perform(post("/admin/login")
+                        .with(csrf())
                         .param("email", ADMIN_EMAIL).param("password", ADMIN_PASSWORD))
                 .andExpect(redirectedUrl("/admin/users"))
                 .andReturn().getRequest().getSession(false);
@@ -87,7 +89,7 @@ class PlatformManagerFlowTests {
     void addRenameAndDeleteCategory() throws Exception {
         MockHttpSession session = loginPlatformManager();
 
-        mvc.perform(post("/platform-manager/categories").session(session).param("name", "  Sunrooms  "))
+        mvc.perform(post("/platform-manager/categories").with(csrf()).session(session).param("name", "  Sunrooms  "))
                 .andExpect(redirectedUrl("/platform-manager/categories"))
                 .andExpect(flash().attribute("successMessage", "Category added."));
         Category category = categoryRepository.findAll().stream()
@@ -95,17 +97,18 @@ class PlatformManagerFlowTests {
                 .findFirst().orElseThrow();
 
         // a blank name and a duplicate name are both rejected
-        mvc.perform(post("/platform-manager/categories").session(session).param("name", "   "))
+        mvc.perform(post("/platform-manager/categories").with(csrf()).session(session).param("name", "   "))
                 .andExpect(flash().attributeExists("errorMessage"));
-        mvc.perform(post("/platform-manager/categories").session(session).param("name", "Sunrooms"))
+       mvc.perform(post("/platform-manager/categories").with(csrf()).session(session).param("name", "Sunrooms"))
                 .andExpect(flash().attribute("errorMessage", "A category with that name already exists."));
 
-        mvc.perform(post("/platform-manager/categories/" + category.getId() + "/rename")
-                        .session(session).param("name", "Sun Rooms"))
+       mvc.perform(post("/platform-manager/categories/" + category.getId() + "/rename")
+                .with(csrf())
+                .session(session).param("name", "Sun Rooms"))
                 .andExpect(flash().attribute("successMessage", "Category renamed."));
         assertThat(categoryRepository.findById(category.getId()).orElseThrow().getName()).isEqualTo("Sun Rooms");
 
-        mvc.perform(post("/platform-manager/categories/" + category.getId() + "/delete").session(session))
+        mvc.perform(post("/platform-manager/categories/" + category.getId() + "/delete").with(csrf()).session(session))
                 .andExpect(flash().attribute("successMessage", "Category deleted."));
         assertThat(categoryRepository.findById(category.getId())).isEmpty();
     }
@@ -122,7 +125,7 @@ class PlatformManagerFlowTests {
         project.addPhoto("/uploads/guard-test-project.jpg");
         projectRepository.save(project);
 
-        mvc.perform(post("/platform-manager/categories/" + category.getId() + "/delete").session(session))
+       mvc.perform(post("/platform-manager/categories/" + category.getId() + "/delete").with(csrf()).session(session))
                 .andExpect(flash().attribute("errorMessage",
                         "This category is still used by at least one project and can't be deleted."));
         assertThat(categoryRepository.findById(category.getId())).isPresent();
@@ -139,8 +142,9 @@ class PlatformManagerFlowTests {
     }
 
     private MockHttpSession loginPlatformManager() throws Exception {
-        return (MockHttpSession) mvc.perform(post("/platform-manager/login")
-                        .param("email", PM_EMAIL).param("password", PM_PASSWORD))
+       return (MockHttpSession) mvc.perform(post("/platform-manager/login")
+                .with(csrf())
+                .param("email", PM_EMAIL).param("password", PM_PASSWORD))
                 .andExpect(redirectedUrl("/platform-manager/categories"))
                 .andReturn().getRequest().getSession(false);
     }

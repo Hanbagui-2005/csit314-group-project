@@ -7,15 +7,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.containsString;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// ADM-08 - admin-users.html used to put a <form> for each row's own actions inside the
-// bulk-action <form>, which is invalid HTML and broke the first row's buttons
 @SpringBootTest
 @AutoConfigureMockMvc
 class AdminUsersPageTests {
@@ -30,16 +31,37 @@ class AdminUsersPageTests {
     void theBulkFormDoesNotNestTheRowFormsInsideIt() throws Exception {
         MockHttpSession session = loginAdmin();
 
-        mvc.perform(get("/admin/users").session(session))
+        String html = mvc.perform(get("/admin/users").session(session))
                 .andExpect(status().isOk())
-                // the bulk form is now empty - nothing else (no row's own <form>) sits between its tags
-                .andExpect(content().string(containsString("id=\"bulkForm\"></form>")));
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Pattern pattern = Pattern.compile(
+                "<form\\b[^>]*\\bid=\"bulkForm\"[^>]*>(.*?)</form>",
+                Pattern.DOTALL
+        );
+
+        Matcher bulkForm = pattern.matcher(html);
+
+        assertThat(bulkForm.find())
+                .as("The bulk-action form must exist")
+                .isTrue();
+
+        assertThat(bulkForm.group(1))
+                .doesNotContain("<form")
+                .contains("type=\"hidden\"")
+                .contains("name=\"_csrf\"");
     }
 
     private MockHttpSession loginAdmin() throws Exception {
         return (MockHttpSession) mvc.perform(post("/admin/login")
-                        .param("email", ADMIN_EMAIL).param("password", ADMIN_PASSWORD))
+                        .with(csrf())
+                        .param("email", ADMIN_EMAIL)
+                        .param("password", ADMIN_PASSWORD))
                 .andExpect(redirectedUrl("/admin/users"))
-                .andReturn().getRequest().getSession(false);
+                .andReturn()
+                .getRequest()
+                .getSession(false);
     }
 }
