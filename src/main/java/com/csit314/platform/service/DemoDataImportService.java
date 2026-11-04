@@ -5,6 +5,7 @@ import com.csit314.platform.dto.DemoDataImportResult;
 import com.csit314.platform.dto.DesignerRegistrationForm;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.UserAccountRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,62 +21,92 @@ import java.util.stream.IntStream;
 public class DemoDataImportService {
 
     private static final String DEMO_EMAIL_DOMAIN = "@demo.example.test";
+    // Anthony's review - every demo account can share one password; these are
+    // synthetic placeholder accounts, not real users, so a single memorable password
+    // is a genuine usability win for whoever wants to log in and poke around
+    private static final String DEMO_PASSWORD = "DemoAccount!2026";
+    // flush+clear periodically so a large import doesn't hold thousands of pending
+    // entities in the persistence context at once - each JPA write auto-flushes
+    // first, and that flush has to dirty-check every one of them
+    private static final int BATCH_SIZE = 50;
 
     private final CustomerService customerService;
     private final DesignerService designerService;
     private final UserManagementService userManagementService;
     private final UserAccountRepository userAccountRepository;
+    private final EntityManager entityManager;
 
     public DemoDataImportService(CustomerService customerService,
                                  DesignerService designerService,
                                  UserManagementService userManagementService,
-                                 UserAccountRepository userAccountRepository) {
+                                 UserAccountRepository userAccountRepository,
+                                 EntityManager entityManager) {
         this.customerService = customerService;
         this.designerService = designerService;
         this.userManagementService = userManagementService;
         this.userAccountRepository = userAccountRepository;
+        this.entityManager = entityManager;
     }
 
-    // Anthony's review - this used to run as a loop of separate transactions (one per
-    // registration), each committing on its own. If anything failed partway through (a
-    // duplicate email, a DB error, the process getting killed), whatever had already
-    // been saved stayed committed, and the "already imported" check only ever looked
-    // at the first customer - so every later run just saw that one record and silently
-    // skipped, with no way to finish or recover. The whole import is now one
-    // transaction instead: either everything lands, or nothing does
+    // Anthony's review, two rounds:
+    // - this used to run as a loop of separate transactions (one per registration),
+    //   each committing on its own. If anything failed partway through, whatever had
+    //   already been saved stayed committed, and the "already imported" check only
+    //   ever looked at the first customer - so a later run just saw that one record
+    //   and silently skipped, with no way to finish or recover. It's one transaction
+    //   now: either everything lands, or nothing does
+    // - the "already imported" check itself was also too coarse: it skipped the
+    //   *entire* run if the first customer already existed, so re-running with a
+    //   bigger count never created the extra accounts. Each account is now checked
+    //   (and skipped) individually instead, so a bigger re-run fills in the rest
     @Transactional
     public DemoDataImportResult importDemoData(int count) {
-        if (userAccountRepository.existsByEmail(demoCustomerEmail(1))) {
-            return DemoDataImportResult.skipped();
-        }
-
+        int customersImported = 0;
+        int processed = 0;
         for (CustomerRegistrationForm form : customerForms(count)) {
+            if (userAccountRepository.existsByEmail(form.email())) {
+                continue;
+            }
             customerService.register(form);
+            customersImported++;
+            processed = flushPeriodically(++processed);
         }
 
+        int designersImported = 0;
         List<Long> designerIds = new ArrayList<>();
         for (DesignerRegistrationForm form : designerForms(count)) {
+            if (userAccountRepository.existsByEmail(form.email())) {
+                continue;
+            }
             InteriorDesigner designer = designerService.register(form);
             designerIds.add(designer.getId());
+            designersImported++;
+            processed = flushPeriodically(++processed);
         }
         // registrations start PENDING (IDR-01) - approve them so the demo platform
-        // actually has browsable designers and projects right away
+        // actually has browsable designers and projects right away. Newly-registered
+        // designers only, not ones that already existed from an earlier run and may
+        // have since been rejected/suspended on purpose
         int approved = userManagementService.bulkApproveDesigners(designerIds);
 
-        return new DemoDataImportResult(false, count, count, approved);
+        return new DemoDataImportResult(customersImported, designersImported, approved);
     }
 
-    private String demoCustomerEmail(int i) {
-        return "demo.customer%02d%s".formatted(i, DEMO_EMAIL_DOMAIN);
+    private int flushPeriodically(int processedSoFar) {
+        if (processedSoFar % BATCH_SIZE == 0) {
+            entityManager.flush();
+            entityManager.clear();
+        }
+        return processedSoFar;
     }
 
     private List<CustomerRegistrationForm> customerForms(int count) {
         return IntStream.rangeClosed(1, count)
                 .mapToObj(i -> new CustomerRegistrationForm(
                         "Demo Customer %02d".formatted(i),
-                        demoCustomerEmail(i),
-                        "DemoPass!%04d".formatted(i),
-                        "DemoPass!%04d".formatted(i)))
+                        "demo.customer%02d%s".formatted(i, DEMO_EMAIL_DOMAIN),
+                        DEMO_PASSWORD,
+                        DEMO_PASSWORD))
                 .toList();
     }
 
@@ -84,8 +115,8 @@ public class DemoDataImportService {
                 .mapToObj(i -> new DesignerRegistrationForm(
                         "Demo Designer %02d".formatted(i),
                         "demo.designer%02d%s".formatted(i, DEMO_EMAIL_DOMAIN),
-                        "DemoPass!%04d".formatted(i),
-                        "DemoPass!%04d".formatted(i),
+                        DEMO_PASSWORD,
+                        DEMO_PASSWORD,
                         "Demo Studio %02d".formatted(i),
                         "A synthetic demo studio for showcasing the platform.",
                         "555%07d".formatted(i),

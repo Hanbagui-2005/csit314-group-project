@@ -29,7 +29,7 @@ class DemoDataImportRunnerUnitTests {
 
     @Test
     void delegatesToTheServiceWithTheConfiguredCount() {
-        when(demoDataImportService.importDemoData(2)).thenReturn(new DemoDataImportResult(false, 2, 2, 2));
+        when(demoDataImportService.importDemoData(2)).thenReturn(new DemoDataImportResult(2, 2, 2));
         DemoDataImportRunner runner = new DemoDataImportRunner(demoDataImportService, true, 2);
 
         runner.run(null);
@@ -39,7 +39,7 @@ class DemoDataImportRunnerUnitTests {
 
     @Test
     void countIsClampedToAtLeastOneAndAtMostTheMaximum() {
-        when(demoDataImportService.importDemoData(anyInt())).thenReturn(new DemoDataImportResult(false, 1, 1, 1));
+        when(demoDataImportService.importDemoData(anyInt())).thenReturn(new DemoDataImportResult(1, 1, 1));
         DemoDataImportRunner tooLow = new DemoDataImportRunner(demoDataImportService, true, 0);
 
         tooLow.run(null);
@@ -47,5 +47,16 @@ class DemoDataImportRunnerUnitTests {
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(demoDataImportService).importDemoData(countCaptor.capture());
         org.assertj.core.api.Assertions.assertThat(countCaptor.getValue()).isEqualTo(1);
+    }
+
+    // Anthony's review - a failed demo import (e.g. a leftover half-imported database
+    // from an interrupted previous run) must not fail the whole application context.
+    // This is optional, opt-in tooling - it should log and let the app start anyway
+    @Test
+    void catchesAFailedImportInsteadOfLettingItFailApplicationStartup() {
+        when(demoDataImportService.importDemoData(2)).thenThrow(new RuntimeException("boom"));
+        DemoDataImportRunner runner = new DemoDataImportRunner(demoDataImportService, true, 2);
+
+        org.assertj.core.api.Assertions.assertThatCode(() -> runner.run(null)).doesNotThrowAnyException();
     }
 }

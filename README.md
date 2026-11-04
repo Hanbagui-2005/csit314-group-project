@@ -37,9 +37,16 @@ seeded on first start:
 
 There's no fixed default password checked into the repo anymore. Set `ADMIN_PASSWORD` /
 `PLATFORM_MANAGER_PASSWORD` yourself, or leave them unset and a random password is
-generated and printed to the startup log once (`No ADMIN_PASSWORD set - created default
-admin account ... with generated password: ...`) — copy it from there before it scrolls
-past.
+generated and written to a file under `secrets/` (override with `SECRETS_DIR`) instead
+of the startup log — the log just tells you the file's path. That file is gitignored
+and meant to be deleted once you've copied the password out.
+
+If you're upgrading an instance that was already running before this change, your
+admin/platform-manager account may still be using the old hardcoded default - setting
+`ADMIN_PASSWORD`/`PLATFORM_MANAGER_PASSWORD` now won't change it, since those are only
+read the first time that account is created. Startup logs a loud `SECURITY WARNING` if
+your account is still on the old default; rotate its password directly in the database
+(or via `/forgot-password`, if that's open to this role) if you see it.
 
 There's no mail server yet, so password reset links are printed in the app log.
 
@@ -56,7 +63,12 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--app.demo-data.import=true --a
 This reuses the same registration services the UI calls (so passwords are hashed the
 same way, and data stays consistent), and auto-approves the generated designers so
 there's something to browse right away. `count` defaults to 50 and is capped at 2000.
-It's safe to run more than once — it skips importing if demo accounts already exist.
+Every demo account shares the password `DemoAccount!2026` (e.g. `demo.customer01@demo.example.test`).
+
+It's safe to run more than once, including with a bigger `count` than last time: each
+account is checked (and skipped) individually, so re-running only fills in whatever's
+missing instead of silently doing nothing. A failed import is logged and does not stop
+the application from starting.
 
 ## Tests
 

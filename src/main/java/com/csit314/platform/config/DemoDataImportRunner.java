@@ -34,13 +34,18 @@ public class DemoDataImportRunner implements ApplicationRunner {
         if (!importEnabled) {
             return;
         }
-        DemoDataImportResult result = demoDataImportService.importDemoData(count);
-        if (result.alreadyImported()) {
-            log.info("Demo data already imported, skipping.");
-            return;
+        // Anthony's review - this is optional, opt-in demo data. An unhandled
+        // exception from an ApplicationRunner fails the whole application context, so
+        // without this, leaving app.demo-data.import=true set on a long-running
+        // instance would mean every restart fails until someone notices and removes it
+        try {
+            DemoDataImportResult result = demoDataImportService.importDemoData(count);
+            log.info("Demo data import finished: {} new customers, {} new designers ({} auto-approved). "
+                            + "Accounts that already existed were left as-is.",
+                    result.customersImported(), result.designersImported(), result.designersApproved());
+        } catch (Exception e) {
+            log.error("Demo data import failed - continuing to start without it. Fix the underlying issue "
+                    + "and restart, or remove app.demo-data.import to stop retrying it.", e);
         }
-        log.info("Imported {} demo accounts ({} customers, {} designers, {} auto-approved).",
-                result.customersImported() + result.designersImported(),
-                result.customersImported(), result.designersImported(), result.designersApproved());
     }
 }
