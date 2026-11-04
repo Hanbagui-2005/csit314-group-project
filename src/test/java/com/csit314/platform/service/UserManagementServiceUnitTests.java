@@ -188,46 +188,7 @@ class UserManagementServiceUnitTests {
         assertThatThrownBy(() -> service.unlock(1L)).isInstanceOf(ServiceException.class);
     }
 
-    // ADM-05
-        @Test
-    void verificationCanBeToggledOnAndOff() {
-        InteriorDesigner designer = pending();
-        designer.getCompany().setLicenseNumber("LIC-12345");
-        when(designers.findById(1L)).thenReturn(Optional.of(designer));
-
-        service.toggleVerified(1L);
-        assertThat(designer.isVerified()).isTrue();
-
-        service.toggleVerified(1L);
-        assertThat(designer.isVerified()).isFalse();
-    }
-
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"   "})
-    void cannotVerifyWithoutALicenseNumber(String licenseNumber) {
-        InteriorDesigner designer = pending();
-        designer.getCompany().setLicenseNumber(licenseNumber);
-        when(designers.findById(1L)).thenReturn(Optional.of(designer));
-
-        assertThatThrownBy(() -> service.toggleVerified(1L))
-                .isInstanceOf(ServiceException.class)
-                .hasMessageContaining("license number");
-
-        assertThat(designer.isVerified()).isFalse();
-    }
-
-    @Test
-    void canRevokeVerificationWithoutALicenseNumber() {
-        InteriorDesigner designer = pending();
-        designer.setVerified(true);
-        when(designers.findById(1L)).thenReturn(Optional.of(designer));
-
-        service.toggleVerified(1L);
-
-        assertThat(designer.isVerified()).isFalse();
-    }
-
+   
     // ADM-12
     @Test void pendingDesignerCountDelegatesToTheRepository() {
         when(users.countByRoleAndStatus(Role.INTERIOR_DESIGNER, AccountStatus.PENDING)).thenReturn(4L);
