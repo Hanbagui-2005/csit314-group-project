@@ -36,6 +36,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // pending or rejected designer's work shouldn't be browsable. The location filter is what
     // actually puts PM-05's service-area check in front of customers, instead of it only being
     // visible on the Platform Management page.
+    // CUS-04 - minBudget/maxBudget are the customer's own budget range; a project only
+    // matches if its whole budget window fits inside that range, not just its max
     // :query and :location are escaped by the caller (BrowseService) before being passed
     // in here, so a % or _ typed into a search box is matched literally instead of acting
     // as a wildcard. The escape character is '!', not a backslash - MySQL treats a
@@ -47,14 +49,16 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             + "(:query is null or lower(p.title) like lower(concat('%', :query, '%')) escape '!' "
             + "or lower(p.description) like lower(concat('%', :query, '%')) escape '!') "
             + "and (:categoryName is null or p.category.name = :categoryName) "
+            + "and (:minBudget is null or p.budgetMin >= :minBudget) "
             + "and (:maxBudget is null or p.budgetMax <= :maxBudget) "
-            + "and (:minRoomSize is null or p.roomSizeSqm <= :minRoomSize) "
+            + "and (:roomSize is null or p.roomSizeSqm <= :roomSize) "
             + "and (:verifiedOnly = false or p.designer.verified = true) "
             + "and (:location is null or lower(p.designer.company.serviceArea) like lower(concat('%', :location, '%')) escape '!') "
             + "and p.designer.status = com.csit314.platform.model.AccountStatus.ACTIVE "
             + "order by p.createdAt desc")
     List<Project> search(@Param("query") String query, @Param("categoryName") String categoryName,
-                         @Param("maxBudget") Integer maxBudget, @Param("minRoomSize") Integer minRoomSize,
+                         @Param("minBudget") Integer minBudget, @Param("maxBudget") Integer maxBudget,
+                         @Param("roomSize") Integer roomSize,
                          @Param("verifiedOnly") boolean verifiedOnly, @Param("location") String location);
 
     // CUS-12 - only listings that actually gave a budget, to estimate a range from

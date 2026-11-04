@@ -131,56 +131,56 @@ class BrowseServiceUnitTests {
 
     @Test
     void blankSearchTermsAreTreatedAsNoFilter() {
-        service.search("  ", "", null, null, false, "  ");
+        service.search("  ", "", null, null, null, false, "  ");
 
-        verify(projectRepository).search(null, null, null, null, false, null);
+        verify(projectRepository).search(null, null, null, null, null, false, null);
     }
 
     @Test
     void realSearchTermsArePassedThrough() {
-        service.search(" kitchen ", "Kitchen", null, null, false, null);
+        service.search(" kitchen ", "Kitchen", null, null, null, false, null);
 
-        verify(projectRepository).search("kitchen", "Kitchen", null, null, false, null);
+        verify(projectRepository).search("kitchen", "Kitchen", null, null, null, false, null);
     }
 
     // CUS-04
     @Test
     void budgetAndRoomSizeFiltersArePassedThrough() {
-        service.search(null, null, 10000, 15, false, null);
+        service.search(null, null, 5000, 10000, 15, false, null);
 
-        verify(projectRepository).search(null, null, 10000, 15, false, null);
+        verify(projectRepository).search(null, null, 5000, 10000, 15, false, null);
     }
 
     // CUS-09
     @Test
     void verifiedOnlyFlagIsPassedThrough() {
-        service.search(null, null, null, null, true, null);
+        service.search(null, null, null, null, null, true, null);
 
-        verify(projectRepository).search(null, null, null, null, true, null);
+        verify(projectRepository).search(null, null, null, null, null, true, null);
     }
 
     // PM-05
     @Test
     void locationFilterIsTrimmedAndPassedThrough() {
-        service.search(null, null, null, null, false, " Downtown ");
+        service.search(null, null, null, null, null, false, " Downtown ");
 
-        verify(projectRepository).search(null, null, null, null, false, "Downtown");
+        verify(projectRepository).search(null, null, null, null, null, false, "Downtown");
     }
 
     // without this, typing "%" into either box would act as a wildcard and match
     // every project/designer instead of being searched for literally
     @Test
     void wildcardCharactersInTheSearchTermAreEscaped() {
-        service.search("50% off_deal", null, null, null, false, null);
+        service.search("50% off_deal", null, null, null, null, false, null);
 
-        verify(projectRepository).search("50!% off!_deal", null, null, null, false, null);
+        verify(projectRepository).search("50!% off!_deal", null, null, null, null, false, null);
     }
 
     @Test
     void wildcardCharactersInTheLocationAreEscaped() {
-        service.search(null, null, null, null, false, "100% _downtown_");
+        service.search(null, null, null, null, null, false, "100% _downtown_");
 
-        verify(projectRepository).search(null, null, null, null, false, "100!% !_downtown!_");
+        verify(projectRepository).search(null, null, null, null, null, false, "100!% !_downtown!_");
     }
 
     // CUS-12

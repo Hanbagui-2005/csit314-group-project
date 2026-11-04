@@ -53,19 +53,21 @@ public class PageController {
     @GetMapping("/search")
     public String search(@RequestParam(required = false) String q,
                           @RequestParam(required = false) String category,
+                          @RequestParam(required = false) Integer minBudget,
                           @RequestParam(required = false) Integer maxBudget,
-                          @RequestParam(required = false) Integer minRoomSize,
+                          @RequestParam(required = false) Integer roomSize,
                           @RequestParam(required = false, defaultValue = "false") boolean verifiedOnly,
                           @RequestParam(required = false) String location,
                           Model model) {
         model.addAttribute("query", q);
         model.addAttribute("selectedCategory", category);
+        model.addAttribute("minBudget", minBudget);
         model.addAttribute("maxBudget", maxBudget);
-        model.addAttribute("minRoomSize", minRoomSize);
+        model.addAttribute("roomSize", roomSize);
         model.addAttribute("verifiedOnly", verifiedOnly);
         model.addAttribute("location", location);
         model.addAttribute("categories", projectService.listCategories());
-        model.addAttribute("projects", browseService.search(q, category, maxBudget, minRoomSize, verifiedOnly, location));
+        model.addAttribute("projects", browseService.search(q, category, minBudget, maxBudget, roomSize, verifiedOnly, location));
         model.addAttribute("budgetEstimate", browseService.estimateBudget(category).orElse(null));
         return "search";
     }
