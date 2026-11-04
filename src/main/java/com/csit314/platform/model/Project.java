@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Formula;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -85,8 +86,17 @@ public class Project {
     @Column(nullable = false)
     private int viewCount = 0;
 
-    @Column(nullable = false)
-    private int shortlistCount = 0;
+    // Anthony's review - this was a manually incremented/decremented counter that
+    // could drift from the shortlists table it was meant to summarise: ShortlistWriter
+    // runs the insert in its own transaction (REQUIRES_NEW, deliberately, to survive a
+    // double-click race without a 500 - see its own comment), so if the surrounding
+    // transaction then failed for some unrelated reason, the shortlist row stayed
+    // committed but the increment here never took effect - a permanent, silent
+    // under-count. A Hibernate @Formula makes this always a live count(*) against the
+    // shortlists table instead, so it can never be out of sync with what's actually
+    // there - there's nothing left to increment, decrement, or desynchronise
+    @Formula("(select count(*) from shortlists s where s.project_id = id)")
+    private int shortlistCount;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -128,6 +138,12 @@ public class Project {
         this.roomSizeSqm = roomSizeSqm;
     }
 
+    // PM-03 - used when Platform Management merges a near-duplicate category into this
+    // project's existing one; updateDetails is the designer's own edit path, not this
+    public void reassignCategory(Category category) {
+        this.category = category;
+    }
+
     public void advanceMilestone() {
         MilestoneStage next = milestoneStage.next();
         if (next == null) {
@@ -136,19 +152,11 @@ public class Project {
         milestoneStage = next;
     }
 
-    // IDR-10/11/12 - real view/shortlist counts, now that Browse/detail/favourites use real data
+    // IDR-10/11/12 - real view counts, now that Browse/detail/favourites use real
+    // data. shortlistCount has no equivalent increment/decrement any more - it's a
+    // derived @Formula field now, see its own field comment
     public void incrementViewCount() {
         viewCount++;
-    }
-
-    public void incrementShortlistCount() {
-        shortlistCount++;
-    }
-
-    public void decrementShortlistCount() {
-        if (shortlistCount > 0) {
-            shortlistCount--;
-        }
     }
 
     public Long getId() {
@@ -169,6 +177,14 @@ public class Project {
 
     public InteriorDesigner getDesigner() {
         return designer;
+    }
+
+    // a suspended, pending or rejected designer's work shouldn't be shown anywhere a
+    // customer can browse to it - this is the one rule every caller (search, project
+    // detail, favourites, recommendations) should check instead of each repeating its
+    // own designer-status filter
+    public boolean isVisible() {
+        return designer.getStatus() == AccountStatus.ACTIVE;
     }
 
     public ProjectStatus getStatus() {

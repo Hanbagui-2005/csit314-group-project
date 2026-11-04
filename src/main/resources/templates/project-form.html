@@ -59,7 +59,11 @@
         <div class="mb-4">
             <label class="form-label">Category</label>
             <select id="categoryId" name="categoryId" class="form-select">
-                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"
+                <!-- PM-13 - the project's own category is included even if it's since been
+                     deactivated (labelled below), so saving an unrelated edit can't silently
+                     move the project to whatever option happens to be first in the list -->
+                <option th:each="cat : ${categories}" th:value="${cat.id}"
+                        th:text="${cat.active} ? ${cat.name} : ${cat.name} + ' (deactivated)'"
                         th:selected="${isEdit and project.category.id == cat.id}">Category</option>
             </select>
             <!-- IDR-06 - shown once we get a suggestion back, hidden otherwise -->

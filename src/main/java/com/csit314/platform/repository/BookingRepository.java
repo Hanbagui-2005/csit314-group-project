@@ -12,8 +12,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
 
-    // PM-06/PM-08 - activity reports
-    long countByCreatedAtAfter(LocalDateTime since);
+    // PM-06/PM-08/PM-12 - new bookings within an arbitrary (half-open) window, for both
+    // the calendar-period and scheduled single-day reports
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime start, LocalDateTime end);
 
     List<Booking> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
 

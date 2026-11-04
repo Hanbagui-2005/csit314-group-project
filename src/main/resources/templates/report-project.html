@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Report a project')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 480px;">
+
+    <h4 class="mb-1">Report "<span th:text="${project.title}">Project</span>"</h4>
+    <p class="text-muted small mb-4">Platform Management reviews every report.</p>
+
+    <form method="post" th:action="@{/projects/{id}/report(id=${project.id})}">
+        <div class="mb-4">
+            <label class="form-label">Why are you reporting this?</label>
+            <textarea name="reason" class="form-control" rows="5" required
+                      placeholder="For example, it looks like plagiarized or inappropriate content"></textarea>
+        </div>
+        <button type="submit" class="btn btn-dark w-100">Submit report</button>
+    </form>
+
+</div>
+</body>
+</html>

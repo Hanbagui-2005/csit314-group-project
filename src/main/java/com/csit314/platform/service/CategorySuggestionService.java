@@ -2,6 +2,7 @@ package com.csit314.platform.service;
 
 import com.csit314.platform.model.Category;
 import com.csit314.platform.repository.CategoryRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -58,7 +59,7 @@ public class CategorySuggestionService {
             return Optional.empty();
         }
         String matchedName = bestCategoryName;
-        return categoryRepository.findAll().stream()
+        return categoryRepository.findByActiveTrue(Sort.unsorted()).stream()
                 .filter(cat -> cat.getName().equalsIgnoreCase(matchedName))
                 .findFirst();
     }

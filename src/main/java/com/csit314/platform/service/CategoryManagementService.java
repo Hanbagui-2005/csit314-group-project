@@ -1,13 +1,19 @@
 package com.csit314.platform.service;
 
+import com.csit314.platform.dto.CategoryAddResult;
 import com.csit314.platform.model.Category;
+import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 // Platform Management actions on IDP categories
 @Service
@@ -21,20 +27,45 @@ public class CategoryManagementService {
         this.projectRepository = projectRepository;
     }
 
-    // PM-01
+    // PM-01/PM-13 - deactivated categories are left out of management too
     @Transactional(readOnly = true)
     public List<Category> listCategories() {
-        return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
+        return categoryRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC, "name"));
     }
 
-    // PM-01
+    // PM-01/PM-03/PM-13 - a near-duplicate of an existing category (e.g. "Kitchens"
+    // when "Kitchen" already exists) reuses that category instead of fragmenting the
+    // taxonomy with a second, near-identical one. An exact match against a deactivated
+    // category reactivates it instead of erroring - that's the only way back, since
+    // there's no separate reactivate button, and the old projects pointing at it
+    // immediately pick back up instead of ending up duplicated under a new row
     @Transactional
-    public Category addCategory(String name) {
+    public CategoryAddResult addCategory(String name) {
         String trimmed = InputRules.requireText(name, "Category name", 60);
-        if (categoryRepository.existsByNameIgnoreCase(trimmed)) {
-            throw new ServiceException("A category with that name already exists.");
+        Optional<Category> existing = categoryRepository.findByNameIgnoreCase(trimmed);
+        if (existing.isPresent()) {
+            Category category = existing.get();
+            if (category.isActive()) {
+                throw new ServiceException("A category with that name already exists.");
+            }
+            // PM-03 - this exact name may have been deactivated by the nightly merge
+            // (e.g. "Kitchens" folded into "Kitchen"). Reactivating it here on an exact
+            // match, without checking for that survivor first, would undo the merge:
+            // the category comes back, gets used again, then the merge job deactivates
+            // it again next run, repeating every night. Check for an active
+            // near-duplicate first and reuse that instead, same as a brand new name would
+            Optional<Category> survivor = findNearDuplicate(trimmed, category.getId());
+            if (survivor.isPresent()) {
+                return CategoryAddResult.mergedIntoNearDuplicate(survivor.get());
+            }
+            category.activate();
+            return CategoryAddResult.addedOrReactivated(category);
         }
-        return categoryRepository.save(new Category(trimmed));
+        Optional<Category> nearDuplicate = findNearDuplicate(trimmed, null);
+        if (nearDuplicate.isPresent()) {
+            return CategoryAddResult.mergedIntoNearDuplicate(nearDuplicate.get());
+        }
+        return CategoryAddResult.addedOrReactivated(categoryRepository.save(new Category(trimmed)));
     }
 
     // supports PM-01 - not its own tracked story (PM-03 is automatic duplicate-merging)
@@ -42,23 +73,99 @@ public class CategoryManagementService {
     public Category renameCategory(Long categoryId, String newName) {
         Category category = findCategory(categoryId);
         String trimmed = InputRules.requireText(newName, "Category name", 60);
-        if (categoryRepository.existsByNameIgnoreCaseAndIdNot(trimmed, categoryId)) {
-            throw new ServiceException("A category with that name already exists.");
+        Optional<Category> clash = categoryRepository.findByNameIgnoreCaseAndIdNot(trimmed, categoryId);
+        if (clash.isPresent()) {
+            // PM-13 - renaming into a deactivated category's name can't just reactivate
+            // it the way addCategory does: that would leave two different rows (this
+            // one, and the deactivated one) both wanting the same unique name. Simplest
+            // safe answer is to say so and let them add a new category with that name
+            // instead, which does reactivate it
+            if (clash.get().isActive()) {
+                throw new ServiceException("A category with that name already exists.");
+            }
+            throw new ServiceException("A deactivated category already has that name. "
+                    + "Add a new category with that name to reactivate it instead of renaming this one.");
+        }
+        // Anthony's review - an exact-name clash isn't the only way a rename can
+        // fragment the taxonomy; a near-duplicate (case/whitespace/plural difference,
+        // e.g. renaming "Bath" to "Kitchens" while "Kitchen" is active) does too, the
+        // same as addCategory already guards against. Renaming into another existing
+        // category isn't the same operation as merging into it, so this blocks the
+        // rename with a clear message rather than silently reusing that other row
+        Optional<Category> nearDuplicate = findNearDuplicate(trimmed, categoryId);
+        if (nearDuplicate.isPresent()) {
+            throw new ServiceException(
+                    "\"" + nearDuplicate.get().getName() + "\" is too similar to an existing category.");
         }
         category.rename(trimmed);
         return category;
     }
 
-    // supports PM-01 - a category still used by at least one project can't be deleted, so
-    // projects never end up pointing at a category that no longer exists. This is a hard
-    // delete, not PM-13's soft-delete (not yet implemented)
+    // PM-13 - soft delete, not a hard one: projects that already reference this category
+    // keep referencing it (their category name still renders fine), but it drops out of
+    // every list a customer or designer would pick a category from
     @Transactional
     public void deleteCategory(Long categoryId) {
         Category category = findCategory(categoryId);
-        if (projectRepository.countByCategoryId(categoryId) > 0) {
-            throw new ServiceException("This category is still used by at least one project and can't be deleted.");
+        category.deactivate();
+    }
+
+    // PM-03 - scans every active category for near-duplicates (case/spacing
+    // differences, or one being exactly the plural of the other) and merges each
+    // group into one survivor, so categories that fragmented before this check
+    // existed (or through some other path) get cleaned up too, not just newly-added
+    // ones
+    @Transactional
+    public void mergeDuplicateCategories() {
+        List<Category> remaining = new ArrayList<>(
+                categoryRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC, "name")));
+
+        while (!remaining.isEmpty()) {
+            // alphabetically first survives - simple and deterministic, since there's
+            // no meaningfully "more correct" spelling to prefer between near-duplicates
+            Category survivor = remaining.remove(0);
+            Iterator<Category> candidates = remaining.iterator();
+            while (candidates.hasNext()) {
+                Category candidate = candidates.next();
+                if (!isNearDuplicate(survivor.getName(), candidate.getName())) {
+                    continue;
+                }
+                for (Project project : projectRepository.findByCategoryId(candidate.getId())) {
+                    project.reassignCategory(survivor);
+                }
+                candidate.deactivate();
+                candidates.remove();
+            }
         }
-        categoryRepository.delete(category);
+    }
+
+    private Optional<Category> findNearDuplicate(String candidateName, Long excludeId) {
+        return categoryRepository.findByActiveTrue(Sort.unsorted()).stream()
+                .filter(c -> excludeId == null || !c.getId().equals(excludeId))
+                .filter(c -> isNearDuplicate(candidateName, c.getName()))
+                .findFirst();
+    }
+
+    // Anthony's review - the previous version normalised each name to a single key by
+    // blindly stripping any trailing "s" and grouped categories that shared a key.
+    // That treats "Glass"/"Canvas" as needing a plural stripped down to "Glas"/"Canva",
+    // silently merging them with anything else that happened to normalise the same
+    // way. Comparing names pairwise instead - equal once case/spacing is normalised,
+    // or one is EXACTLY the other with a trailing "s" added - only ever matches an
+    // actual plural of an EXISTING name, never an unrelated word that merely ends in
+    // "s". "Kitchen"/"Kitchens" still match; "Glass" only matches another "Glass", or
+    // literally "Glas" if that were ever its own category
+    private boolean isNearDuplicate(String a, String b) {
+        String normalisedA = normaliseCaseAndSpacing(a);
+        String normalisedB = normaliseCaseAndSpacing(b);
+        if (normalisedA.equals(normalisedB)) {
+            return true;
+        }
+        return normalisedA.equals(normalisedB + "s") || normalisedB.equals(normalisedA + "s");
+    }
+
+    private String normaliseCaseAndSpacing(String name) {
+        return name.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private Category findCategory(Long categoryId) {

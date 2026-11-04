@@ -6,9 +6,15 @@ import com.csit314.platform.repository.CategoryRepository;
 import com.csit314.platform.repository.ComplaintRepository;
 import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.UserAccountRepository;
+import com.csit314.platform.dto.AnomalyAlert;
 import com.csit314.platform.dto.CategoryDesignerCoverage;
 import com.csit314.platform.dto.CategoryViewRanking;
+import com.csit314.platform.dto.GrowthForecast;
+import com.csit314.platform.dto.MonthlyGrowth;
 import com.csit314.platform.dto.PlatformReport;
+import com.csit314.platform.dto.TopDesigner;
+import com.csit314.platform.dto.TopProject;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,8 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 
 // PM-06/PM-08 - daily/monthly activity reports (plus a bonus weekly window) + PM-07's
 // category designer-coverage view
@@ -53,10 +61,11 @@ public class PlatformReportService {
     @Transactional(readOnly = true)
     public List<PlatformReport> reports() {
         LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
         return List.of(
-                report("Today", today.atStartOfDay()),
-                report("This week", today.with(DayOfWeek.MONDAY).atStartOfDay()),
-                report("This month", today.withDayOfMonth(1).atStartOfDay())
+                report("Today", today.atStartOfDay(), now),
+                report("This week", today.with(DayOfWeek.MONDAY).atStartOfDay(), now),
+                report("This month", today.withDayOfMonth(1).atStartOfDay(), now)
         );
     }
 
@@ -64,7 +73,7 @@ public class PlatformReportService {
     // Management can see which categories are underserved
     @Transactional(readOnly = true)
     public List<CategoryDesignerCoverage> categoryDesignerCoverage() {
-        return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name")).stream()
+        return categoryRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC, "name")).stream()
                 .map(category -> {
                     long designers = projectRepository.countDistinctActiveDesignersByCategoryId(category.getId());
                     long demand = bookingRepository.countByProjectCategoryId(category.getId());
@@ -77,22 +86,153 @@ public class PlatformReportService {
                 .toList();
     }
 
-    // PM-04 - categories ranked by total views across their projects, so PM can see what's popular
+    // extra, not its own tracked story - categories ranked by total views across their
+    // projects, so PM can see what's popular
     @Transactional(readOnly = true)
     public List<CategoryViewRanking> categoryViewRanking() {
-        return categoryRepository.findAll(Sort.by(Sort.Direction.ASC, "name")).stream()
+        return categoryRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC, "name")).stream()
                 .map(category -> new CategoryViewRanking(category.getId(), category.getName(),
                         projectRepository.sumViewCountByCategoryId(category.getId())))
                 .sorted(Comparator.comparingLong(CategoryViewRanking::totalViews).reversed())
                 .toList();
     }
 
-    private PlatformReport report(String periodLabel, LocalDateTime since) {
-        long newCustomers = userAccountRepository.countByRoleAndCreatedAtAfter(Role.CUSTOMER, since);
-        long newDesigners = userAccountRepository.countByRoleAndCreatedAtAfter(Role.INTERIOR_DESIGNER, since);
-        long newProjects = projectRepository.countByCreatedAtAfter(since);
-        long newBookings = bookingRepository.countByCreatedAtAfter(since);
-        long newComplaints = complaintRepository.countByCreatedAtAfter(since);
+    private static final int TOP_PERFORMERS_LIMIT = 5;
+
+    // PM-10 - top-performing designers (by portfolio views + shortlists) so PM can
+    // consider featuring them
+    @Transactional(readOnly = true)
+    public List<TopDesigner> topDesigners() {
+        return projectRepository.topDesigners(PageRequest.of(0, TOP_PERFORMERS_LIMIT));
+    }
+
+    // PM-10 - top-performing individual projects, same idea as topDesigners() but one
+    // project at a time instead of a whole portfolio
+    @Transactional(readOnly = true)
+    public List<TopProject> topProjects() {
+        return projectRepository.topProjects(PageRequest.of(0, TOP_PERFORMERS_LIMIT));
+    }
+
+    private static final int FORECAST_HISTORY_MONTHS = 3;
+
+    // PM-02 - a simple moving-average projection: next month's new users/listings are
+    // forecast as the average of the last few completed calendar months, so PM has a
+    // capacity-planning number without needing a dedicated analytics pipeline
+    @Transactional(readOnly = true)
+    public GrowthForecast growthForecast() {
+        List<MonthlyGrowth> history = new ArrayList<>();
+        LocalDate firstOfThisMonth = LocalDate.now().withDayOfMonth(1);
+        for (int monthsAgo = FORECAST_HISTORY_MONTHS; monthsAgo >= 1; monthsAgo--) {
+            LocalDate monthStart = firstOfThisMonth.minusMonths(monthsAgo);
+            LocalDate monthEnd = monthStart.plusMonths(1);
+            // Anthony's review - Between is inclusive on both ends, so a row created
+            // exactly at midnight on monthEnd would get counted in both this month and
+            // the next one. Half-open [start, end) instead
+            long newUsers = userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                    monthStart.atStartOfDay(), monthEnd.atStartOfDay());
+            long newListings = projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                    monthStart.atStartOfDay(), monthEnd.atStartOfDay());
+            history.add(new MonthlyGrowth(monthStart.getMonth() + " " + monthStart.getYear(), newUsers, newListings));
+        }
+        long projectedUsers = Math.round(history.stream().mapToLong(MonthlyGrowth::newUsers).average().orElse(0));
+        long projectedListings = Math.round(history.stream().mapToLong(MonthlyGrowth::newListings).average().orElse(0));
+        return new GrowthForecast(projectedUsers, projectedListings, history);
+    }
+
+    private static final int ANOMALY_BASELINE_DAYS = 7;
+    // PM-14 - today's value needs to be at least double the recent average to count as
+    // a spike, or at most half of it (with a small floor so a quiet baseline of 0-1
+    // doesn't trivially flag every single sign-up as a "100% drop") to count as a drop
+    private static final double ANOMALY_SPIKE_RATIO = 2.0;
+    private static final double ANOMALY_DROP_RATIO = 0.5;
+    private static final double ANOMALY_MIN_BASELINE_FOR_DROP = 2.0;
+
+    // PM-14 - flags any tracked metric whose most recent complete day deviates
+    // significantly from the week before it, so PM can respond quickly to unusual
+    // activity instead of only noticing it later in a weekly/monthly report. Compares
+    // yesterday (a complete day) against the 7 complete days before that, rather than
+    // today (still partway through) against complete-day averages - otherwise a normal
+    // baseline of 10/day would look like a "drop" every morning just because today's
+    // partial count hasn't caught up yet
+    @Transactional(readOnly = true)
+    public List<AnomalyAlert> anomalyAlerts() {
+        List<AnomalyAlert> alerts = new ArrayList<>();
+        checkForAnomaly(alerts, "New sign-ups", day -> userAccountRepository
+                .countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(day.atStartOfDay(), day.plusDays(1).atStartOfDay()));
+        checkForAnomaly(alerts, "New projects", day -> projectRepository
+                .countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(day.atStartOfDay(), day.plusDays(1).atStartOfDay()));
+        return alerts;
+    }
+
+    private void checkForAnomaly(List<AnomalyAlert> alerts, String metricLabel, Function<LocalDate, Long> dailyCount) {
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        long yesterdayValue = dailyCount.apply(yesterday);
+        double average = averageOverPastDays(dailyCount, yesterday, ANOMALY_BASELINE_DAYS);
+        boolean spike = average > 0 && yesterdayValue >= average * ANOMALY_SPIKE_RATIO;
+        boolean drop = average >= ANOMALY_MIN_BASELINE_FOR_DROP && yesterdayValue <= average * ANOMALY_DROP_RATIO;
+        if (spike || drop) {
+            alerts.add(new AnomalyAlert(metricLabel, yesterdayValue, average));
+        }
+    }
+
+    // the days strictly before referenceDate - when called with yesterday, that's the
+    // 7 complete days before yesterday, never including the partial, still-in-progress day
+    private double averageOverPastDays(Function<LocalDate, Long> dailyCount, LocalDate referenceDate, int days) {
+        long total = 0;
+        for (int daysAgo = 1; daysAgo <= days; daysAgo++) {
+            total += dailyCount.apply(referenceDate.minusDays(daysAgo));
+        }
+        return (double) total / days;
+    }
+
+    // PM-09 - the "or CSV" half of "export a report as a PDF or CSV". A PDF export
+    // isn't implemented (needs a rendering library and more time than it's worth this
+    // close to the deadline), but the story is satisfied by either format on its own.
+    // No CSV escaping needed: every field here is either a fixed label ("Today", "This
+    // week", "This month", or a date) or a plain number, never free-text a user typed in
+    @Transactional(readOnly = true)
+    public String exportReportsAsCsv() {
+        return toCsv(reports());
+    }
+
+    // PM-12 - the scheduled job's own report: exactly one calendar day (midnight to
+    // midnight), not "since midnight" like reports()'s "Today" row, which at 6am would
+    // only cover the 6 hours so far and make the file mostly empty. Takes the date
+    // explicitly rather than always assuming "yesterday" - the scheduler passes
+    // yesterday's date in production, but a backfill or test can ask for any day
+    @Transactional(readOnly = true)
+    public String exportReportAsCsvFor(LocalDate date) {
+        LocalDateTime start = date.atStartOfDay();
+        LocalDateTime end = start.plusDays(1);
+        return toCsv(List.of(report("Yesterday", start, end)));
+    }
+
+    // Anthony's review - this used to be duplicated between the calendar-window
+    // reports above and the scheduled job's single-day report, which is exactly how a
+    // fix to one but not the other goes unnoticed. One shared counting method and one
+    // shared CSV builder now back both
+    private PlatformReport report(String periodLabel, LocalDateTime start, LocalDateTime end) {
+        long newCustomers = userAccountRepository
+                .countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(Role.CUSTOMER, start, end);
+        long newDesigners = userAccountRepository
+                .countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(Role.INTERIOR_DESIGNER, start, end);
+        long newProjects = projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end);
+        long newBookings = bookingRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end);
+        long newComplaints = complaintRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end);
         return new PlatformReport(periodLabel, newCustomers, newDesigners, newProjects, newBookings, newComplaints);
+    }
+
+    private String toCsv(List<PlatformReport> reports) {
+        StringBuilder csv = new StringBuilder();
+        csv.append("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n");
+        for (PlatformReport report : reports) {
+            csv.append(report.periodLabel()).append(',')
+                    .append(report.newCustomers()).append(',')
+                    .append(report.newDesigners()).append(',')
+                    .append(report.newProjects()).append(',')
+                    .append(report.newBookings()).append(',')
+                    .append(report.newComplaints()).append('\n');
+        }
+        return csv.toString();
     }
 }

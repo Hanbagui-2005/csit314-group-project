@@ -19,11 +19,23 @@ class FileStorageServiceUnitTests {
     }
 
     @Test
-    void acceptsASupportedImageType(@org.junit.jupiter.api.io.TempDir Path tempDir) {
+    void acceptsASupportedImageType(@org.junit.jupiter.api.io.TempDir Path tempDir) throws Exception {
         FileStorageService service = service(tempDir);
-        MockMultipartFile file = new MockMultipartFile("photos", "a.jpg", "image/jpeg", "x".getBytes());
+        MockMultipartFile file = new MockMultipartFile("photos", "a.jpg", "image/jpeg", realPngBytes());
 
         assertThatCode(() -> service.validate(file)).doesNotThrowAnyException();
+    }
+
+    // the JDK's ImageIO has no WEBP reader, so a genuine WEBP file would always fail the
+    // decode check - WEBP is excluded from the allowed types instead of being silently broken
+    @Test
+    void rejectsWebpSinceImageIoCantDecodeIt(@org.junit.jupiter.api.io.TempDir Path tempDir) {
+        FileStorageService service = service(tempDir);
+        MockMultipartFile file = new MockMultipartFile("photos", "a.webp", "image/webp", "x".getBytes());
+
+        assertThatThrownBy(() -> service.validate(file))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("supported image type");
     }
 
     @Test
@@ -58,9 +70,13 @@ class FileStorageServiceUnitTests {
     }
 
     @Test
-    void acceptsAFileRightAtTheLimit(@org.junit.jupiter.api.io.TempDir Path tempDir) {
+    void acceptsAFileRightAtTheLimit(@org.junit.jupiter.api.io.TempDir Path tempDir) throws Exception {
         FileStorageService service = service(tempDir);
+        // a real (decodable) image padded out to exactly the size limit - trailing bytes
+        // after a PNG's IEND chunk don't stop it decoding
+        byte[] realPng = realPngBytes();
         byte[] exactlyFiveMb = new byte[5 * 1024 * 1024];
+        System.arraycopy(realPng, 0, exactlyFiveMb, 0, realPng.length);
         MockMultipartFile file = new MockMultipartFile("photos", "max.jpg", "image/jpeg", exactlyFiveMb);
 
         assertThatCode(() -> service.validate(file)).doesNotThrowAnyException();
@@ -84,6 +100,20 @@ class FileStorageServiceUnitTests {
                 "<html><script>alert(1)</script></html>".getBytes());
 
         assertThatThrownBy(() -> service.store(file))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("valid image");
+    }
+
+    // a caller that validates a whole batch up front (ProjectService) needs the decode
+    // failure to surface at validate() time, not only once store() is reached - otherwise
+    // earlier files in the batch are already written to disk before this one is caught
+    @Test
+    void validateAloneCatchesBytesThatDontMatchTheClaimedType(@org.junit.jupiter.api.io.TempDir Path tempDir) {
+        FileStorageService service = service(tempDir);
+        MockMultipartFile file = new MockMultipartFile("photos", "a.png", "image/png",
+                "<html><script>alert(1)</script></html>".getBytes());
+
+        assertThatThrownBy(() -> service.validate(file))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("valid image");
     }

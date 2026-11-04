@@ -8,6 +8,7 @@ import com.csit314.platform.repository.ProjectRepository;
 import com.csit314.platform.repository.ShortlistRepository;
 import com.csit314.platform.dto.DesignerComparison;
 import com.csit314.platform.dto.ShortlistTrendPoint;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,12 +31,14 @@ public class FavouriteService {
     private final ShortlistRepository shortlistRepository;
     private final ProjectRepository projectRepository;
     private final RatingService ratingService;
+    private final ShortlistWriter shortlistWriter;
 
     public FavouriteService(ShortlistRepository shortlistRepository, ProjectRepository projectRepository,
-                            RatingService ratingService) {
+                            RatingService ratingService, ShortlistWriter shortlistWriter) {
         this.shortlistRepository = shortlistRepository;
         this.projectRepository = projectRepository;
         this.ratingService = ratingService;
+        this.shortlistWriter = shortlistWriter;
     }
 
     @Transactional
@@ -45,22 +48,34 @@ public class FavouriteService {
         }
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ServiceException("That project couldn't be found."));
-        shortlistRepository.save(new Shortlist(customer, project));
-        project.incrementShortlistCount();
+        try {
+            shortlistWriter.insert(customer, project);
+        } catch (DataIntegrityViolationException e) {
+            // lost a race with another request for the same (customer, project) pair.
+            // ShortlistWriter's own (separate, REQUIRES_NEW) transaction already
+            // rolled back cleanly before this exception reached us, so catching it
+            // here doesn't touch this method's own transaction - it's already
+            // shortlisted either way
+            return;
+        }
+        // Project.shortlistCount is a derived @Formula field now (Anthony's review),
+        // not a counter to update here - it's always correct the moment the insert
+        // above commits, with nothing that can desynchronise it
     }
 
     @Transactional
     public void remove(Customer customer, Long projectId) {
         shortlistRepository.findByCustomerIdAndProjectId(customer.getId(), projectId)
-                .ifPresent(shortlist -> {
-                    shortlistRepository.delete(shortlist);
-                    shortlist.getProject().decrementShortlistCount();
-                });
+                .ifPresent(shortlistRepository::delete);
     }
 
+    // a suspended/pending/rejected designer's project is hidden here too, same as search
+    // and the project detail page - a customer shouldn't see it on their favourites list
+    // just because they saved it before the designer's status changed
     public List<Project> listForCustomer(Customer customer) {
         return shortlistRepository.findByCustomerIdOrderByCreatedAtDesc(customer.getId()).stream()
                 .map(Shortlist::getProject)
+                .filter(Project::isVisible)
                 .toList();
     }
 
@@ -78,6 +93,7 @@ public class FavouriteService {
         List<Long> categoryIds = shortlisted.stream().map(p -> p.getCategory().getId()).distinct().toList();
         List<Long> excludeIds = shortlisted.stream().map(Project::getId).toList();
         return projectRepository.findByCategoryIdInAndIdNotInOrderByCreatedAtDesc(categoryIds, excludeIds).stream()
+                .filter(Project::isVisible)
                 .limit(MAX_RECOMMENDATIONS)
                 .toList();
     }

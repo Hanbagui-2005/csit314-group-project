@@ -36,6 +36,8 @@
                     <li><a class="dropdown-item" href="/platform-manager/categories">Categories</a></li>
                     <li><a class="dropdown-item" href="/platform-manager/reports">Reports</a></li>
                     <li><a class="dropdown-item" href="/platform-manager/designers">Designers</a></li>
+                    <li><a class="dropdown-item" href="/platform-manager/flagged-projects">Flagged projects</a></li>
+                    <li><a class="dropdown-item" href="/platform-manager/error-log">Error log</a></li>
                 </ul>
             </div>
             <button th:if="${currentUser == null}" type="button" class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">Log in</button>
@@ -81,6 +83,9 @@
                     <button type="submit" class="btn btn-dark w-100">Log in</button>
                 </form>
                 <p class="text-center text-muted small mt-3 mb-0">No account yet? <a href="/register" data-bs-dismiss="modal">Register</a></p>
+                <!-- shown unconditionally, not just after a failed attempt - see admin-login.html -->
+                <p class="text-center text-muted small mb-0">Trouble logging in? Several failed attempts lock an
+                    account for 15 minutes.</p>
             </div>
         </div>
     </div>

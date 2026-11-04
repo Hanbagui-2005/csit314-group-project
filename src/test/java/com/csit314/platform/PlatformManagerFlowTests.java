@@ -109,12 +109,17 @@ class PlatformManagerFlowTests {
         assertThat(categoryRepository.findById(category.getId()).orElseThrow().getName()).isEqualTo("Sun Rooms");
 
         mvc.perform(post("/platform-manager/categories/" + category.getId() + "/delete").with(csrf()).session(session))
-                .andExpect(flash().attribute("successMessage", "Category deleted."));
-        assertThat(categoryRepository.findById(category.getId())).isEmpty();
+                .andExpect(flash().attribute("successMessage", "Category deactivated."));
+        // PM-13 - soft delete: the row stays (so a project that already used it keeps
+        // working), it just drops out of the active list
+        Category deactivated = categoryRepository.findById(category.getId()).orElseThrow();
+        assertThat(deactivated.isActive()).isFalse();
     }
 
+    // PM-13 - deactivating a category in use doesn't need a guard anymore: the project
+    // keeps its (now-inactive) category instead of the delete being blocked outright
     @Test
-    void categoryStillUsedByAProjectCannotBeDeleted() throws Exception {
+    void categoryStillUsedByAProjectIsSoftDeletedNotBlocked() throws Exception {
         MockHttpSession session = loginPlatformManager();
 
         Category category = categoryRepository.save(new Category("Verification-only category"));
@@ -125,10 +130,12 @@ class PlatformManagerFlowTests {
         project.addPhoto("/uploads/guard-test-project.jpg");
         projectRepository.save(project);
 
-       mvc.perform(post("/platform-manager/categories/" + category.getId() + "/delete").with(csrf()).session(session))
-                .andExpect(flash().attribute("errorMessage",
-                        "This category is still used by at least one project and can't be deleted."));
-        assertThat(categoryRepository.findById(category.getId())).isPresent();
+        mvc.perform(post("/platform-manager/categories/" + category.getId() + "/delete").with(csrf()).session(session))
+                .andExpect(flash().attribute("successMessage", "Category deactivated."));
+
+        assertThat(categoryRepository.findById(category.getId()).orElseThrow().isActive()).isFalse();
+        assertThat(projectRepository.findById(project.getId()).orElseThrow().getCategory().getId())
+                .isEqualTo(category.getId());
     }
 
     @Test

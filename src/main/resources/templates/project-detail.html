@@ -126,6 +126,12 @@
         </div>
     </div>
 
+    <!-- PM-11 -->
+    <p class="text-end mt-2">
+        <a th:if="${currentUser != null}" th:href="@{/projects/{id}/report(id=${project.id})}"
+           class="text-muted small">Report this project</a>
+    </p>
+
 </div>
 </body>
 </html>

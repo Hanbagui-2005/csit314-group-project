@@ -123,6 +123,19 @@ public abstract class UserAccount {
     private static final long LOCK_DURATION_MINUTES = 15;
 
     public void recordFailedLogin() {
+        if (lockedAt != null) {
+            if (isLocked()) {
+                // still within an active lock - further wrong guesses shouldn't keep
+                // pushing the 15-minute expiry back out, or a locked account could be
+                // kept locked indefinitely just by someone continuing to guess wrong
+                return;
+            }
+            // the previous lock has already lapsed - start counting fresh instead of
+            // letting the stale count immediately re-lock the account after just one
+            // more mistake
+            failedLoginAttempts = 0;
+            lockedAt = null;
+        }
         failedLoginAttempts++;
         if (failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
             lockedAt = LocalDateTime.now();

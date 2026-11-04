@@ -1,7 +1,6 @@
 package com.csit314.platform.web.session;
 
 import com.csit314.platform.model.AccountStatus;
-import com.csit314.platform.model.Customer;
 import com.csit314.platform.model.Role;
 import com.csit314.platform.repository.UserAccountRepository;
 import org.junit.jupiter.api.Test;
@@ -11,12 +10,9 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.*;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.FlashMap;
 import org.springframework.web.servlet.support.SessionFlashMapManager;
-
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -34,19 +30,12 @@ class AuthInterceptorUnitTests {
         return request;
     }
 
-    private Customer activeAccount(Long id) {
-        Customer account = new Customer("Person", "person@example.test", "encoded");
-        ReflectionTestUtils.setField(account, "id", id);
-        account.setStatus(AccountStatus.ACTIVE);
-        return account;
-    }
-
     @ParameterizedTest @EnumSource(value = Role.class, names = {"ADMIN", "CUSTOMER", "INTERIOR_DESIGNER"})
     void matchingRoleCanContinue(Role role) throws Exception {
         var request = request(); var response = new MockHttpServletResponse();
         request.getSession().setAttribute(LoginSession.CURRENT_USER,
                 new SessionUser(1L, "Person", "person@example.test", role));
-        when(userAccountRepository.findById(1L)).thenReturn(Optional.of(activeAccount(1L)));
+        when(userAccountRepository.existsByIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(true);
 
         assertThat(new AuthInterceptor(new LoginSession(), role, "/login", userAccountRepository)
                 .preHandle(request, response, new Object())).isTrue();
@@ -66,7 +55,8 @@ class AuthInterceptorUnitTests {
     void wrongRoleIsRedirected(Role requiredRole) throws Exception {
         var request = request(); var response = new MockHttpServletResponse();
         Role actualRole = requiredRole == Role.CUSTOMER ? Role.ADMIN : Role.CUSTOMER;
-        request.getSession().setAttribute(LoginSession.CURRENT_USER,
+        MockHttpSession session = (MockHttpSession) request.getSession();
+        session.setAttribute(LoginSession.CURRENT_USER,
                 new SessionUser(1L, "Person", "person@example.test", actualRole));
 
         assertThat(new AuthInterceptor(new LoginSession(), requiredRole, "/login", userAccountRepository)
@@ -74,6 +64,9 @@ class AuthInterceptorUnitTests {
         assertThat(response.getRedirectedUrl()).isEqualTo("/login");
         // the role mismatch is decided before any database lookup
         verifyNoInteractions(userAccountRepository);
+        // a user with the wrong role for this route (e.g. a designer clicking a
+        // customer-only link) is just redirected - their whole session stays valid
+        assertThat(session.isInvalid()).isFalse();
     }
 
     // ADM-06/08 - a suspended account's existing session is rejected and cleared on its very
@@ -84,9 +77,7 @@ class AuthInterceptorUnitTests {
         MockHttpSession session = (MockHttpSession) request.getSession();
         session.setAttribute(LoginSession.CURRENT_USER,
                 new SessionUser(1L, "Person", "person@example.test", Role.CUSTOMER));
-        Customer account = activeAccount(1L);
-        account.setStatus(AccountStatus.SUSPENDED);
-        when(userAccountRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(userAccountRepository.existsByIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(false);
 
         boolean allowed = new AuthInterceptor(new LoginSession(), Role.CUSTOMER, "/login", userAccountRepository)
                 .preHandle(request, response, new Object());
@@ -102,7 +93,7 @@ class AuthInterceptorUnitTests {
         var request = request(); var response = new MockHttpServletResponse();
         request.getSession().setAttribute(LoginSession.CURRENT_USER,
                 new SessionUser(1L, "Person", "person@example.test", Role.CUSTOMER));
-        when(userAccountRepository.findById(1L)).thenReturn(Optional.empty());
+        when(userAccountRepository.existsByIdAndStatus(1L, AccountStatus.ACTIVE)).thenReturn(false);
 
         boolean allowed = new AuthInterceptor(new LoginSession(), Role.CUSTOMER, "/login", userAccountRepository)
                 .preHandle(request, response, new Object());
