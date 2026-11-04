@@ -1,11 +1,15 @@
 package com.csit314.platform.service;
 
-import com.csit314.platform.model.Company;
-import com.csit314.platform.model.InteriorDesigner;
-import com.csit314.platform.repository.InteriorDesignerRepository;
-import com.csit314.platform.repository.UserAccountRepository;
 import com.csit314.platform.dto.CompanyProfileForm;
 import com.csit314.platform.dto.DesignerRegistrationForm;
+import com.csit314.platform.model.Company;
+import com.csit314.platform.model.InteriorDesigner;
+import com.csit314.platform.model.LicenseVerification;
+import com.csit314.platform.repository.InteriorDesignerRepository;
+import com.csit314.platform.repository.LicenseVerificationRepository;
+import com.csit314.platform.repository.UserAccountRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,13 +29,20 @@ public class DesignerService {
     private final InteriorDesignerRepository designerRepository;
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LicenseVerificationRepository verificationRepository;
+    private final EntityManager entityManager;
 
-    public DesignerService(InteriorDesignerRepository designerRepository,
-                           UserAccountRepository userAccountRepository,
-                           PasswordEncoder passwordEncoder) {
+    public DesignerService(
+            InteriorDesignerRepository designerRepository,
+            UserAccountRepository userAccountRepository,
+            PasswordEncoder passwordEncoder,
+            LicenseVerificationRepository verificationRepository,
+            EntityManager entityManager) {
         this.designerRepository = designerRepository;
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
+        this.verificationRepository = verificationRepository;
+        this.entityManager = entityManager;
     }
 
     public InteriorDesigner register(DesignerRegistrationForm form) {
@@ -39,8 +50,8 @@ public class DesignerService {
     }
 
     @Transactional
-    public InteriorDesigner register(DesignerRegistrationForm form,
-                                     String ipAddress) {
+    public InteriorDesigner register(
+            DesignerRegistrationForm form, String ipAddress) {
         String contactName = InputRules.requireText(
                 form.contactName(), "Contact name", 100);
         String email = InputRules.requireEmail(form.email());
@@ -107,8 +118,6 @@ public class DesignerService {
     @Transactional
     public InteriorDesigner updateCompanyProfile(
             Long designerId, CompanyProfileForm form) {
-        InteriorDesigner designer = requireById(designerId);
-
         String name = InputRules.requireText(
                 form.companyName(), "Company name", 150);
         String description = InputRules.optionalText(
@@ -120,8 +129,30 @@ public class DesignerService {
         String licenseNumber = InputRules.optionalText(
                 form.licenseNumber(), 60, "License number");
 
+        InteriorDesigner designer = requireLockedDesigner(designerId);
         Company company = designer.getCompany();
 
+        String previousLicenseNumber = InputRules.optionalText(
+                company.getLicenseNumber(), 60, "License number");
+
+        if (!Objects.equals(previousLicenseNumber, licenseNumber)) {
+            String note = "License number changed from ["
+                    + displayLicense(previousLicenseNumber)
+                    + "] to ["
+                    + displayLicense(licenseNumber)
+                    + "]. A fresh admin verification is required.";
+
+            verificationRepository.save(new LicenseVerification(
+                    designer,
+                    licenseNumber,
+                    LicenseVerification.Action.LICENSE_CHANGED,
+                    designer.getEmail(),
+                    note));
+
+            designer.setVerified(false);
+        }
+
+        company.setLicenseNumber(licenseNumber);
         company.setName(name);
         company.setDescription(description);
         company.setPhone(phone);
@@ -131,16 +162,24 @@ public class DesignerService {
             designer.setServiceAreaVerified(false);
         }
 
-        // Changed license numbers require fresh admin verification.
-        String currentLicenseNumber = InputRules.optionalText(
-                company.getLicenseNumber(), 60, "License number");
+        return designer;
+    }
 
-        if (!Objects.equals(currentLicenseNumber, licenseNumber)) {
-            designer.setVerified(false);
+    private InteriorDesigner requireLockedDesigner(Long designerId) {
+        InteriorDesigner designer = entityManager.find(
+                InteriorDesigner.class,
+                designerId,
+                LockModeType.PESSIMISTIC_WRITE);
+
+        if (designer == null) {
+            throw new ServiceException("Designer account not found.");
         }
 
-        company.setLicenseNumber(licenseNumber);
-
+        entityManager.refresh(designer);
         return designer;
+    }
+
+    private String displayLicense(String licenseNumber) {
+        return licenseNumber == null ? "not provided" : licenseNumber;
     }
 }
