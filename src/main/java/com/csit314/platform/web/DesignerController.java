@@ -170,22 +170,42 @@ public class DesignerController {
     public String editCompanyProfileForm(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
         InteriorDesigner designer = designerService.requireById(current.id());
-        model.addAttribute("company", designer.getCompany());
+        addCompanyProfileFields(model, designer.getCompany().getName(), designer.getCompany().getDescription(),
+                designer.getCompany().getPhone(), designer.getCompany().getServiceArea());
         return "designer-profile-edit";
     }
 
     @PostMapping("/profile")
     public String updateCompanyProfile(@ModelAttribute CompanyProfileForm form,
                                        HttpServletRequest request,
-                                       RedirectAttributes redirect) {
+                                       RedirectAttributes redirect,
+                                       Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            designerService.updateCompanyProfile(current.id(), form);
+            InteriorDesigner designer = designerService.updateCompanyProfile(current.id(), form);
+            // Anthony's review - the navbar's name comes from the SessionUser snapshot
+            // taken at login, so without this a renamed company kept showing its old
+            // name there until the designer logged out and back in
+            loginSession.refresh(request, designer);
             redirect.addFlashAttribute("successMessage", "Your company profile has been updated.");
+            return "redirect:/designer/profile/edit";
         } catch (ServiceException e) {
-            redirect.addFlashAttribute("errorMessage", e.getMessage());
+            // Anthony's review - renders the form again directly (same request)
+            // instead of redirecting, so a validation failure (e.g. a blank company
+            // name) doesn't throw away the other three fields the designer just typed
+            model.addAttribute("errorMessage", e.getMessage());
+            addCompanyProfileFields(model, form.companyName(), form.companyDescription(), form.companyPhone(),
+                    form.serviceArea());
+            return "designer-profile-edit";
         }
-        return "redirect:/designer/profile/edit";
+    }
+
+    private void addCompanyProfileFields(Model model, String name, String description, String phone,
+                                         String serviceArea) {
+        model.addAttribute("companyName", name);
+        model.addAttribute("companyDescription", description);
+        model.addAttribute("companyPhone", phone);
+        model.addAttribute("companyServiceArea", serviceArea);
     }
 
     // IDR-04 / IDR-05

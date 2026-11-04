@@ -12,24 +12,24 @@
 
         <div class="mb-3">
             <label class="form-label">Company name</label>
-            <input type="text" name="companyName" class="form-control" th:value="${company.name}"/>
+            <input type="text" name="companyName" class="form-control" th:value="${companyName}"/>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Company description</label>
             <textarea name="companyDescription" class="form-control" rows="3"
-                      th:text="${company.description}"></textarea>
+                      th:text="${companyDescription}"></textarea>
         </div>
 
         <div class="mb-3">
             <label class="form-label">Contact phone</label>
-            <input type="tel" name="companyPhone" class="form-control" th:value="${company.phone}"/>
+            <input type="tel" name="companyPhone" class="form-control" th:value="${companyPhone}"/>
         </div>
 
         <!-- PM-05 -->
         <div class="mb-4">
             <label class="form-label">Service area</label>
-            <input type="text" name="serviceArea" class="form-control" th:value="${company.serviceArea}"/>
+            <input type="text" name="serviceArea" class="form-control" th:value="${companyServiceArea}"/>
             <div class="form-text">Changing this clears your service-area verification until Platform Management re-checks it.</div>
         </div>
 
