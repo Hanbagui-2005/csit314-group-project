@@ -144,15 +144,22 @@ public class AdminController {
         return "redirect:/admin/users";
     }
 
-    @GetMapping("/users/{id}/license")
+      @GetMapping("/users/{id}/license")
     public String license(
             @PathVariable Long id,
             Model model,
             RedirectAttributes redirect) {
         try {
-            model.addAttribute("designer", designerService.requireById(id));
+            InteriorDesigner designer = designerService.requireById(id);
+
+            model.addAttribute("designer", designer);
             model.addAttribute(
                     "history", licenseVerificationService.historyFor(id));
+            model.addAttribute(
+                    "licenseWarning",
+                    designerService.licenseReuseWarning(
+                            id, designer.getCompany().getLicenseNumber()));
+
             return "admin-license-verification";
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());
