@@ -60,6 +60,11 @@
         </div>
     </div>
 
+        <div th:if="${licenseWarning != null}"
+         class="alert alert-warning"
+         th:text="${licenseWarning}">
+    </div>
+
     <p class="text-muted">
         Check official registration records and confirm that the number
         belongs to this company. License verification is separate from
