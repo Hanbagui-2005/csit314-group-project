@@ -234,7 +234,7 @@ public class DesignerController {
         model.addAttribute("licenseNumber", licenseNumber);
     }
 
-    // IDR-04 / IDR-05
+    // IDR-04 / IDR-05 / IDR-07 / IDR-14
     @PostMapping("/projects")
     public String createProject(@ModelAttribute ProjectForm form,
                                 @RequestParam(value = "photos", required = false) List<MultipartFile> photos,

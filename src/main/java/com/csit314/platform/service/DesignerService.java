@@ -148,13 +148,22 @@ public class DesignerService {
 
         String previousLicenseNumber = InputRules.optionalText(
                 company.getLicenseNumber(), 60, "License number");
+        String previousName = company.getName();
 
-        if (!Objects.equals(previousLicenseNumber, licenseNumber)) {
-            String note = "License number changed from ["
-                    + displayLicense(previousLicenseNumber)
-                    + "] to ["
-                    + displayLicense(licenseNumber)
-                    + "]. A fresh admin verification is required.";
+        boolean licenseChanged = !Objects.equals(previousLicenseNumber, licenseNumber);
+        // Anthony's review on PR #27 - the verified badge really means "this license number,
+        // under this company name, was checked by an admin". Renaming a verified company used
+        // to leave the badge up even though the name an admin actually checked no longer
+        // matches, so a rename alone now also clears it once there's something verified to
+        // protect. Renaming an already-unverified company doesn't need a fresh verification
+        // record - there's nothing to invalidate yet, and the license-number branch below
+        // still covers it once a license number is actually entered
+        boolean nameChanged = !Objects.equals(previousName, name) && designer.isVerified();
+
+        if (licenseChanged || nameChanged) {
+            String note = identityChangeNote(
+                    previousLicenseNumber, licenseNumber, licenseChanged,
+                    previousName, name, nameChanged);
 
             verificationRepository.save(new LicenseVerification(
                     designer,
@@ -224,5 +233,27 @@ public class DesignerService {
 
     private String displayLicense(String licenseNumber) {
         return licenseNumber == null ? "not provided" : licenseNumber;
+    }
+
+    private String identityChangeNote(String previousLicenseNumber, String licenseNumber,
+                                      boolean licenseChanged, String previousName, String name,
+                                      boolean nameChanged) {
+        StringBuilder note = new StringBuilder();
+        if (licenseChanged) {
+            note.append("License number changed from [")
+                    .append(displayLicense(previousLicenseNumber))
+                    .append("] to [")
+                    .append(displayLicense(licenseNumber))
+                    .append("]. ");
+        }
+        if (nameChanged) {
+            note.append("Company name changed from [")
+                    .append(previousName)
+                    .append("] to [")
+                    .append(name)
+                    .append("]. ");
+        }
+        note.append("A fresh admin verification is required.");
+        return note.toString();
     }
 }

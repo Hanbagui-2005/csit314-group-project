@@ -33,9 +33,15 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     // IDR-10/CUS-04/CUS-09/CUS-10/PM-05 - Browse search, filters on keyword/category/budget/room
     // size/verified/location when given. Only shows projects from ACTIVE designers - a suspended,
-    // pending or rejected designer's work shouldn't be browsable. The location filter is what
-    // actually puts PM-05's service-area check in front of customers, instead of it only being
-    // visible on the Platform Management page.
+    // pending or rejected designer's work shouldn't be browsable.
+    // CUS-04 - minBudget/maxBudget are the customer's own budget range; a project only
+    // matches if its whole budget window fits inside that range, not just its max
+    // PM-05 - Anthony's review on PR #27: this used to match on the designer's declared
+    // serviceArea text alone, so a designer Platform Management had marked unverified for
+    // that area still showed up in a location search - the opposite of what the story
+    // asks for ("so customers aren't matched with designers who can't actually service
+    // their location"). Now it also requires serviceAreaVerified, so an unconfirmed
+    // location claim doesn't surface a designer who may not actually cover that area
     // :query and :location are escaped by the caller (BrowseService) before being passed
     // in here, so a % or _ typed into a search box is matched literally instead of acting
     // as a wildcard. The escape character is '!', not a backslash - MySQL treats a
@@ -47,14 +53,17 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             + "(:query is null or lower(p.title) like lower(concat('%', :query, '%')) escape '!' "
             + "or lower(p.description) like lower(concat('%', :query, '%')) escape '!') "
             + "and (:categoryName is null or p.category.name = :categoryName) "
+            + "and (:minBudget is null or p.budgetMin >= :minBudget) "
             + "and (:maxBudget is null or p.budgetMax <= :maxBudget) "
-            + "and (:minRoomSize is null or p.roomSizeSqm <= :minRoomSize) "
+            + "and (:roomSize is null or p.roomSizeSqm <= :roomSize) "
             + "and (:verifiedOnly = false or p.designer.verified = true) "
-            + "and (:location is null or lower(p.designer.company.serviceArea) like lower(concat('%', :location, '%')) escape '!') "
+            + "and (:location is null or (p.designer.serviceAreaVerified = true "
+            + "and lower(p.designer.company.serviceArea) like lower(concat('%', :location, '%')) escape '!')) "
             + "and p.designer.status = com.csit314.platform.model.AccountStatus.ACTIVE "
             + "order by p.createdAt desc")
     List<Project> search(@Param("query") String query, @Param("categoryName") String categoryName,
-                         @Param("maxBudget") Integer maxBudget, @Param("minRoomSize") Integer minRoomSize,
+                         @Param("minBudget") Integer minBudget, @Param("maxBudget") Integer maxBudget,
+                         @Param("roomSize") Integer roomSize,
                          @Param("verifiedOnly") boolean verifiedOnly, @Param("location") String location);
 
     // CUS-12 - only listings that actually gave a budget, to estimate a range from

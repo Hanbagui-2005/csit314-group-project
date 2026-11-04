@@ -6,21 +6,25 @@
 <div class="container">
 
     <form class="row g-2 mb-2" method="get" th:action="@{/search}">
-        <div class="col-md-5">
+        <div class="col-md-3">
             <input type="text" name="q" class="form-control" placeholder="Search by keyword"
                    th:value="${query}"/>
         </div>
         <!-- CUS-04 -->
-        <div class="col-md-3">
+        <div class="col-md-2">
+            <input type="number" name="minBudget" class="form-control" min="0" placeholder="Min budget"
+                   th:value="${minBudget}"/>
+        </div>
+        <div class="col-md-2">
             <input type="number" name="maxBudget" class="form-control" min="0" placeholder="Max budget"
                    th:value="${maxBudget}"/>
         </div>
-        <div class="col-md-3">
-            <input type="number" name="minRoomSize" class="form-control" min="0" placeholder="My room size (sqm)"
-                   th:value="${minRoomSize}"/>
+        <div class="col-md-2">
+            <input type="number" name="roomSize" class="form-control" min="0" placeholder="My room size (sqm)"
+                   th:value="${roomSize}"/>
         </div>
         <!-- PM-05 - lets a customer filter to designers who actually service their area -->
-        <div class="col-md-3">
+        <div class="col-md-2">
             <input type="text" name="location" class="form-control" placeholder="Service area"
                    th:value="${location}"/>
         </div>
@@ -33,14 +37,14 @@
             <div class="form-check">
                 <input type="checkbox" name="verifiedOnly" value="true" id="verifiedOnly" class="form-check-input"
                        th:checked="${verifiedOnly}" onchange="this.form.submit()"/>
-                <label for="verifiedOnly" class="form-check-label small">Designers with a license on file only</label>
+                <label for="verifiedOnly" class="form-check-label small">Verified licensed designers only</label>
             </div>
         </div>
     </form>
 
     <div class="mb-3">
         <a th:each="cat : ${categories}"
-           th:href="@{/search(q=${query}, category=${cat.name}, maxBudget=${maxBudget}, minRoomSize=${minRoomSize}, verifiedOnly=${verifiedOnly}, location=${location})}"
+           th:href="@{/search(q=${query}, category=${cat.name}, minBudget=${minBudget}, maxBudget=${maxBudget}, roomSize=${roomSize}, verifiedOnly=${verifiedOnly}, location=${location})}"
            th:text="${cat.name}"
            class="btn btn-sm me-2 mb-2"
            th:classappend="${cat.name == selectedCategory} ? 'btn-dark' : 'btn-outline-secondary'">Category</a>
@@ -61,7 +65,7 @@
                     <h6 class="card-title mb-1" th:text="${project.title}">Project title</h6>
                     <p class="card-text text-muted small mb-1">
                         <span th:text="${project.designer.company.name}">Designer name</span>
-                        <span class="badge bg-light text-dark border" th:if="${project.designer.verified}">License provided</span>
+                        <span class="badge bg-light text-dark border" th:if="${project.designer.verified}">Verified license</span>
                     </p>
                     <p class="card-text text-muted small mb-2" th:if="${project.budgetMin != null}"
                        th:text="'$' + ${project.budgetMin} + ' - $' + ${project.budgetMax}">Budget</p>
