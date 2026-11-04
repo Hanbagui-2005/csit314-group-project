@@ -6,6 +6,7 @@ import com.csit314.platform.dto.DesignerRegistrationForm;
 import com.csit314.platform.model.InteriorDesigner;
 import com.csit314.platform.repository.UserAccountRepository;
 import jakarta.persistence.EntityManager;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,17 +36,20 @@ public class DemoDataImportService {
     private final UserManagementService userManagementService;
     private final UserAccountRepository userAccountRepository;
     private final EntityManager entityManager;
+    private final PasswordEncoder passwordEncoder;
 
     public DemoDataImportService(CustomerService customerService,
                                  DesignerService designerService,
                                  UserManagementService userManagementService,
                                  UserAccountRepository userAccountRepository,
-                                 EntityManager entityManager) {
+                                 EntityManager entityManager,
+                                 PasswordEncoder passwordEncoder) {
         this.customerService = customerService;
         this.designerService = designerService;
         this.userManagementService = userManagementService;
         this.userAccountRepository = userAccountRepository;
         this.entityManager = entityManager;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // Anthony's review, two rounds:
@@ -61,13 +65,18 @@ public class DemoDataImportService {
     //   (and skipped) individually instead, so a bigger re-run fills in the rest
     @Transactional
     public DemoDataImportResult importDemoData(int count) {
+        // Anthony's review - every account below shares DEMO_PASSWORD, so it only
+        // needs to be BCrypt-hashed once here instead of once per registration; with
+        // a large count that was several minutes of hashing the exact same string
+        String encodedDemoPassword = passwordEncoder.encode(DEMO_PASSWORD);
+
         int customersImported = 0;
         int processed = 0;
         for (CustomerRegistrationForm form : customerForms(count)) {
             if (userAccountRepository.existsByEmail(form.email())) {
                 continue;
             }
-            customerService.register(form);
+            customerService.registerWithEncodedPassword(form, encodedDemoPassword);
             customersImported++;
             processed = flushPeriodically(++processed);
         }
@@ -78,7 +87,7 @@ public class DemoDataImportService {
             if (userAccountRepository.existsByEmail(form.email())) {
                 continue;
             }
-            InteriorDesigner designer = designerService.register(form);
+            InteriorDesigner designer = designerService.registerWithEncodedPassword(form, encodedDemoPassword);
             designerIds.add(designer.getId());
             designersImported++;
             processed = flushPeriodically(++processed);

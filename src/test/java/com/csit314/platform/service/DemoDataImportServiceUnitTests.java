@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -32,12 +33,13 @@ class DemoDataImportServiceUnitTests {
     @Mock UserManagementService userManagementService;
     @Mock UserAccountRepository userAccountRepository;
     @Mock EntityManager entityManager;
+    @Mock PasswordEncoder passwordEncoder;
     DemoDataImportService service;
 
     @BeforeEach
     void setUp() {
         service = new DemoDataImportService(customerService, designerService, userManagementService,
-                userAccountRepository, entityManager);
+                userAccountRepository, entityManager, passwordEncoder);
     }
 
     private InteriorDesigner designerWithId(long id) {
@@ -51,8 +53,9 @@ class DemoDataImportServiceUnitTests {
     @Test
     void importsTheRequestedNumberOfCustomersAndDesignersAndApprovesThem() {
         when(userAccountRepository.existsByEmail(anyString())).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-demo-password");
         AtomicLong nextId = new AtomicLong(1);
-        when(designerService.register(any(DesignerRegistrationForm.class)))
+        when(designerService.registerWithEncodedPassword(any(DesignerRegistrationForm.class), anyString()))
                 .thenAnswer(invocation -> designerWithId(nextId.getAndIncrement()));
         when(userManagementService.bulkApproveDesigners(any())).thenReturn(2);
 
@@ -61,11 +64,28 @@ class DemoDataImportServiceUnitTests {
         assertThat(result.customersImported()).isEqualTo(2);
         assertThat(result.designersImported()).isEqualTo(2);
         assertThat(result.designersApproved()).isEqualTo(2);
-        verify(customerService, times(2)).register(any(CustomerRegistrationForm.class));
-        verify(designerService, times(2)).register(any(DesignerRegistrationForm.class));
+        verify(customerService, times(2))
+                .registerWithEncodedPassword(any(CustomerRegistrationForm.class), eq("encoded-demo-password"));
+        verify(designerService, times(2))
+                .registerWithEncodedPassword(any(DesignerRegistrationForm.class), eq("encoded-demo-password"));
         ArgumentCaptor<List<Long>> idsCaptor = ArgumentCaptor.forClass(List.class);
         verify(userManagementService).bulkApproveDesigners(idsCaptor.capture());
         assertThat(idsCaptor.getValue()).containsExactly(1L, 2L);
+    }
+
+    // Anthony's review - every demo account shares DEMO_PASSWORD, so BCrypt only
+    // needs to run once per import, not once per account. With a large count the
+    // per-account hashing was the whole bottleneck (several minutes for 2000 accounts)
+    @Test
+    void hashesTheSharedDemoPasswordExactlyOnceNoMatterHowManyAccountsAreImported() {
+        when(userAccountRepository.existsByEmail(anyString())).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-demo-password");
+        when(designerService.registerWithEncodedPassword(any(DesignerRegistrationForm.class), anyString()))
+                .thenReturn(designerWithId(1));
+
+        service.importDemoData(25);
+
+        verify(passwordEncoder, times(1)).encode(anyString());
     }
 
     // Anthony's review - the old check looked only at the first customer and skipped
@@ -79,14 +99,18 @@ class DemoDataImportServiceUnitTests {
         when(userAccountRepository.existsByEmail("demo.customer02@demo.example.test")).thenReturn(false);
         when(userAccountRepository.existsByEmail("demo.designer01@demo.example.test")).thenReturn(true);
         when(userAccountRepository.existsByEmail("demo.designer02@demo.example.test")).thenReturn(false);
-        when(designerService.register(any(DesignerRegistrationForm.class))).thenReturn(designerWithId(1));
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-demo-password");
+        when(designerService.registerWithEncodedPassword(any(DesignerRegistrationForm.class), anyString()))
+                .thenReturn(designerWithId(1));
 
         DemoDataImportResult result = service.importDemoData(2);
 
         assertThat(result.customersImported()).isEqualTo(1);
         assertThat(result.designersImported()).isEqualTo(1);
-        verify(customerService, times(1)).register(any(CustomerRegistrationForm.class));
-        verify(designerService, times(1)).register(any(DesignerRegistrationForm.class));
+        verify(customerService, times(1))
+                .registerWithEncodedPassword(any(CustomerRegistrationForm.class), anyString());
+        verify(designerService, times(1))
+                .registerWithEncodedPassword(any(DesignerRegistrationForm.class), anyString());
     }
 
     // Anthony's review - this is the actual fix for "a failure partway through
@@ -108,7 +132,9 @@ class DemoDataImportServiceUnitTests {
     @Test
     void flushesAndClearsThePersistenceContextPeriodically() {
         when(userAccountRepository.existsByEmail(anyString())).thenReturn(false);
-        when(designerService.register(any(DesignerRegistrationForm.class))).thenReturn(designerWithId(1));
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-demo-password");
+        when(designerService.registerWithEncodedPassword(any(DesignerRegistrationForm.class), anyString()))
+                .thenReturn(designerWithId(1));
 
         service.importDemoData(60);
 

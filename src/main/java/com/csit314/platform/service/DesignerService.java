@@ -52,10 +52,29 @@ public class DesignerService {
     @Transactional
     public InteriorDesigner register(
             DesignerRegistrationForm form, String ipAddress) {
+        InputRules.checkNewPassword(form.password(), form.confirmPassword());
+        InteriorDesigner designer = buildDesigner(
+                form, passwordEncoder.encode(form.password()));
+        designer.setRegistrationIp(ipAddress);
+        return saveAndLogPending(designer);
+    }
+
+    // Anthony's review on PR #25 - same reasoning as
+    // CustomerService.registerWithEncodedPassword: DemoDataImportService shares one
+    // password across every synthetic account, so hashing it once up front and
+    // passing the hash through here skips re-running BCrypt per account. Package-private
+    // for the same reason - only code in this package can bypass the normal per-registration hashing
+    @Transactional
+    InteriorDesigner registerWithEncodedPassword(
+            DesignerRegistrationForm form, String encodedPassword) {
+        return saveAndLogPending(buildDesigner(form, encodedPassword));
+    }
+
+    private InteriorDesigner buildDesigner(
+            DesignerRegistrationForm form, String encodedPassword) {
         String contactName = InputRules.requireText(
                 form.contactName(), "Contact name", 100);
         String email = InputRules.requireEmail(form.email());
-        InputRules.checkNewPassword(form.password(), form.confirmPassword());
 
         String companyName = InputRules.requireText(
                 form.companyName(), "Company name", 150);
@@ -77,18 +96,13 @@ public class DesignerService {
         company.setLicenseNumber(licenseNumber);
         company.setServiceArea(serviceArea);
 
-        InteriorDesigner designer = new InteriorDesigner(
-                contactName,
-                email,
-                passwordEncoder.encode(form.password()),
-                company);
-        designer.setRegistrationIp(ipAddress);
+        return new InteriorDesigner(contactName, email, encodedPassword, company);
+    }
 
+    private InteriorDesigner saveAndLogPending(InteriorDesigner designer) {
         InteriorDesigner saved = designerRepository.save(designer);
-
         log.info("New designer registration pending approval: {} ({})",
-                companyName, email);
-
+                designer.getCompany().getName(), designer.getEmail());
         return saved;
     }
 
