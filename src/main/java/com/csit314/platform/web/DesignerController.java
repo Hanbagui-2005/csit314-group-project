@@ -12,6 +12,7 @@ import com.csit314.platform.service.ProjectService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.service.WeeklySummaryService;
 import com.csit314.platform.dto.CategorySuggestionResponse;
+import com.csit314.platform.dto.CompanyProfileForm;
 import com.csit314.platform.dto.ProjectForm;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
@@ -162,6 +163,75 @@ public class DesignerController {
             return new CategorySuggestionResponse(null, null);
         }
         return new CategorySuggestionResponse(suggestion.getId(), suggestion.getName());
+    }
+
+    // company profile editing - was previously set once at registration and never editable again
+         @GetMapping("/profile/edit")
+    public String editCompanyProfileForm(HttpServletRequest request, Model model) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        InteriorDesigner designer = designerService.requireById(current.id());
+
+        addCompanyProfileFields(
+                model,
+                designer.getCompany().getName(),
+                designer.getCompany().getDescription(),
+                designer.getCompany().getPhone(),
+                designer.getCompany().getServiceArea(),
+                designer.getCompany().getLicenseNumber());
+
+        model.addAttribute(
+                "licenseWarning",
+                designerService.licenseReuseWarning(
+                        current.id(),
+                        designer.getCompany().getLicenseNumber()));
+
+        return "designer-profile-edit";
+    }
+
+    @PostMapping("/profile")
+    public String updateCompanyProfile(
+            @ModelAttribute CompanyProfileForm form,
+            HttpServletRequest request,
+            RedirectAttributes redirect,
+            Model model) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+
+        try {
+            InteriorDesigner designer =
+                    designerService.updateCompanyProfile(current.id(), form);
+
+            loginSession.refresh(request, designer);
+            redirect.addFlashAttribute(
+                    "successMessage", "Your company profile has been updated.");
+
+            return "redirect:/designer/profile/edit";
+        } catch (ServiceException e) {
+            model.addAttribute("errorMessage", e.getMessage());
+
+            addCompanyProfileFields(
+                    model,
+                    form.companyName(),
+                    form.companyDescription(),
+                    form.companyPhone(),
+                    form.serviceArea(),
+                    form.licenseNumber());
+
+            return "designer-profile-edit";
+        }
+    }
+
+    private void addCompanyProfileFields(
+            Model model,
+            String name,
+            String description,
+            String phone,
+            String serviceArea,
+            String licenseNumber) {
+        model.addAttribute("companyName", name);
+        model.addAttribute("companyDescription", description);
+        model.addAttribute("companyPhone", phone);
+        model.addAttribute("companyServiceArea", serviceArea);
+        model.addAttribute("licenseNumber", licenseNumber);
     }
 
     // IDR-04 / IDR-05

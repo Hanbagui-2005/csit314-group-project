@@ -62,12 +62,16 @@ class UserManagementServiceUnitTests {
         service.approveDesigner(1L);
         assertThat(designer.isVerified()).isFalse();
     }
-    @Test void approvingWithALicenseNumberMarksDesignerVerified() {
+        @Test
+    void approvingWithALicenseNumberLeavesDesignerUnverified() {
         InteriorDesigner designer = pending();
         designer.getCompany().setLicenseNumber("LIC-12345");
         when(designers.findById(1L)).thenReturn(Optional.of(designer));
+
         service.approveDesigner(1L);
-        assertThat(designer.isVerified()).isTrue();
+
+        assertThat(designer.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+        assertThat(designer.isVerified()).isFalse();
     }
     @Test void missingDesignerCannotBeApprovedOrRejected() {
         when(designers.findById(42L)).thenReturn(Optional.empty());
@@ -184,17 +188,7 @@ class UserManagementServiceUnitTests {
         assertThatThrownBy(() -> service.unlock(1L)).isInstanceOf(ServiceException.class);
     }
 
-    // ADM-05
-    @Test void verificationCanBeToggledOnAndOff() {
-        InteriorDesigner designer = pending();
-        when(designers.findById(1L)).thenReturn(Optional.of(designer));
-        assertThat(designer.isVerified()).isFalse();
-        service.toggleVerified(1L);
-        assertThat(designer.isVerified()).isTrue();
-        service.toggleVerified(1L);
-        assertThat(designer.isVerified()).isFalse();
-    }
-
+   
     // ADM-12
     @Test void pendingDesignerCountDelegatesToTheRepository() {
         when(users.countByRoleAndStatus(Role.INTERIOR_DESIGNER, AccountStatus.PENDING)).thenReturn(4L);

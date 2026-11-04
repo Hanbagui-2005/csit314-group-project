@@ -22,6 +22,12 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
 
     boolean existsByRole(Role role);
 
+    // Anthony's review - lets AdminAccountInitializer/PlatformManagerAccountInitializer
+    // check whether an already-seeded account's password hash still matches the old,
+    // now-public hardcoded default, on an instance that was running before that
+    // fallback was removed
+    Optional<UserAccount> findFirstByRole(Role role);
+
     long countByRoleAndStatus(Role role, AccountStatus status);
 
     // ADM-14 - everyone who signed up from this IP recently, to spot a registration burst

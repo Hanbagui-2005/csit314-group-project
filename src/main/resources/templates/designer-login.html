@@ -7,6 +7,11 @@
 
     <h4 class="mb-3">Designer login</h4>
 
+        <div th:if="${licenseWarning != null}"
+         class="alert alert-warning"
+         th:text="${licenseWarning}">
+    </div>
+
     <form method="post" th:action="@{/designer/login}">
 
         <div class="mb-3">
