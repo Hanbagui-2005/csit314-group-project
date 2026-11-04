@@ -8,6 +8,11 @@
     <h4 class="mb-1">Company profile</h4>
     <p class="text-muted small mb-4">This is what customers see on your public designer profile.</p>
 
+        <div th:if="${licenseWarning != null}"
+         class="alert alert-warning"
+         th:text="${licenseWarning}">
+    </div>
+
     <form method="post" th:action="@{/designer/profile}">
 
         <div class="mb-3">
