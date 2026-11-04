@@ -151,6 +151,24 @@ class BrowseServiceUnitTests {
         verify(projectRepository).search(null, null, 5000, 10000, 15, false, null);
     }
 
+    // Anthony's review on PR #27 - without this, a minBudget above maxBudget just
+    // silently returned an empty result list with no explanation to the customer
+    @Test
+    void rejectsAMinBudgetAboveTheMaxBudget() {
+        assertThatThrownBy(() -> service.search(null, null, 10000, 5000, null, false, null))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("Minimum budget can't be more than the maximum");
+
+        verifyNoInteractions(projectRepository);
+    }
+
+    @Test
+    void anEqualMinAndMaxBudgetIsAllowed() {
+        service.search(null, null, 5000, 5000, null, false, null);
+
+        verify(projectRepository).search(null, null, 5000, 5000, null, false, null);
+    }
+
     // CUS-09
     @Test
     void verifiedOnlyFlagIsPassedThrough() {

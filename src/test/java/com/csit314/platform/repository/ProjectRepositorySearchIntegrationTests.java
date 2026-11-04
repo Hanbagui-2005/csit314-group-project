@@ -28,13 +28,21 @@ class ProjectRepositorySearchIntegrationTests {
         return saveDesigner(status, null);
     }
 
+    // PM-05 - matches a real customer search, so the designer's area has to be
+    // Platform-Management-verified to show up in a location search; see saveDesigner(status,
+    // serviceArea, serviceAreaVerified) for tests that specifically cover the unverified case
     private InteriorDesigner saveDesigner(AccountStatus status, String serviceArea) {
+        return saveDesigner(status, serviceArea, serviceArea != null);
+    }
+
+    private InteriorDesigner saveDesigner(AccountStatus status, String serviceArea, boolean serviceAreaVerified) {
         Company company = new Company("Studio", "Description", "12345");
         company.setServiceArea(serviceArea);
         InteriorDesigner designer = new InteriorDesigner("Contact", "designer-" + System.nanoTime() + "@test.local",
                 "encoded", company);
         designer = designerRepository.save(designer);
         ReflectionTestUtils.setField(designer, "status", status);
+        designer.setServiceAreaVerified(serviceAreaVerified);
         return designerRepository.save(designer);
     }
 
@@ -115,6 +123,24 @@ class ProjectRepositorySearchIntegrationTests {
         assertThat(results).extracting(Project::getTitle)
                 .contains("Downtown loft")
                 .doesNotContain("Suburb house");
+    }
+
+    // Anthony's review on PR #27 - the location filter used to match on the declared
+    // serviceArea text alone, so a designer Platform Management hadn't verified for that
+    // area still showed up, the opposite of what PM-05 asks for
+    @Test
+    void locationFilterExcludesAnUnverifiedServiceArea() {
+        Category category = categoryRepository.save(new Category("Dining Room"));
+        projectRepository.save(new Project("Verified downtown studio", "x", category,
+                saveDesigner(AccountStatus.ACTIVE, "Downtown", true)));
+        projectRepository.save(new Project("Unverified downtown studio", "x", category,
+                saveDesigner(AccountStatus.ACTIVE, "Downtown", false)));
+
+        List<Project> results = projectRepository.search(null, null, null, null, null, false, "downtown");
+
+        assertThat(results).extracting(Project::getTitle)
+                .contains("Verified downtown studio")
+                .doesNotContain("Unverified downtown studio");
     }
 
     // BrowseService escapes a literal "%" typed by the user into "100!%" before calling

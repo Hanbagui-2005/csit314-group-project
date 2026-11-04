@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 // serves the main public pages
@@ -67,7 +68,14 @@ public class PageController {
         model.addAttribute("verifiedOnly", verifiedOnly);
         model.addAttribute("location", location);
         model.addAttribute("categories", projectService.listCategories());
-        model.addAttribute("projects", browseService.search(q, category, minBudget, maxBudget, roomSize, verifiedOnly, location));
+        // Anthony's review on PR #27 - an invalid range (e.g. min > max) shouldn't blow up
+        // the page with a generic error; just show the filter box's own message instead
+        try {
+            model.addAttribute("projects", browseService.search(q, category, minBudget, maxBudget, roomSize, verifiedOnly, location));
+        } catch (ServiceException e) {
+            model.addAttribute("projects", List.of());
+            model.addAttribute("errorMessage", e.getMessage());
+        }
         model.addAttribute("budgetEstimate", browseService.estimateBudget(category).orElse(null));
         return "search";
     }

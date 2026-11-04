@@ -188,6 +188,42 @@ class DesignerServiceUnitTests {
         assertThat(record.getNote()).contains("LIC-12345", "LIC-67890");
     }
 
+    // Anthony's review on PR #27 - renaming a verified company used to keep the verified
+    // badge even though the name an admin actually checked no longer matches
+    @Test
+    void renamingAVerifiedCompanyClearsVerificationAndRecordsTheChange() {
+        stubDesigner();
+        designer.getCompany().setLicenseNumber("LIC-12345");
+        designer.setVerified(true);
+        CompanyProfileForm form = new CompanyProfileForm(
+                "New Studio Name", "Original description",
+                "+61 400 000 000", "Sydney Metro, NSW", "LIC-12345");
+
+        service.updateCompanyProfile(7L, form);
+
+        assertThat(designer.getCompany().getName()).isEqualTo("New Studio Name");
+        assertThat(designer.isVerified()).isFalse();
+
+        LicenseVerification record = savedRecord();
+        assertThat(record.getAction()).isEqualTo(LicenseVerification.Action.LICENSE_CHANGED);
+        assertThat(record.getNote()).contains("Studio Lume", "New Studio Name");
+    }
+
+    // renaming a company that was never verified has nothing to invalidate yet
+    @Test
+    void renamingAnUnverifiedCompanyDoesNotAddHistory() {
+        stubDesigner();
+        CompanyProfileForm form = new CompanyProfileForm(
+                "New Studio Name", "New description",
+                "+61 400 111 222", "Sydney Metro, NSW", null);
+
+        service.updateCompanyProfile(7L, form);
+
+        assertThat(designer.getCompany().getName()).isEqualTo("New Studio Name");
+        assertThat(designer.isVerified()).isFalse();
+        verifyNoInteractions(verificationRepository);
+    }
+
     @Test
     void savingTheSameLicenseKeepsVerificationWithoutAddingHistory() {
         stubDesigner();

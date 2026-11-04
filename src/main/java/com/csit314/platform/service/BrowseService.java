@@ -28,10 +28,19 @@ public class BrowseService {
     // is in use, since there's nothing to check it against
     public List<Project> search(String query, String categoryName, Integer minBudget, Integer maxBudget,
                                 Integer roomSize, boolean verifiedOnly, String location) {
+        validateBudgetRange(minBudget, maxBudget);
         String cleanQuery = escapeLike(blankToNull(query));
         String cleanCategory = blankToNull(categoryName);
         String cleanLocation = escapeLike(blankToNull(location));
         return projectRepository.search(cleanQuery, cleanCategory, minBudget, maxBudget, roomSize, verifiedOnly, cleanLocation);
+    }
+
+    // Anthony's review on PR #27 - without this, a mistyped range like min 10000/max 5000
+    // just silently returned an empty list with no explanation
+    private void validateBudgetRange(Integer minBudget, Integer maxBudget) {
+        if (minBudget != null && maxBudget != null && minBudget > maxBudget) {
+            throw new ServiceException("Minimum budget can't be more than the maximum.");
+        }
     }
 
     // IDR-10 - viewerDesignerId is the logged-in designer's own id, if any, so they can
