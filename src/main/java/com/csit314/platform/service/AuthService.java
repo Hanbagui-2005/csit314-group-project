@@ -82,9 +82,10 @@ public class AuthService {
             case SUSPENDED -> throw new ServiceException("This account has been suspended.");
         }
 
+        LocalDateTime loginAt = LocalDateTime.now();
         user.clearFailedLogins();
-        user.setLastLoginAt(LocalDateTime.now());
-        userAccountRepository.save(user);
+        user.setLastLoginAt(loginAt);
+        userAccountRepository.recordSuccessfulLogin(user.getId(), loginAt);
         return user;
     }
 
@@ -94,7 +95,8 @@ public class AuthService {
         failedLoginAttemptRepository.save(new FailedLoginAttempt(email, ipAddress));
         if (user != null) {
             user.recordFailedLogin();
-            userAccountRepository.save(user);
+            userAccountRepository.updateFailedLoginState(
+                    user.getId(), user.getFailedLoginAttempts(), user.getLockedAt());
         }
     }
 

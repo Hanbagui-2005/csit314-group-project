@@ -87,6 +87,9 @@
         <input type="hidden"
                name="licenseNumber"
                th:value="${designer.company.licenseNumber}"/>
+        <input type="hidden"
+               name="companyName"
+               th:value="${designer.company.name}"/>
 
         <label for="verificationNote" class="form-label">
             Verification evidence
@@ -113,6 +116,9 @@
         <input type="hidden"
                name="licenseNumber"
                th:value="${designer.company.licenseNumber}"/>
+        <input type="hidden"
+               name="companyName"
+               th:value="${designer.company.name}"/>
 
         <label for="revocationNote" class="form-label">
             Reason for revoking verification
@@ -144,6 +150,7 @@
             <tr>
                 <th>Date</th>
                 <th>Action</th>
+                <th>Company</th>
                 <th>License number</th>
                 <th>Performed by</th>
                 <th>Evidence or reason</th>
@@ -162,6 +169,11 @@
                         : (entry.action.name() == 'REVOKED'
                             ? 'Revoked' : 'License changed')}">
                     Action
+                </td>
+
+                <td th:text="${#strings.isEmpty(entry.companyName)
+                        ? 'Not recorded' : entry.companyName}">
+                    Company
                 </td>
 
                 <td th:text="${#strings.isEmpty(entry.licenseNumber)

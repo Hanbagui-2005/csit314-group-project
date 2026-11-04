@@ -83,7 +83,11 @@ public class Project {
     @Column(name = "room_size_sqm")
     private Integer roomSizeSqm;
 
-    @Column(nullable = false)
+    // updatable = false - only ProjectRepository.incrementViewCount (an atomic
+    // "+ 1" in the database) changes this after insert. Otherwise a designer saving a
+    // milestone/budget edit on a copy loaded before some page views would write its
+    // stale count back over them
+    @Column(nullable = false, updatable = false)
     private int viewCount = 0;
 
     // Anthony's review - this was a manually incremented/decremented counter that
@@ -152,12 +156,10 @@ public class Project {
         milestoneStage = next;
     }
 
-    // IDR-10/11/12 - real view counts, now that Browse/detail/favourites use real
-    // data. shortlistCount has no equivalent increment/decrement any more - it's a
-    // derived @Formula field now, see its own field comment
-    public void incrementViewCount() {
-        viewCount++;
-    }
+    // IDR-10/11/12 - views are counted by ProjectRepository.incrementViewCount (an
+    // atomic update in the database), not by an in-memory increment here: viewCount is
+    // non-updatable, so bumping it on the entity would silently never be saved.
+    // shortlistCount has no increment/decrement either - it's a derived @Formula field
 
     public Long getId() {
         return id;

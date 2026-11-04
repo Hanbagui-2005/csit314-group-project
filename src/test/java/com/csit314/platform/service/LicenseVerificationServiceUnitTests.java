@@ -84,7 +84,7 @@ class LicenseVerificationServiceUnitTests {
         stubAccounts();
 
         service.verify(
-                7L, 1L, "LIC-12345",
+                7L, 1L, "LIC-12345", "Studio",
                 "  Checked official company registration.  ");
 
         assertThat(designer.getStatus()).isEqualTo(AccountStatus.PENDING);
@@ -108,7 +108,7 @@ class LicenseVerificationServiceUnitTests {
         designer.setVerified(true);
 
         service.revoke(
-                7L, 1L, "LIC-12345",
+                7L, 1L, "LIC-12345", "Studio",
                 "  Registration details no longer match.  ");
 
         assertThat(designer.isVerified()).isFalse();
@@ -130,7 +130,7 @@ class LicenseVerificationServiceUnitTests {
         designer.getCompany().setLicenseNumber(licenseNumber);
 
         assertThatThrownBy(() -> service.verify(
-                7L, 1L, licenseNumber, "Checked registration."))
+                7L, 1L, licenseNumber, "Studio", "Checked registration."))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("license number");
 
@@ -145,11 +145,11 @@ class LicenseVerificationServiceUnitTests {
         stubAdmin();
 
         assertThatThrownBy(() -> service.verify(
-                7L, 1L, "LIC-12345", note))
+                7L, 1L, "LIC-12345", "Studio", note))
                 .isInstanceOf(ServiceException.class);
 
         assertThatThrownBy(() -> service.revoke(
-                7L, 1L, "LIC-12345", note))
+                7L, 1L, "LIC-12345", "Studio", note))
                 .isInstanceOf(ServiceException.class);
 
         verifyNoInteractions(entityManager, verificationRepository);
@@ -161,11 +161,11 @@ class LicenseVerificationServiceUnitTests {
         String note = "X".repeat(2001);
 
         assertThatThrownBy(() -> service.verify(
-                7L, 1L, "LIC-12345", note))
+                7L, 1L, "LIC-12345", "Studio", note))
                 .isInstanceOf(ServiceException.class);
 
         assertThatThrownBy(() -> service.revoke(
-                7L, 1L, "LIC-12345", note))
+                7L, 1L, "LIC-12345", "Studio", note))
                 .isInstanceOf(ServiceException.class);
 
         verifyNoInteractions(entityManager, verificationRepository);
@@ -176,7 +176,7 @@ class LicenseVerificationServiceUnitTests {
         stubAccounts();
 
         assertThatThrownBy(() -> service.verify(
-                7L, 1L, "LIC-OLD", "Checked registration."))
+                7L, 1L, "LIC-OLD", "Studio", "Checked registration."))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("changed");
 
@@ -190,7 +190,7 @@ class LicenseVerificationServiceUnitTests {
         designer.setVerified(true);
 
         assertThatThrownBy(() -> service.revoke(
-                7L, 1L, "LIC-OLD", "Incorrect details."))
+                7L, 1L, "LIC-OLD", "Studio", "Incorrect details."))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("changed");
 
@@ -204,7 +204,7 @@ class LicenseVerificationServiceUnitTests {
         designer.setVerified(true);
 
         assertThatThrownBy(() -> service.verify(
-                7L, 1L, "LIC-12345", "Checked registration."))
+                7L, 1L, "LIC-12345", "Studio", "Checked registration."))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("already verified");
 
@@ -216,7 +216,7 @@ class LicenseVerificationServiceUnitTests {
         stubAccounts();
 
         assertThatThrownBy(() -> service.revoke(
-                7L, 1L, "LIC-12345", "Incorrect details."))
+                7L, 1L, "LIC-12345", "Studio", "Incorrect details."))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("not currently verified");
 
@@ -229,7 +229,7 @@ class LicenseVerificationServiceUnitTests {
         designer.getCompany().setLicenseNumber(null);
         designer.setVerified(true);
 
-        service.revoke(7L, 1L, null, "Missing supporting license.");
+        service.revoke(7L, 1L, null, "Studio", "Missing supporting license.");
 
         assertThat(designer.isVerified()).isFalse();
         LicenseVerification record = savedRecord();
@@ -246,11 +246,11 @@ class LicenseVerificationServiceUnitTests {
                 .thenReturn(Optional.of(customer));
 
         assertThatThrownBy(() -> service.verify(
-                7L, 1L, "LIC-12345", "Checked registration."))
+                7L, 1L, "LIC-12345", "Studio", "Checked registration."))
                 .isInstanceOf(ServiceException.class);
 
         assertThatThrownBy(() -> service.revoke(
-                7L, 1L, "LIC-12345", "Incorrect details."))
+                7L, 1L, "LIC-12345", "Studio", "Incorrect details."))
                 .isInstanceOf(ServiceException.class);
 
         verifyNoInteractions(entityManager, verificationRepository);
@@ -262,11 +262,11 @@ class LicenseVerificationServiceUnitTests {
         admin.setStatus(AccountStatus.SUSPENDED);
 
         assertThatThrownBy(() -> service.verify(
-                7L, 1L, "LIC-12345", "Checked registration."))
+                7L, 1L, "LIC-12345", "Studio", "Checked registration."))
                 .isInstanceOf(ServiceException.class);
 
         assertThatThrownBy(() -> service.revoke(
-                7L, 1L, "LIC-12345", "Incorrect details."))
+                7L, 1L, "LIC-12345", "Studio", "Incorrect details."))
                 .isInstanceOf(ServiceException.class);
 
         verifyNoInteractions(entityManager, verificationRepository);
@@ -277,7 +277,7 @@ class LicenseVerificationServiceUnitTests {
         stubAdmin();
 
         assertThatThrownBy(() -> service.verify(
-                7L, 1L, "LIC-12345", "Checked registration."))
+                7L, 1L, "LIC-12345", "Studio", "Checked registration."))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("not found");
 
@@ -289,11 +289,55 @@ class LicenseVerificationServiceUnitTests {
         stubAccounts();
 
         service.verify(
-                7L, 1L, "LIC-12345", "Checked registration.");
+                7L, 1L, "LIC-12345", "Studio", "Checked registration.");
         LicenseVerification record = savedRecord();
 
         designer.getCompany().setLicenseNumber("LIC-67890");
 
         assertThat(record.getLicenseNumber()).isEqualTo("LIC-12345");
+    }
+
+    // ADM-05 - the designer renamed the company (same license number) after the admin
+    // opened the page; verifying would approve a company name the admin never saw
+    @Test
+    void cannotVerifyWhenTheCompanyNameChangedSinceThePageLoaded() {
+        stubAccounts();
+        designer.getCompany().setName("Renamed Studio");
+
+        assertThatThrownBy(() -> service.verify(
+                7L, 1L, "LIC-12345", "Studio", "Checked registration."))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("company name has changed");
+
+        assertThat(designer.isVerified()).isFalse();
+        verifyNoInteractions(verificationRepository);
+    }
+
+    @Test
+    void cannotRevokeWhenTheCompanyNameChangedSinceThePageLoaded() {
+        stubAccounts();
+        designer.setVerified(true);
+        designer.getCompany().setName("Renamed Studio");
+
+        assertThatThrownBy(() -> service.revoke(
+                7L, 1L, "LIC-12345", "Studio", "Incorrect details."))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("company name has changed");
+
+        assertThat(designer.isVerified()).isTrue();
+        verifyNoInteractions(verificationRepository);
+    }
+
+    @Test
+    void verificationRecordsTheCompanyNameThatWasChecked() {
+        stubAccounts();
+
+        service.verify(
+                7L, 1L, "LIC-12345", "Studio", "Checked registration.");
+        LicenseVerification record = savedRecord();
+
+        designer.getCompany().setName("Renamed Studio");
+
+        assertThat(record.getCompanyName()).isEqualTo("Studio");
     }
 }

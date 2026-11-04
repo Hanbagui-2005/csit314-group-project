@@ -76,7 +76,7 @@ public class BookingService {
     // ADM-11 - gives customers a way to cancel, which is what the dispute/cancellation rate counts
     @Transactional
     public void cancel(Customer customer, Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
                 .orElseThrow(() -> new ServiceException("Booking not found."));
         if (!booking.getCustomer().getId().equals(customer.getId())) {
             throw new ServiceException("You can only manage your own bookings.");
@@ -99,7 +99,7 @@ public class BookingService {
     }
 
     private void respond(InteriorDesigner designer, Long bookingId, Consumer<Booking> action) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking booking = bookingRepository.findByIdForUpdate(bookingId)
                 .orElseThrow(() -> new ServiceException("Booking not found."));
         if (!booking.getDesigner().getId().equals(designer.getId())) {
             throw new ServiceException("You can only manage your own bookings.");

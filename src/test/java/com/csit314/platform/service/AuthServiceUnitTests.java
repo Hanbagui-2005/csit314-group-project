@@ -130,7 +130,7 @@ class AuthServiceUnitTests {
         assertThatThrownBy(() -> service.loginCustomer(user.getEmail(), "wrong", "127.0.0.1"))
                 .isInstanceOf(ServiceException.class);
         verify(failedLoginAttempts).save(any());
-        verify(users).save(user);
+        verify(users).updateFailedLoginState(user.getId(), 1, null);
         assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
     }
 
@@ -139,7 +139,20 @@ class AuthServiceUnitTests {
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(encoder.matches("valid-password", "encoded")).thenReturn(true);
         service.loginCustomer(user.getEmail(), "valid-password", "127.0.0.1");
-        verify(users).save(user);
+        verify(users).recordSuccessfulLogin(eq(user.getId()), any());
+    }
+
+    // code review doc - login must never merge the whole account it loaded at the start:
+    // an admin verifying/suspending the account (or the designer editing their company)
+    // between that read and this write would be silently overwritten by the stale copy
+    @Test void loginNeverWritesTheWholeAccountBack() {
+        UserAccount user = account(Role.INTERIOR_DESIGNER);
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(encoder.matches("valid-password", "encoded")).thenReturn(true);
+        service.loginDesigner(user.getEmail(), "valid-password", "127.0.0.1");
+        assertThatThrownBy(() -> service.loginDesigner(user.getEmail(), "wrong", "127.0.0.1"))
+                .isInstanceOf(ServiceException.class);
+        verify(users, never()).save(any());
     }
 
     // ADM-09/13 - the fifth wrong password actually locks the account, whatever its role
