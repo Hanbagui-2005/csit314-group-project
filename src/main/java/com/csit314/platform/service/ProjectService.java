@@ -116,9 +116,11 @@ public class ProjectService {
         // PM-04 - checked once the project (and so its photo URLs) actually has an id.
         // Both lists line up 1:1 with their own upload list since each was empty
         // beforehand - before-photos are checked too, not just the "after" shots,
-        // since a re-uploaded photo can be plagiarised either way
-        checkForPlagiarism(saved, uploaded, saved.getPhotoUrls());
-        checkForPlagiarism(saved, uploadedBefore, saved.getBeforePhotoUrls());
+        // since a re-uploaded photo can be plagiarised either way. After and before
+        // photos are checked together in one batch (Anthony's review) rather than two
+        // separate calls, so one upload only scans the hash table once and can only
+        // raise one flag
+        checkForPlagiarism(saved, concat(uploaded, uploadedBefore), concat(saved.getPhotoUrls(), saved.getBeforePhotoUrls()));
         return saved;
     }
 
@@ -164,13 +166,14 @@ public class ProjectService {
 
         // PM-04 - only the newly-added photos (the last N entries of each list), not
         // the ones the project already had before this edit. Before-photos are checked
-        // too, same as in createProject
+        // too, same as in createProject - and, same as there, both lists are checked
+        // together in one batch so one edit only scans the hash table once and can
+        // only raise one flag
         List<String> allAfterUrls = project.getPhotoUrls();
         List<String> newAfterUrls = allAfterUrls.subList(allAfterUrls.size() - newAfterPhotos.size(), allAfterUrls.size());
-        checkForPlagiarism(project, newAfterPhotos, newAfterUrls);
         List<String> allBeforeUrls = project.getBeforePhotoUrls();
         List<String> newBeforeUrls = allBeforeUrls.subList(allBeforeUrls.size() - newBeforePhotos.size(), allBeforeUrls.size());
-        checkForPlagiarism(project, newBeforePhotos, newBeforeUrls);
+        checkForPlagiarism(project, concat(newAfterPhotos, newBeforePhotos), concat(newAfterUrls, newBeforeUrls));
 
         return project;
     }
@@ -197,17 +200,24 @@ public class ProjectService {
     }
 
     // PM-04 - files and newUrls are the same size and in the same order (both built by
-    // iterating the same upload list), so they're paired up by index
+    // iterating the same upload lists), so they're paired up by index
     private void checkForPlagiarism(Project project, List<MultipartFile> files, List<String> newUrls) {
-        for (int i = 0; i < files.size(); i++) {
-            byte[] bytes;
+        List<byte[]> bytesList = new ArrayList<>(files.size());
+        for (MultipartFile file : files) {
             try {
-                bytes = files.get(i).getBytes();
+                bytesList.add(file.getBytes());
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
-            imageSimilarityService.checkAndRecord(project, newUrls.get(i), bytes);
         }
+        imageSimilarityService.checkAndRecord(project, newUrls, bytesList);
+    }
+
+    private <T> List<T> concat(List<T> first, List<T> second) {
+        List<T> combined = new ArrayList<>(first.size() + second.size());
+        combined.addAll(first);
+        combined.addAll(second);
+        return combined;
     }
 
     private List<MultipartFile> cleanUploads(List<MultipartFile> files) {

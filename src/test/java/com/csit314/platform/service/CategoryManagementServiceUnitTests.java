@@ -1,5 +1,6 @@
 package com.csit314.platform.service;
 
+import com.csit314.platform.dto.CategoryAddResult;
 import com.csit314.platform.model.Category;
 import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.CategoryRepository;
@@ -42,9 +43,10 @@ class CategoryManagementServiceUnitTests {
         when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of());
         when(categoryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Category result = service.addCategory("  Kitchen  ");
+        CategoryAddResult result = service.addCategory("  Kitchen  ");
 
-        assertThat(result.getName()).isEqualTo("Kitchen");
+        assertThat(result.category().getName()).isEqualTo("Kitchen");
+        assertThat(result.mergedIntoNearDuplicate()).isFalse();
     }
 
     @Test
@@ -67,10 +69,45 @@ class CategoryManagementServiceUnitTests {
         deactivated.deactivate();
         when(categoryRepository.findByNameIgnoreCase("Kitchen")).thenReturn(Optional.of(deactivated));
 
-        Category result = service.addCategory("Kitchen");
+        CategoryAddResult result = service.addCategory("Kitchen");
 
-        assertThat(result).isSameAs(deactivated);
-        assertThat(result.isActive()).isTrue();
+        assertThat(result.category()).isSameAs(deactivated);
+        assertThat(result.category().isActive()).isTrue();
+        verify(categoryRepository, never()).save(any());
+    }
+
+    // Anthony's review - a reactivation is not a merge, even when the stored
+    // spelling differs from what was typed (e.g. typed "kitchen", reactivated row is
+    // "Kitchen"). The old controller logic compared spelling and would have called
+    // this a merge; the explicit result type says otherwise
+    @Test
+    void addCategoryReportsAReactivationAsNotMergedEvenWhenTheSpellingDiffers() {
+        Category deactivated = category(1L, "Kitchen");
+        deactivated.deactivate();
+        when(categoryRepository.findByNameIgnoreCase("kitchen")).thenReturn(Optional.of(deactivated));
+
+        CategoryAddResult result = service.addCategory("kitchen");
+
+        assertThat(result.mergedIntoNearDuplicate()).isFalse();
+    }
+
+    // PM-03/PM-13 - Anthony's review: re-adding a name the nightly merge just
+    // deactivated (e.g. "Kitchens" after it got folded into "Kitchen") must NOT
+    // reactivate it - that would undo the merge until the next nightly run deactivates
+    // it again, so the category would appear and disappear every night
+    @Test
+    void addCategoryReusesTheMergeSurvivorInsteadOfReactivatingWhatTheNightlyMergeJustDeactivated() {
+        Category deactivatedKitchens = category(1L, "Kitchens");
+        deactivatedKitchens.deactivate();
+        Category survivorKitchen = category(2L, "Kitchen");
+        when(categoryRepository.findByNameIgnoreCase("Kitchens")).thenReturn(Optional.of(deactivatedKitchens));
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(survivorKitchen));
+
+        CategoryAddResult result = service.addCategory("Kitchens");
+
+        assertThat(result.category()).isSameAs(survivorKitchen);
+        assertThat(result.mergedIntoNearDuplicate()).isTrue();
+        assertThat(deactivatedKitchens.isActive()).isFalse();
         verify(categoryRepository, never()).save(any());
     }
 
@@ -82,9 +119,10 @@ class CategoryManagementServiceUnitTests {
         when(categoryRepository.findByNameIgnoreCase("Kitchens")).thenReturn(Optional.empty());
         when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(existing));
 
-        Category result = service.addCategory("Kitchens");
+        CategoryAddResult result = service.addCategory("Kitchens");
 
-        assertThat(result).isSameAs(existing);
+        assertThat(result.category()).isSameAs(existing);
+        assertThat(result.mergedIntoNearDuplicate()).isTrue();
         verify(categoryRepository, never()).save(any());
     }
 
@@ -94,9 +132,9 @@ class CategoryManagementServiceUnitTests {
         when(categoryRepository.findByNameIgnoreCase("living   room")).thenReturn(Optional.empty());
         when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(existing));
 
-        Category result = service.addCategory("living   room");
+        CategoryAddResult result = service.addCategory("living   room");
 
-        assertThat(result).isSameAs(existing);
+        assertThat(result.category()).isSameAs(existing);
         verify(categoryRepository, never()).save(any());
     }
 
@@ -107,9 +145,10 @@ class CategoryManagementServiceUnitTests {
         when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(existing));
         when(categoryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Category result = service.addCategory("Kitchenette");
+        CategoryAddResult result = service.addCategory("Kitchenette");
 
-        assertThat(result.getName()).isEqualTo("Kitchenette");
+        assertThat(result.category().getName()).isEqualTo("Kitchenette");
+        assertThat(result.mergedIntoNearDuplicate()).isFalse();
         verify(categoryRepository).save(any());
     }
 
@@ -133,6 +172,22 @@ class CategoryManagementServiceUnitTests {
 
         assertThatThrownBy(() -> service.renameCategory(1L, "Living Room")).isInstanceOf(ServiceException.class);
         assertThat(category.getName()).isEqualTo("Old name");
+    }
+
+    // Anthony's review - without this, renaming "Bath" to "Kitchens" while "Kitchen"
+    // is active would sail through (no exact-name clash), recreating the exact
+    // fragmentation addCategory blocks, until the nightly merge job quietly
+    // deactivated one of them and reassigned its projects
+    @Test
+    void renameCategoryRejectsANearDuplicateOfAnotherActiveCategory() {
+        Category category = category(1L, "Bath");
+        Category kitchen = category(2L, "Kitchen");
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(categoryRepository.findByNameIgnoreCaseAndIdNot("Kitchens", 1L)).thenReturn(Optional.empty());
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(category, kitchen));
+
+        assertThatThrownBy(() -> service.renameCategory(1L, "Kitchens")).isInstanceOf(ServiceException.class);
+        assertThat(category.getName()).isEqualTo("Bath");
     }
 
     // PM-13 - renaming into a deactivated category's name can't just reactivate it the

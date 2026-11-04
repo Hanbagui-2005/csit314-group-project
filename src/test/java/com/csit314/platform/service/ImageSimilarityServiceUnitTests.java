@@ -61,7 +61,7 @@ class ImageSimilarityServiceUnitTests {
     void recordsTheHashOfANewPhotoWithoutFlaggingWhenNothingMatches() throws Exception {
         when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
 
-        service.checkAndRecord(project, "/uploads/a.png", realPngBytes(0x336699));
+        service.checkAndRecord(project, List.of("/uploads/a.png"), List.of(realPngBytes(0x336699)));
 
         verify(photoHashRepository).save(any(PhotoHash.class));
         verifyNoInteractions(projectFlagService);
@@ -74,7 +74,7 @@ class ImageSimilarityServiceUnitTests {
     void flagsTheProjectWhenAnotherDesignersPhotoHashIsAVeryCloseMatch() throws Exception {
         byte[] bytes = realPngBytes(0x336699);
         when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
-        service.checkAndRecord(project, "/uploads/a.png", bytes);
+        service.checkAndRecord(project, List.of("/uploads/a.png"), List.of(bytes));
         ArgumentCaptor<PhotoHash> captor = ArgumentCaptor.forClass(PhotoHash.class);
         verify(photoHashRepository).save(captor.capture());
         long sameImageHash = captor.getValue().getHash();
@@ -86,7 +86,7 @@ class ImageSimilarityServiceUnitTests {
         PhotoHash existingMatch = new PhotoHash(otherProject, "/uploads/other.png", sameImageHash);
         when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of(existingMatch));
 
-        service.checkAndRecord(project, "/uploads/b.png", bytes);
+        service.checkAndRecord(project, List.of("/uploads/b.png"), List.of(bytes));
 
         verify(projectFlagService).flagAutomatically(eq(project), contains("plagiarism"));
     }
@@ -98,10 +98,64 @@ class ImageSimilarityServiceUnitTests {
         // right designer's id
         when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
 
-        service.checkAndRecord(project, "/uploads/a.png", new byte[]{1, 2, 3});
+        service.checkAndRecord(project, List.of("/uploads/a.png"), List.of(new byte[]{1, 2, 3}));
 
         verify(photoHashRepository).findByProjectDesignerIdNot(2L);
         verifyNoInteractions(projectFlagService);
+    }
+
+    // Anthony's review - this used to call findByProjectDesignerIdNot once per photo
+    // (a full-table scan per photo instead of per upload) and could flag the project
+    // once per matching photo instead of once for the whole upload
+    @Test
+    void loadsTheOtherDesignersHashesOnlyOnceForTheWholeBatch() throws Exception {
+        when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
+
+        service.checkAndRecord(project, List.of("/uploads/a.png", "/uploads/b.png", "/uploads/c.png"),
+                List.of(realPngBytes(0x111111), realPngBytes(0x222222), realPngBytes(0x333333)));
+
+        verify(photoHashRepository, times(1)).findByProjectDesignerIdNot(2L);
+        verify(photoHashRepository, times(3)).save(any(PhotoHash.class));
+    }
+
+    @Test
+    void flagsTheProjectAtMostOnceEvenWhenSeveralPhotosInTheBatchMatch() throws Exception {
+        byte[] bytes = realPngBytes(0x336699);
+        when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
+        service.checkAndRecord(project, List.of("/uploads/seed.png"), List.of(bytes));
+        ArgumentCaptor<PhotoHash> captor = ArgumentCaptor.forClass(PhotoHash.class);
+        verify(photoHashRepository).save(captor.capture());
+        long sameImageHash = captor.getValue().getHash();
+
+        InteriorDesigner otherDesigner = new InteriorDesigner("Other", "other@example.test", "encoded",
+                new Company("Other Studio", "Description", "67890"));
+        ReflectionTestUtils.setField(otherDesigner, "id", 3L);
+        Project otherProject = new Project("Someone else's kitchen", "x", project.getCategory(), otherDesigner);
+        PhotoHash existingMatch = new PhotoHash(otherProject, "/uploads/other.png", sameImageHash);
+        when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of(existingMatch));
+
+        // every photo in this batch matches the same existing hash
+        service.checkAndRecord(project, List.of("/uploads/b.png", "/uploads/c.png"), List.of(bytes, bytes));
+
+        verify(projectFlagService, times(1)).flagAutomatically(eq(project), contains("plagiarism"));
+    }
+
+    // Anthony's review - an image that fails to decode used to be stored with hash 0,
+    // which then falsely matched any other photo whose own hash happened to have 5 or
+    // fewer bits set. It's skipped entirely now instead
+    @Test
+    void skipsAPhotoThatFailsToDecodeInsteadOfRecordingAFakeHash() {
+        service.checkAndRecord(project, List.of("/uploads/not-an-image.png"), List.of(new byte[]{1, 2, 3}));
+
+        verify(photoHashRepository, never()).save(any());
+        verifyNoInteractions(projectFlagService);
+    }
+
+    @Test
+    void doesNothingForAnEmptyBatch() {
+        service.checkAndRecord(project, List.of(), List.of());
+
+        verifyNoInteractions(photoHashRepository, projectFlagService);
     }
 
     // PM-04 - the backfill runner uses this for pre-existing photos: a hash is still
@@ -114,5 +168,12 @@ class ImageSimilarityServiceUnitTests {
         verify(photoHashRepository).save(any(PhotoHash.class));
         verifyNoInteractions(projectFlagService);
         verify(photoHashRepository, never()).findByProjectDesignerIdNot(any());
+    }
+
+    @Test
+    void recordOnlySkipsAPhotoThatFailsToDecode() {
+        service.recordOnly(project, "/uploads/not-an-image.png", new byte[]{1, 2, 3});
+
+        verify(photoHashRepository, never()).save(any());
     }
 }

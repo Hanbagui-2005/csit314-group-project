@@ -13,7 +13,11 @@
     <!-- a per-row <form> below can't nest inside this one, so this form stays empty and
          every control that submits to it (the checkboxes, the bulk buttons) points at it
          by id with the form="bulkForm" attribute instead -->
-    <form method="post" id="bulkForm"></form>
+    <form method="post" id="bulkForm">
+    <input type="hidden"
+           th:name="${_csrf.parameterName}"
+           th:value="${_csrf.token}"/>
+</form>
 
     <div class="d-flex gap-2 mb-2">
         <button type="submit" form="bulkForm" formaction="/admin/users/bulk-approve" class="btn btn-sm btn-success">Approve selected</button>

@@ -3,44 +3,126 @@
 <head th:replace="~{fragments/layout :: head('Project detail')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
+
 <div class="container" style="max-width: 720px;">
 
-    <img th:src="${project.photoUrls[0]}" class="img-fluid rounded mb-3" alt="Project photo"/>
+    <!-- IDR-05 / CUS-07: show all project photos -->
+    <section class="mb-4" aria-labelledby="after-photos-heading">
+        <h5 id="after-photos-heading">After renovation</h5>
+
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            <div class="col"
+                 th:each="photo, photoStat : ${project.photoUrls}">
+                <a th:href="${photo}"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    <img th:src="${photo}"
+                         th:alt="|After renovation photo ${photoStat.count}|"
+                         class="img-fluid rounded w-100"
+                         loading="lazy"/>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- IDR-07: show before photos when available -->
+    <section class="mb-4"
+             th:if="${not #lists.isEmpty(project.beforePhotoUrls)}"
+             aria-labelledby="before-photos-heading">
+        <h5 id="before-photos-heading">Before renovation</h5>
+
+        <div class="row row-cols-1 row-cols-md-2 g-3">
+            <div class="col"
+                 th:each="photo, photoStat : ${project.beforePhotoUrls}">
+                <a th:href="${photo}"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    <img th:src="${photo}"
+                         th:alt="|Before renovation photo ${photoStat.count}|"
+                         class="img-fluid rounded w-100"
+                         loading="lazy"/>
+                </a>
+            </div>
+        </div>
+    </section>
 
     <div class="d-flex justify-content-between align-items-start">
         <h3 th:text="${project.title}">Project title</h3>
-        <form th:if="${currentUser != null and not isShortlisted}" method="post" th:action="@{/favourites/add}">
-            <input type="hidden" name="projectId" th:value="${project.id}"/>
-            <button type="submit" class="btn btn-outline-danger">Save to favourites</button>
+
+        <form th:if="${currentUser != null and not isShortlisted}"
+              method="post"
+              th:action="@{/favourites/add}">
+            <input type="hidden"
+                   name="projectId"
+                   th:value="${project.id}"/>
+            <button type="submit" class="btn btn-outline-danger">
+                Save to favourites
+            </button>
         </form>
-        <form th:if="${currentUser != null and isShortlisted}" method="post" th:action="@{/favourites/remove}">
-            <input type="hidden" name="projectId" th:value="${project.id}"/>
-            <button type="submit" class="btn btn-danger">Saved - remove</button>
+
+        <form th:if="${currentUser != null and isShortlisted}"
+              method="post"
+              th:action="@{/favourites/remove}">
+            <input type="hidden"
+                   name="projectId"
+                   th:value="${project.id}"/>
+            <button type="submit" class="btn btn-danger">
+                Saved - remove
+            </button>
         </form>
     </div>
 
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-        <span class="badge bg-light text-dark border" th:text="${project.category.name}">Category</span>
-        <span class="badge bg-light" th:text="${project.milestoneStage.label}">Milestone</span>
-        <span class="badge bg-light" th:if="${project.budgetMin != null}"
-              th:text="'$' + ${project.budgetMin} + ' - $' + ${project.budgetMax}">Budget</span>
-        <span class="badge bg-light" th:if="${project.estimatedTimeline != null}"
-              th:text="${project.estimatedTimeline}">Timeline</span>
+        <span class="badge bg-light text-dark border"
+              th:text="${project.category.name}">
+            Category
+        </span>
+
+        <span class="badge bg-light"
+              th:text="${project.milestoneStage.label}">
+            Milestone
+        </span>
+
+        <span class="badge bg-light"
+              th:if="${project.budgetMin != null}"
+              th:text="'$' + ${project.budgetMin} + ' - $' + ${project.budgetMax}">
+            Budget
+        </span>
+
+        <span class="badge bg-light"
+              th:if="${project.estimatedTimeline != null}"
+              th:text="${project.estimatedTimeline}">
+            Timeline
+        </span>
     </div>
 
-    <p th:text="${project.description}">Project description goes here.</p>
+    <p th:text="${project.description}">
+        Project description goes here.
+    </p>
 
     <div class="d-flex align-items-center justify-content-between gap-2 mt-4 pt-3 border-top">
         <div class="d-flex align-items-center gap-2">
-            <div class="rounded-circle bg-secondary-subtle" style="width:32px;height:32px;"></div>
-            <a th:href="@{/designers/{id}(id=${project.designer.id})}" class="text-decoration-none fw-semibold"
-               th:text="${project.designer.company.name}">Designer name</a>
+            <div class="rounded-circle bg-secondary-subtle"
+                 style="width:32px;height:32px;">
+            </div>
+
+            <a th:href="@{/designers/{id}(id=${project.designer.id})}"
+               class="text-decoration-none fw-semibold"
+               th:text="${project.designer.company.name}">
+                Designer name
+            </a>
         </div>
+
         <div class="d-flex gap-2">
             <a th:href="@{/designers/{id}/contact(id=${project.designer.id}, projectId=${project.id})}"
-               class="btn btn-sm btn-outline-dark">Message designer</a>
+               class="btn btn-sm btn-outline-dark">
+                Message designer
+            </a>
+
             <a th:href="@{/designers/{id}/book(id=${project.designer.id}, projectId=${project.id})}"
-               class="btn btn-sm btn-dark">Book consultation</a>
+               class="btn btn-sm btn-dark">
+                Book consultation
+            </a>
         </div>
     </div>
 

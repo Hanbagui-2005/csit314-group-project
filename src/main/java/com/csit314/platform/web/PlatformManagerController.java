@@ -1,6 +1,6 @@
 package com.csit314.platform.web;
 
-import com.csit314.platform.model.Category;
+import com.csit314.platform.dto.CategoryAddResult;
 import com.csit314.platform.service.CategoryManagementService;
 import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.GeneratedReportService;
@@ -56,13 +56,13 @@ public class PlatformManagerController {
     @PostMapping("/categories")
     public String addCategory(@RequestParam(required = false) String name, RedirectAttributes redirect) {
         try {
-            Category result = categoryManagementService.addCategory(name);
-            // a merged near-duplicate comes back with the existing category's own
-            // spelling, not the one just typed in - that's how the controller tells
-            // the two cases apart without the service needing its own result type
-            boolean merged = name != null && !result.getName().equals(name.trim());
-            redirect.addFlashAttribute("successMessage", merged
-                    ? "That's close to an existing category (\"" + result.getName() + "\") - using it instead of creating a near-duplicate."
+            // Anthony's review - the service says explicitly whether this merged into
+            // a near-duplicate, instead of the controller guessing from spelling
+            // (which got a case-insensitive exact-match reactivation wrong)
+            CategoryAddResult result = categoryManagementService.addCategory(name);
+            redirect.addFlashAttribute("successMessage", result.mergedIntoNearDuplicate()
+                    ? "That's close to an existing category (\"" + result.category().getName()
+                            + "\") - using it instead of creating a near-duplicate."
                     : "Category added.");
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());

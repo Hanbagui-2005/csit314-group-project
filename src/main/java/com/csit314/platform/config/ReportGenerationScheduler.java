@@ -38,8 +38,13 @@ public class ReportGenerationScheduler {
     // pulled out so a scheduler test can call it directly instead of waiting for 6am.
     // date is the day the report covers and the file is named after - always
     // "yesterday" relative to when the scheduled job actually runs
+    //
+    // Anthony's review: this used to always build the CSV from "yesterday relative to
+    // right now" regardless of what date was passed in, so calling this with any other
+    // date (a backfill, a test) silently wrote the wrong numbers into a correctly-named
+    // file
     void generateReportFor(LocalDate date) {
-        String csv = platformReportService.exportYesterdayReportAsCsv();
+        String csv = platformReportService.exportReportAsCsvFor(date);
         generatedReportService.write(date, csv);
         log.info("Generated the daily platform activity report automatically for {}", date);
     }

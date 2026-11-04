@@ -19,12 +19,12 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // reassigned to the surviving category
     List<Project> findByCategoryId(Long categoryId);
 
-    // PM-06/PM-08 - activity reports
-    long countByCreatedAtAfter(LocalDateTime since);
-
-    // PM-02/PM-14 - new projects within an arbitrary window, for the growth forecast's
-    // monthly history and the anomaly check's daily baseline
-    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    // PM-02/PM-06/PM-08/PM-14 - new projects within an arbitrary window, for the
+    // calendar-period/scheduled reports, the growth forecast's monthly history, and the
+    // anomaly check's daily baseline. Half-open [start, end), not Between - Anthony's
+    // review: Between is inclusive on both ends, double-counting a row created exactly
+    // at a shared window boundary
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime start, LocalDateTime end);
 
     // PM-07 - active designers who have at least one project in this category
     @Query("select count(distinct p.designer.id) from Project p "

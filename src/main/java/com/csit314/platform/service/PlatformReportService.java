@@ -61,10 +61,11 @@ public class PlatformReportService {
     @Transactional(readOnly = true)
     public List<PlatformReport> reports() {
         LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
         return List.of(
-                report("Today", today.atStartOfDay()),
-                report("This week", today.with(DayOfWeek.MONDAY).atStartOfDay()),
-                report("This month", today.withDayOfMonth(1).atStartOfDay())
+                report("Today", today.atStartOfDay(), now),
+                report("This week", today.with(DayOfWeek.MONDAY).atStartOfDay(), now),
+                report("This month", today.withDayOfMonth(1).atStartOfDay(), now)
         );
     }
 
@@ -124,9 +125,12 @@ public class PlatformReportService {
         for (int monthsAgo = FORECAST_HISTORY_MONTHS; monthsAgo >= 1; monthsAgo--) {
             LocalDate monthStart = firstOfThisMonth.minusMonths(monthsAgo);
             LocalDate monthEnd = monthStart.plusMonths(1);
-            long newUsers = userAccountRepository.countByCreatedAtBetween(
+            // Anthony's review - Between is inclusive on both ends, so a row created
+            // exactly at midnight on monthEnd would get counted in both this month and
+            // the next one. Half-open [start, end) instead
+            long newUsers = userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
                     monthStart.atStartOfDay(), monthEnd.atStartOfDay());
-            long newListings = projectRepository.countByCreatedAtBetween(
+            long newListings = projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
                     monthStart.atStartOfDay(), monthEnd.atStartOfDay());
             history.add(new MonthlyGrowth(monthStart.getMonth() + " " + monthStart.getYear(), newUsers, newListings));
         }
@@ -153,10 +157,10 @@ public class PlatformReportService {
     @Transactional(readOnly = true)
     public List<AnomalyAlert> anomalyAlerts() {
         List<AnomalyAlert> alerts = new ArrayList<>();
-        checkForAnomaly(alerts, "New sign-ups", day -> userAccountRepository.countByCreatedAtBetween(
-                day.atStartOfDay(), day.plusDays(1).atStartOfDay()));
-        checkForAnomaly(alerts, "New projects", day -> projectRepository.countByCreatedAtBetween(
-                day.atStartOfDay(), day.plusDays(1).atStartOfDay()));
+        checkForAnomaly(alerts, "New sign-ups", day -> userAccountRepository
+                .countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(day.atStartOfDay(), day.plusDays(1).atStartOfDay()));
+        checkForAnomaly(alerts, "New projects", day -> projectRepository
+                .countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(day.atStartOfDay(), day.plusDays(1).atStartOfDay()));
         return alerts;
     }
 
@@ -185,12 +189,43 @@ public class PlatformReportService {
     // isn't implemented (needs a rendering library and more time than it's worth this
     // close to the deadline), but the story is satisfied by either format on its own.
     // No CSV escaping needed: every field here is either a fixed label ("Today", "This
-    // week", "This month") or a plain number, never free-text a user typed in
+    // week", "This month", or a date) or a plain number, never free-text a user typed in
     @Transactional(readOnly = true)
     public String exportReportsAsCsv() {
+        return toCsv(reports());
+    }
+
+    // PM-12 - the scheduled job's own report: exactly one calendar day (midnight to
+    // midnight), not "since midnight" like reports()'s "Today" row, which at 6am would
+    // only cover the 6 hours so far and make the file mostly empty. Takes the date
+    // explicitly rather than always assuming "yesterday" - the scheduler passes
+    // yesterday's date in production, but a backfill or test can ask for any day
+    @Transactional(readOnly = true)
+    public String exportReportAsCsvFor(LocalDate date) {
+        LocalDateTime start = date.atStartOfDay();
+        LocalDateTime end = start.plusDays(1);
+        return toCsv(List.of(report("Yesterday", start, end)));
+    }
+
+    // Anthony's review - this used to be duplicated between the calendar-window
+    // reports above and the scheduled job's single-day report, which is exactly how a
+    // fix to one but not the other goes unnoticed. One shared counting method and one
+    // shared CSV builder now back both
+    private PlatformReport report(String periodLabel, LocalDateTime start, LocalDateTime end) {
+        long newCustomers = userAccountRepository
+                .countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(Role.CUSTOMER, start, end);
+        long newDesigners = userAccountRepository
+                .countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(Role.INTERIOR_DESIGNER, start, end);
+        long newProjects = projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end);
+        long newBookings = bookingRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end);
+        long newComplaints = complaintRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end);
+        return new PlatformReport(periodLabel, newCustomers, newDesigners, newProjects, newBookings, newComplaints);
+    }
+
+    private String toCsv(List<PlatformReport> reports) {
         StringBuilder csv = new StringBuilder();
         csv.append("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n");
-        for (PlatformReport report : reports()) {
+        for (PlatformReport report : reports) {
             csv.append(report.periodLabel()).append(',')
                     .append(report.newCustomers()).append(',')
                     .append(report.newDesigners()).append(',')
@@ -198,42 +233,6 @@ public class PlatformReportService {
                     .append(report.newBookings()).append(',')
                     .append(report.newComplaints()).append('\n');
         }
-        return csv.toString();
-    }
-
-    private PlatformReport report(String periodLabel, LocalDateTime since) {
-        long newCustomers = userAccountRepository.countByRoleAndCreatedAtAfter(Role.CUSTOMER, since);
-        long newDesigners = userAccountRepository.countByRoleAndCreatedAtAfter(Role.INTERIOR_DESIGNER, since);
-        long newProjects = projectRepository.countByCreatedAtAfter(since);
-        long newBookings = bookingRepository.countByCreatedAtAfter(since);
-        long newComplaints = complaintRepository.countByCreatedAtAfter(since);
-        return new PlatformReport(periodLabel, newCustomers, newDesigners, newProjects, newBookings, newComplaints);
-    }
-
-    // PM-12 - the scheduled job's own report: exactly yesterday (midnight to midnight),
-    // not "since midnight" like reports()'s "Today" row, which at 6am would only cover
-    // the 6 hours so far and make the file mostly empty
-    @Transactional(readOnly = true)
-    public String exportYesterdayReportAsCsv() {
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime yesterdayStart = todayStart.minusDays(1);
-        long newCustomers = userAccountRepository.countByRoleAndCreatedAtBetween(Role.CUSTOMER, yesterdayStart, todayStart);
-        long newDesigners = userAccountRepository.countByRoleAndCreatedAtBetween(
-                Role.INTERIOR_DESIGNER, yesterdayStart, todayStart);
-        long newProjects = projectRepository.countByCreatedAtBetween(yesterdayStart, todayStart);
-        long newBookings = bookingRepository.countByCreatedAtBetween(yesterdayStart, todayStart);
-        long newComplaints = complaintRepository.countByCreatedAtBetween(yesterdayStart, todayStart);
-        PlatformReport yesterday = new PlatformReport("Yesterday", newCustomers, newDesigners, newProjects,
-                newBookings, newComplaints);
-
-        StringBuilder csv = new StringBuilder();
-        csv.append("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n");
-        csv.append(yesterday.periodLabel()).append(',')
-                .append(yesterday.newCustomers()).append(',')
-                .append(yesterday.newDesigners()).append(',')
-                .append(yesterday.newProjects()).append(',')
-                .append(yesterday.newBookings()).append(',')
-                .append(yesterday.newComplaints()).append('\n');
         return csv.toString();
     }
 }

@@ -15,12 +15,9 @@ public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
 
     long countByDesignerId(Long designerId);
 
-    // PM-06/PM-08 - activity reports
-    long countByCreatedAtAfter(LocalDateTime since);
-
-    // PM-12 - new complaints within an arbitrary (bounded) window, for the scheduled
-    // report's "yesterday" figures
-    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    // PM-06/PM-08/PM-12 - new complaints within an arbitrary (half-open) window, for
+    // both the calendar-period and scheduled single-day reports
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime start, LocalDateTime end);
 
     // ADM-10 - at most one open complaint per customer per designer at a time
     boolean existsByCustomerIdAndDesignerIdAndStatus(Long customerId, Long designerId, ComplaintStatus status);
