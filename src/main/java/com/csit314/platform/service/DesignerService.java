@@ -19,7 +19,8 @@ import java.util.Optional;
 @Service
 public class DesignerService {
 
-    private static final Logger log = LoggerFactory.getLogger(DesignerService.class);
+    private static final Logger log =
+            LoggerFactory.getLogger(DesignerService.class);
 
     private final InteriorDesignerRepository designerRepository;
     private final UserAccountRepository userAccountRepository;
@@ -33,94 +34,113 @@ public class DesignerService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // IDR-01: save the designer and their company; the account stays PENDING until an admin reviews it
     public InteriorDesigner register(DesignerRegistrationForm form) {
         return register(form, null);
     }
 
-    // ADM-14 - ipAddress is optional (bulk/test data has none) and used to spot registration bursts
     @Transactional
-    public InteriorDesigner register(DesignerRegistrationForm form, String ipAddress) {
-        String contactName = InputRules.requireText(form.contactName(), "Contact name", 100);
+    public InteriorDesigner register(DesignerRegistrationForm form,
+                                     String ipAddress) {
+        String contactName = InputRules.requireText(
+                form.contactName(), "Contact name", 100);
         String email = InputRules.requireEmail(form.email());
         InputRules.checkNewPassword(form.password(), form.confirmPassword());
-        String companyName = InputRules.requireText(form.companyName(), "Company name", 150);
-        String description = InputRules.optionalText(form.companyDescription(), 5000, "Company description");
-        String phone = InputRules.optionalText(form.companyPhone(), 30, "Contact phone");
-        String licenseNumber = InputRules.optionalText(form.licenseNumber(), 60, "License number");
-        String serviceArea = InputRules.optionalText(form.serviceArea(), 200, "Service area");
+
+        String companyName = InputRules.requireText(
+                form.companyName(), "Company name", 150);
+        String description = InputRules.optionalText(
+                form.companyDescription(), 5000, "Company description");
+        String phone = InputRules.optionalText(
+                form.companyPhone(), 30, "Contact phone");
+        String licenseNumber = InputRules.optionalText(
+                form.licenseNumber(), 60, "License number");
+        String serviceArea = InputRules.optionalText(
+                form.serviceArea(), 200, "Service area");
 
         if (userAccountRepository.existsByEmail(email)) {
-            throw new ServiceException("An account with this email already exists.");
+            throw new ServiceException(
+                    "An account with this email already exists.");
         }
 
         Company company = new Company(companyName, description, phone);
         company.setLicenseNumber(licenseNumber);
         company.setServiceArea(serviceArea);
-        InteriorDesigner designer = new InteriorDesigner(contactName, email,
-                passwordEncoder.encode(form.password()), company);
+
+        InteriorDesigner designer = new InteriorDesigner(
+                contactName,
+                email,
+                passwordEncoder.encode(form.password()),
+                company);
         designer.setRegistrationIp(ipAddress);
+
         InteriorDesigner saved = designerRepository.save(designer);
 
-        // ADM-12 - no mail server yet (same as password reset / weekly digest), so this
-        // goes to the log; the admin users page also shows a live pending-count badge
-        log.info("New designer registration pending approval: {} ({})", companyName, email);
+        log.info("New designer registration pending approval: {} ({})",
+                companyName, email);
+
         return saved;
     }
 
-    // the logged-in designer resolved from their own session - should always exist
     @Transactional(readOnly = true)
     public InteriorDesigner requireById(Long id) {
         return designerRepository.findById(id)
-                .orElseThrow(() -> new ServiceException("Designer account not found."));
+                .orElseThrow(() ->
+                        new ServiceException("Designer account not found."));
     }
 
-    // looking up some other designer by id for display - may not exist, caller decides what to do
     @Transactional(readOnly = true)
     public Optional<InteriorDesigner> findById(Long id) {
         return designerRepository.findById(id);
     }
 
-    // PM-05 - every designer, so Platform Management can review declared service areas
     @Transactional(readOnly = true)
     public List<InteriorDesigner> listAll() {
         return designerRepository.findAll();
     }
 
-    // PM-05
     @Transactional
     public void setServiceAreaVerified(Long designerId, boolean verified) {
         InteriorDesigner designer = requireById(designerId);
         designer.setServiceAreaVerified(verified);
     }
 
-    // lets a designer keep their own company details current after registration -
-    // the license number isn't editable here since that drives the verified badge
-    // (CUS-09) and stays admin-controlled
-    //
-    // Anthony's review: takes the id and loads the entity itself (same as
-    // setServiceAreaVerified above), rather than taking an already-loaded designer -
-    // with spring.jpa.open-in-view=false, a designer fetched by a separate read-only
-    // call is detached by the time it gets here, so mutating it wouldn't have been
-    // flushed to the database at all
     @Transactional
-    public InteriorDesigner updateCompanyProfile(Long designerId, CompanyProfileForm form) {
+    public InteriorDesigner updateCompanyProfile(
+            Long designerId, CompanyProfileForm form) {
         InteriorDesigner designer = requireById(designerId);
-        String name = InputRules.requireText(form.companyName(), "Company name", 150);
-        String description = InputRules.optionalText(form.companyDescription(), 5000, "Company description");
-        String phone = InputRules.optionalText(form.companyPhone(), 30, "Contact phone");
-        String serviceArea = InputRules.optionalText(form.serviceArea(), 200, "Service area");
+
+        String name = InputRules.requireText(
+                form.companyName(), "Company name", 150);
+        String description = InputRules.optionalText(
+                form.companyDescription(), 5000, "Company description");
+        String phone = InputRules.optionalText(
+                form.companyPhone(), 30, "Contact phone");
+        String serviceArea = InputRules.optionalText(
+                form.serviceArea(), 200, "Service area");
+        String licenseNumber = InputRules.optionalText(
+                form.licenseNumber(), 60, "License number");
 
         Company company = designer.getCompany();
+
         company.setName(name);
         company.setDescription(description);
         company.setPhone(phone);
-        // PM-05 - a changed service area needs re-checking, so don't leave the old
-        // verified flag on an area Platform Management never actually confirmed
+
         if (!Objects.equals(company.getServiceArea(), serviceArea)) {
             company.setServiceArea(serviceArea);
             designer.setServiceAreaVerified(false);
         }
+
+        // Changed license numbers require fresh admin verification.
+        String currentLicenseNumber = InputRules.optionalText(
+                company.getLicenseNumber(), 60, "License number");
+
+        if (!Objects.equals(currentLicenseNumber, licenseNumber)) {
+            designer.setVerified(false);
+        }
+
+        company.setLicenseNumber(licenseNumber);
+
         return designer;
     }
 }
