@@ -26,6 +26,22 @@
             <input type="tel" name="companyPhone" class="form-control" th:value="${companyPhone}"/>
         </div>
 
+                <div class="mb-3">
+            <label for="licenseNumber" class="form-label">
+                Business registration or license number
+            </label>
+            <input type="text"
+                   id="licenseNumber"
+                   name="licenseNumber"
+                   class="form-control"
+                   maxlength="60"
+                   th:value="${licenseNumber}"/>
+            <div class="form-text">
+                Changing or removing this number clears your license
+                verification. An admin must verify the updated details.
+            </div>
+        </div>
+
         <!-- PM-05 -->
         <div class="mb-4">
             <label class="form-label">Service area</label>
