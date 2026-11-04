@@ -5,11 +5,16 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
-// the design studio an Interior Designer registers under
 @Entity
-@Table(name = "companies")
+@Table(
+        name = "companies",
+        indexes = @Index(
+                name = "idx_company_license_number",
+                columnList = "license_number",
+                unique = false))
 public class Company {
 
     @Id
@@ -25,12 +30,10 @@ public class Company {
     @Column(length = 30)
     private String phone;
 
-    // CUS-09 - optional; InteriorDesigner.approve() only sets verified=true when this is present
+    // Providing a number does not grant verification.
     @Column(name = "license_number", length = 60)
     private String licenseNumber;
 
-    // PM-05 - the region(s) this studio actually services, self-declared by the designer;
-    // Platform Management checks this is accurate (InteriorDesigner.serviceAreaVerified)
     @Column(name = "service_area", length = 200)
     private String serviceArea;
 
