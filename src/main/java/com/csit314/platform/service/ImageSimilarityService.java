@@ -34,6 +34,14 @@ public class ImageSimilarityService {
     // out of 64 bits - low enough that two unrelated photos essentially never collide by
     // chance, high enough to survive a resize or re-save at different quality/format
     private static final int HAMMING_DISTANCE_THRESHOLD = 5;
+    // Anthony's review - a plain or near-uniform photo (a blank wall, an overexposed
+    // shot) has almost every pixel on the same side of its own average brightness,
+    // so aHash gives it a hash near all-0s or all-1s. Any two such photos from
+    // different designers then land well within HAMMING_DISTANCE_THRESHOLD of each
+    // other purely because they're both "flat", not because they're the same photo -
+    // a false plagiarism flag. Skip hashing an image whose brightness barely varies
+    // at all (out of 0-255) rather than risk that
+    private static final int MIN_BRIGHTNESS_RANGE = 24;
 
     private final PhotoHashRepository photoHashRepository;
     private final ProjectFlagService projectFlagService;
@@ -68,10 +76,11 @@ public class ImageSimilarityService {
                 // matched (as a plagiarism "hit") any other photo whose own hash
                 // happened to have 5 or fewer bits set. FileStorageService.validate()
                 // already rejects anything that doesn't decode before store() ever
-                // runs, so this should only happen for a format ImageIO genuinely
-                // can't read - skip it rather than recording a fake, falsely-matching
-                // hash
-                log.warn("Could not decode uploaded photo {} for project {} - skipping the plagiarism check for it.",
+                // runs, so this is almost always the other empty() case now: a plain
+                // or near-uniform photo whose hash would be unreliable either way -
+                // skip it rather than recording a fake or misleading hash
+                log.warn("Couldn't compute a reliable hash for uploaded photo {} for project {} "
+                        + "(unreadable, or too plain/uniform to hash) - skipping the plagiarism check for it.",
                         photoUrl, project.getId());
                 continue;
             }
@@ -101,7 +110,8 @@ public class ImageSimilarityService {
     public void recordOnly(Project project, String photoUrl, byte[] imageBytes) {
         OptionalLong hash = computeHash(imageBytes);
         if (hash.isEmpty()) {
-            log.warn("Could not decode existing photo {} for project {} during the hash backfill - skipping it.",
+            log.warn("Couldn't compute a reliable hash for existing photo {} for project {} during the hash "
+                    + "backfill (unreadable, or too plain/uniform to hash) - skipping it.",
                     photoUrl, project.getId());
             return;
         }
@@ -129,12 +139,19 @@ public class ImageSimilarityService {
 
         int[] brightness = new int[HASH_SIZE * HASH_SIZE];
         long total = 0;
+        int min = 255;
+        int max = 0;
         for (int y = 0; y < HASH_SIZE; y++) {
             for (int x = 0; x < HASH_SIZE; x++) {
                 int value = new Color(small.getRGB(x, y)).getRed(); // grayscale: R=G=B
                 brightness[y * HASH_SIZE + x] = value;
                 total += value;
+                min = Math.min(min, value);
+                max = Math.max(max, value);
             }
+        }
+        if (max - min < MIN_BRIGHTNESS_RANGE) {
+            return OptionalLong.empty();
         }
         int average = (int) (total / brightness.length);
 

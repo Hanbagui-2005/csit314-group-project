@@ -148,4 +148,53 @@ class SystemErrorLoggingAdviceUnitTests {
 
         assertThat(result).isInstanceOf(ResponseEntity.class);
     }
+
+    // Anthony's review - redirecting to /search on every unexpected error, including
+    // ones thrown by /search itself, would bounce the browser /search -> error ->
+    // /search until ERR_TOO_MANY_REDIRECTS, hammering system_error_logs on every hop
+    @Test
+    void breaksTheRedirectLoopWhenSearchItselfIsWhatFailed() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/search");
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+
+        Object result = advice.handleUnexpectedException(new RuntimeException("boom"), request, redirect);
+
+        assertThat(result).isInstanceOf(ResponseEntity.class);
+        assertThat(((ResponseEntity<?>) result).getStatusCode().is5xxServerError()).isTrue();
+        assertThat(redirect.getFlashAttributes()).isEmpty();
+    }
+
+    // Anthony's review - MySQL strict mode rejects a request_path value longer than
+    // the column's length = 300, which (before this fix) made the save itself throw
+    @Test
+    void truncatesARequestPathLongerThanTheColumnLimit() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/search?q=" + "x".repeat(400));
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+
+        advice.handleUnexpectedException(new RuntimeException("boom"), request, redirect);
+
+        ArgumentCaptor<SystemErrorLog> captor = ArgumentCaptor.forClass(SystemErrorLog.class);
+        verify(systemErrorLogRepository).save(captor.capture());
+        assertThat(captor.getValue().getRequestPath().length()).isLessThanOrEqualTo(300);
+    }
+
+    // Anthony's review - this used to be unguarded: if the save itself throws (a DB
+    // outage, which is plausibly the very thing that caused the original exception),
+    // the handler fails outright and the user gets a raw 500 instead of the normal
+    // friendly redirect - the original exception also never reaches anyone
+    @Test
+    void stillRedirectsEvenWhenSavingTheErrorLogItselfFails() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/designer/projects/new");
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        when(systemErrorLogRepository.save(any())).thenThrow(new RuntimeException("DB is down"));
+
+        Object view = advice.handleUnexpectedException(new NullPointerException("boom"), request, redirect);
+
+        assertThat(view).isEqualTo("redirect:/search");
+        assertThat(redirect.getFlashAttributes().get("errorMessage"))
+                .isEqualTo("Something went wrong on our end. Please try again.");
+    }
 }

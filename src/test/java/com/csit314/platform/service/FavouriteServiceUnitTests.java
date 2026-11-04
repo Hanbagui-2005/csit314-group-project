@@ -60,14 +60,13 @@ class FavouriteServiceUnitTests {
     }
 
     @Test
-    void addingSavesAShortlistAndBumpsTheCount() {
+    void addingSavesAShortlist() {
         when(shortlistRepository.existsByCustomerIdAndProjectId(1L, 100L)).thenReturn(false);
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
 
         service.add(customer, 100L);
 
         verify(shortlistWriter).insert(customer, project);
-        assertThat(project.getShortlistCount()).isEqualTo(1);
     }
 
     @Test
@@ -91,21 +90,24 @@ class FavouriteServiceUnitTests {
         doThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate"))
                 .when(shortlistWriter).insert(customer, project);
 
-        service.add(customer, 100L);
-
-        assertThat(project.getShortlistCount()).isZero();
+        assertThatCode(() -> service.add(customer, 100L)).doesNotThrowAnyException();
     }
 
+    // Anthony's review - shortlistCount used to be a manually incremented/decremented
+    // counter that could drift from the shortlists table (e.g. if ShortlistWriter's
+    // own transaction committed the insert but the surrounding one later failed for
+    // an unrelated reason). It's a Hibernate @Formula now - always a live
+    // count(*) against shortlists - so add()/remove() don't touch it at all any more;
+    // there's nothing here for a unit test (no real query) to usefully assert on
+    // beyond the delete itself
     @Test
-    void removingDeletesTheShortlistAndDropsTheCount() {
-        project.incrementShortlistCount();
+    void removingDeletesTheShortlist() {
         Shortlist shortlist = new Shortlist(customer, project);
         when(shortlistRepository.findByCustomerIdAndProjectId(1L, 100L)).thenReturn(Optional.of(shortlist));
 
         service.remove(customer, 100L);
 
         verify(shortlistRepository).delete(shortlist);
-        assertThat(project.getShortlistCount()).isZero();
     }
 
     @Test

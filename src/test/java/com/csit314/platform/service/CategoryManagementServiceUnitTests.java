@@ -152,6 +152,23 @@ class CategoryManagementServiceUnitTests {
         verify(categoryRepository).save(any());
     }
 
+    // Anthony's review - the old normalise() blindly stripped any trailing "s",
+    // treating "Glass" as the plural of "Glas" and merging it with anything else that
+    // normalised the same way. "Glass" only matches another literal "Glass" now
+    @Test
+    void addCategoryDoesNotTreatAWordEndingInSAsAPluralOfAShorterWord() {
+        Category existing = category(1L, "Canvas");
+        when(categoryRepository.findByNameIgnoreCase("Glass")).thenReturn(Optional.empty());
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(existing));
+        when(categoryRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CategoryAddResult result = service.addCategory("Glass");
+
+        assertThat(result.category().getName()).isEqualTo("Glass");
+        assertThat(result.mergedIntoNearDuplicate()).isFalse();
+        verify(categoryRepository).save(any());
+    }
+
     @Test
     void renameCategoryUpdatesTheName() {
         Category category = category(1L, "Old name");
@@ -259,6 +276,22 @@ class CategoryManagementServiceUnitTests {
 
         assertThat(kitchen.isActive()).isTrue();
         assertThat(bathroom.isActive()).isTrue();
+        verifyNoInteractions(projectRepository);
+    }
+
+    // Anthony's review - "Glass" and "Canvas" both end in "s" but aren't plurals of
+    // anything; the nightly job used to silently deactivate one of them and reassign
+    // its projects with no PM confirmation
+    @Test
+    void mergeDuplicateCategoriesLeavesWordsThatMerelyEndInSAlone() {
+        Category glass = category(1L, "Glass");
+        Category canvas = category(2L, "Canvas");
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(glass, canvas));
+
+        service.mergeDuplicateCategories();
+
+        assertThat(glass.isActive()).isTrue();
+        assertThat(canvas.isActive()).isTrue();
         verifyNoInteractions(projectRepository);
     }
 }

@@ -29,6 +29,19 @@ class ShortlistWriter {
     // UnexpectedRollbackException. Letting the exception propagate instead makes Spring
     // roll this transaction back cleanly, and the caller - running in its own, separate,
     // untouched transaction - can catch it safely once this method returns to it.
+    //
+    // Anthony's review raised a real concern with this REQUIRES_NEW commiting
+    // independently of the caller's transaction: if the caller's transaction later
+    // failed for some unrelated reason after this had already committed, a counter
+    // the caller was maintaining elsewhere (Project.shortlistCount) could end up
+    // permanently out of sync with this table. PROPAGATION_NESTED (a savepoint inside
+    // the same transaction, rolling back together with it) would avoid that - but it
+    // isn't usable here: the default Hibernate JPA dialect this project uses doesn't
+    // support savepoints (confirmed by trying it: NestedTransactionNotSupportedException).
+    // The actual fix for the orphaning risk is Project.shortlistCount itself: it's a
+    // Hibernate @Formula (a live count(*) against this table) now, not a counter
+    // anything increments, so there's nothing left for a REQUIRES_NEW commit to
+    // desynchronise from - see its own field comment
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     void insert(Customer customer, Project project) {
         shortlistRepository.save(new Shortlist(customer, project));

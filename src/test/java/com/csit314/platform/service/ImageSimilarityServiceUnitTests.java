@@ -18,6 +18,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.Random;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,7 +48,27 @@ class ImageSimilarityServiceUnitTests {
         ReflectionTestUtils.setField(project, "id", 100L);
     }
 
-    private byte[] realPngBytes(int fillColor) throws Exception {
+    // a seeded per-pixel random pattern, not a flat fill - gives the image real
+    // brightness variance (close to the full 0-255 range) so it hashes normally.
+    // Deterministic per seed: the same seed always produces the same bytes/hash
+    private byte[] variedPngBytes(long seed) throws Exception {
+        BufferedImage image = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
+        Random random = new Random(seed);
+        for (int y = 0; y < 32; y++) {
+            for (int x = 0; x < 32; x++) {
+                int gray = random.nextInt(256);
+                image.setRGB(x, y, new java.awt.Color(gray, gray, gray).getRGB());
+            }
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", out);
+        return out.toByteArray();
+    }
+
+    // Anthony's review - a flat, single-colour image (what the old test helper here
+    // produced) is exactly the "too uniform to hash reliably" case that's now skipped
+    // on purpose; used only by the test that specifically covers that behaviour
+    private byte[] solidPngBytes(int fillColor) throws Exception {
         BufferedImage image = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
         var graphics = image.getGraphics();
         graphics.setColor(new java.awt.Color(fillColor));
@@ -61,7 +82,7 @@ class ImageSimilarityServiceUnitTests {
     void recordsTheHashOfANewPhotoWithoutFlaggingWhenNothingMatches() throws Exception {
         when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
 
-        service.checkAndRecord(project, List.of("/uploads/a.png"), List.of(realPngBytes(0x336699)));
+        service.checkAndRecord(project, List.of("/uploads/a.png"), List.of(variedPngBytes(1)));
 
         verify(photoHashRepository).save(any(PhotoHash.class));
         verifyNoInteractions(projectFlagService);
@@ -72,7 +93,7 @@ class ImageSimilarityServiceUnitTests {
     // algorithm actually produces, without hardcoding or re-implementing it here
     @Test
     void flagsTheProjectWhenAnotherDesignersPhotoHashIsAVeryCloseMatch() throws Exception {
-        byte[] bytes = realPngBytes(0x336699);
+        byte[] bytes = variedPngBytes(1);
         when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
         service.checkAndRecord(project, List.of("/uploads/a.png"), List.of(bytes));
         ArgumentCaptor<PhotoHash> captor = ArgumentCaptor.forClass(PhotoHash.class);
@@ -112,7 +133,7 @@ class ImageSimilarityServiceUnitTests {
         when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
 
         service.checkAndRecord(project, List.of("/uploads/a.png", "/uploads/b.png", "/uploads/c.png"),
-                List.of(realPngBytes(0x111111), realPngBytes(0x222222), realPngBytes(0x333333)));
+                List.of(variedPngBytes(1), variedPngBytes(2), variedPngBytes(3)));
 
         verify(photoHashRepository, times(1)).findByProjectDesignerIdNot(2L);
         verify(photoHashRepository, times(3)).save(any(PhotoHash.class));
@@ -120,7 +141,7 @@ class ImageSimilarityServiceUnitTests {
 
     @Test
     void flagsTheProjectAtMostOnceEvenWhenSeveralPhotosInTheBatchMatch() throws Exception {
-        byte[] bytes = realPngBytes(0x336699);
+        byte[] bytes = variedPngBytes(1);
         when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
         service.checkAndRecord(project, List.of("/uploads/seed.png"), List.of(bytes));
         ArgumentCaptor<PhotoHash> captor = ArgumentCaptor.forClass(PhotoHash.class);
@@ -151,6 +172,21 @@ class ImageSimilarityServiceUnitTests {
         verifyNoInteractions(projectFlagService);
     }
 
+    // Anthony's review - a plain/near-uniform photo (a blank wall, an overexposed
+    // shot) has almost every pixel on the same side of its own average, so aHash gave
+    // it a hash near all-0s or all-1s. Any two such photos then landed within the
+    // Hamming threshold of each other purely for being "flat", not for being the same
+    // photo - a false plagiarism flag. Skipped entirely now instead of hashed
+    @Test
+    void skipsAPlainOrNearUniformPhotoInsteadOfRiskingAFalseMatch() throws Exception {
+        when(photoHashRepository.findByProjectDesignerIdNot(2L)).thenReturn(List.of());
+
+        service.checkAndRecord(project, List.of("/uploads/blank-wall.png"), List.of(solidPngBytes(0x808080)));
+
+        verify(photoHashRepository, never()).save(any());
+        verifyNoInteractions(projectFlagService);
+    }
+
     @Test
     void doesNothingForAnEmptyBatch() {
         service.checkAndRecord(project, List.of(), List.of());
@@ -163,7 +199,7 @@ class ImageSimilarityServiceUnitTests {
     // retroactively just because old/seed data happens to collide
     @Test
     void recordOnlySavesTheHashWithoutEverChecking() throws Exception {
-        service.recordOnly(project, "/uploads/old.png", realPngBytes(0x336699));
+        service.recordOnly(project, "/uploads/old.png", variedPngBytes(1));
 
         verify(photoHashRepository).save(any(PhotoHash.class));
         verifyNoInteractions(projectFlagService);
@@ -173,6 +209,13 @@ class ImageSimilarityServiceUnitTests {
     @Test
     void recordOnlySkipsAPhotoThatFailsToDecode() {
         service.recordOnly(project, "/uploads/not-an-image.png", new byte[]{1, 2, 3});
+
+        verify(photoHashRepository, never()).save(any());
+    }
+
+    @Test
+    void recordOnlySkipsAPlainOrNearUniformPhoto() throws Exception {
+        service.recordOnly(project, "/uploads/blank-wall.png", solidPngBytes(0x808080));
 
         verify(photoHashRepository, never()).save(any());
     }

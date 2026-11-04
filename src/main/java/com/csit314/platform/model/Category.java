@@ -19,8 +19,14 @@ public class Category {
     private String name;
 
     // PM-13 - deactivated instead of removed, so a project that still references this
-    // category keeps working; only active categories are offered for new projects
-    @Column(nullable = false)
+    // category keeps working; only active categories are offered for new projects.
+    //
+    // Anthony's review - active = true is only a Java field initialiser, which never
+    // applies to a column added by ddl-auto=update on an existing MySQL database:
+    // Hibernate runs "alter table categories add column active bit not null" and
+    // MySQL fills every existing row with 0, deactivating every category that was
+    // already there. The explicit DB-level default fixes that for anyone upgrading
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private boolean active = true;
 
     protected Category() {

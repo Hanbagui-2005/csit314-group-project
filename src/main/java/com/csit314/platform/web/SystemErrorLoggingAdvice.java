@@ -27,6 +27,8 @@ public class SystemErrorLoggingAdvice {
 
     private static final Logger log = LoggerFactory.getLogger(SystemErrorLoggingAdvice.class);
     private static final int MAX_DETAIL_LENGTH = 4000;
+    // matches SystemErrorLog.requestPath's own @Column(length = 300)
+    private static final int MAX_REQUEST_PATH_LENGTH = 300;
 
     // PM-09/PM-12 - the only endpoints that return a file instead of a page. Matched by
     // path rather than return type (safer/simpler than resolving the original
@@ -62,7 +64,17 @@ public class SystemErrorLoggingAdvice {
             throw exception;
         }
         log.error("Unhandled exception on {}", request.getRequestURI(), exception);
-        systemErrorLogRepository.save(new SystemErrorLog(request.getRequestURI(), stackTraceOf(exception)));
+        // Anthony's review - this used to be unguarded. If the save itself fails (the
+        // DB being the actual problem, or a request path longer than the column's
+        // 300-character limit under MySQL strict mode), the handler throws, the user
+        // gets a raw 500, and the real exception is only ever in the log line above,
+        // never in system_error_logs where Platform Management would see it
+        try {
+            systemErrorLogRepository.save(
+                    new SystemErrorLog(truncatedRequestPath(request.getRequestURI()), stackTraceOf(exception)));
+        } catch (Exception saveFailure) {
+            log.error("Also failed to record the exception above to system_error_logs", saveFailure);
+        }
 
         // Anthony's review - a download endpoint's caller expects a file or a plain
         // status back, not an HTML redirect with a flash message it'll never see
@@ -70,8 +82,24 @@ public class SystemErrorLoggingAdvice {
             return ResponseEntity.internalServerError().build();
         }
 
+        // Anthony's review - redirecting to /search here is itself a request that can
+        // fail (the DB being down, a bug in search), which would redirect right back
+        // here and then to /search again - an endless loop, hammering
+        // system_error_logs on every hop, until the browser gives up with
+        // ERR_TOO_MANY_REDIRECTS. If /search is what actually failed, break the loop
+        // with a plain error response instead of bouncing back into it
+        if ("/search".equals(request.getRequestURI())) {
+            return ResponseEntity.internalServerError().body("Something went wrong on our end. Please try again.");
+        }
+
         redirect.addFlashAttribute("errorMessage", "Something went wrong on our end. Please try again.");
         return "redirect:/search";
+    }
+
+    private String truncatedRequestPath(String requestPath) {
+        return requestPath.length() > MAX_REQUEST_PATH_LENGTH
+                ? requestPath.substring(0, MAX_REQUEST_PATH_LENGTH)
+                : requestPath;
     }
 
     private String stackTraceOf(Exception exception) {

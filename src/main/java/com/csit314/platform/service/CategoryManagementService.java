@@ -9,12 +9,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 // Platform Management actions on IDP categories
 @Service
@@ -111,47 +110,62 @@ public class CategoryManagementService {
         category.deactivate();
     }
 
-    // PM-03 - scans every active category for near-duplicates (normalisation
-    // differences only - case, spacing, or a trailing plural) and merges each group
-    // into one survivor, so categories that fragmented before this check existed (or
-    // through some other path) get cleaned up too, not just newly-added ones
+    // PM-03 - scans every active category for near-duplicates (case/spacing
+    // differences, or one being exactly the plural of the other) and merges each
+    // group into one survivor, so categories that fragmented before this check
+    // existed (or through some other path) get cleaned up too, not just newly-added
+    // ones
     @Transactional
     public void mergeDuplicateCategories() {
-        List<Category> active = categoryRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC, "name"));
-        Map<String, List<Category>> byNormalisedName = active.stream()
-                .collect(Collectors.groupingBy(c -> normalise(c.getName()), LinkedHashMap::new, Collectors.toList()));
+        List<Category> remaining = new ArrayList<>(
+                categoryRepository.findByActiveTrue(Sort.by(Sort.Direction.ASC, "name")));
 
-        for (List<Category> group : byNormalisedName.values()) {
-            if (group.size() < 2) {
-                continue;
-            }
+        while (!remaining.isEmpty()) {
             // alphabetically first survives - simple and deterministic, since there's
             // no meaningfully "more correct" spelling to prefer between near-duplicates
-            Category survivor = group.get(0);
-            for (Category duplicate : group.subList(1, group.size())) {
-                for (Project project : projectRepository.findByCategoryId(duplicate.getId())) {
+            Category survivor = remaining.remove(0);
+            Iterator<Category> candidates = remaining.iterator();
+            while (candidates.hasNext()) {
+                Category candidate = candidates.next();
+                if (!isNearDuplicate(survivor.getName(), candidate.getName())) {
+                    continue;
+                }
+                for (Project project : projectRepository.findByCategoryId(candidate.getId())) {
                     project.reassignCategory(survivor);
                 }
-                duplicate.deactivate();
+                candidate.deactivate();
+                candidates.remove();
             }
         }
     }
 
     private Optional<Category> findNearDuplicate(String candidateName, Long excludeId) {
-        String normalisedCandidate = normalise(candidateName);
         return categoryRepository.findByActiveTrue(Sort.unsorted()).stream()
                 .filter(c -> excludeId == null || !c.getId().equals(excludeId))
-                .filter(c -> normalise(c.getName()).equals(normalisedCandidate))
+                .filter(c -> isNearDuplicate(candidateName, c.getName()))
                 .findFirst();
     }
 
-    // PM-03 - case/whitespace differences and a simple trailing plural ("Kitchen" vs
-    // "Kitchens") count as the same category; this is deliberately simple rather than a
-    // fuzzy similarity score, so it never merges two categories that just happen to
-    // sound alike (e.g. "Kitchen" and "Kitchenette" stay separate)
-    private String normalise(String name) {
-        String cleaned = name.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
-        return cleaned.length() > 1 && cleaned.endsWith("s") ? cleaned.substring(0, cleaned.length() - 1) : cleaned;
+    // Anthony's review - the previous version normalised each name to a single key by
+    // blindly stripping any trailing "s" and grouped categories that shared a key.
+    // That treats "Glass"/"Canvas" as needing a plural stripped down to "Glas"/"Canva",
+    // silently merging them with anything else that happened to normalise the same
+    // way. Comparing names pairwise instead - equal once case/spacing is normalised,
+    // or one is EXACTLY the other with a trailing "s" added - only ever matches an
+    // actual plural of an EXISTING name, never an unrelated word that merely ends in
+    // "s". "Kitchen"/"Kitchens" still match; "Glass" only matches another "Glass", or
+    // literally "Glas" if that were ever its own category
+    private boolean isNearDuplicate(String a, String b) {
+        String normalisedA = normaliseCaseAndSpacing(a);
+        String normalisedB = normaliseCaseAndSpacing(b);
+        if (normalisedA.equals(normalisedB)) {
+            return true;
+        }
+        return normalisedA.equals(normalisedB + "s") || normalisedB.equals(normalisedA + "s");
+    }
+
+    private String normaliseCaseAndSpacing(String name) {
+        return name.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private Category findCategory(Long categoryId) {

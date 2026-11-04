@@ -52,21 +52,21 @@ public class FavouriteService {
             shortlistWriter.insert(customer, project);
         } catch (DataIntegrityViolationException e) {
             // lost a race with another request for the same (customer, project) pair.
-            // ShortlistWriter's own (separate, REQUIRES_NEW) transaction already rolled
-            // back cleanly before this exception reached us, so catching it here doesn't
-            // touch this method's own transaction - it's already shortlisted either way
+            // ShortlistWriter's own (separate, REQUIRES_NEW) transaction already
+            // rolled back cleanly before this exception reached us, so catching it
+            // here doesn't touch this method's own transaction - it's already
+            // shortlisted either way
             return;
         }
-        project.incrementShortlistCount();
+        // Project.shortlistCount is a derived @Formula field now (Anthony's review),
+        // not a counter to update here - it's always correct the moment the insert
+        // above commits, with nothing that can desynchronise it
     }
 
     @Transactional
     public void remove(Customer customer, Long projectId) {
         shortlistRepository.findByCustomerIdAndProjectId(customer.getId(), projectId)
-                .ifPresent(shortlist -> {
-                    shortlistRepository.delete(shortlist);
-                    shortlist.getProject().decrementShortlistCount();
-                });
+                .ifPresent(shortlistRepository::delete);
     }
 
     // a suspended/pending/rejected designer's project is hidden here too, same as search

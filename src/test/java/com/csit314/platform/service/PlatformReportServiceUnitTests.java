@@ -164,7 +164,7 @@ class PlatformReportServiceUnitTests {
 
     @Test
     void topProjectsDelegatesToTheRepositoryWithAFixedLimit() {
-        TopProject project = new TopProject(1L, "Kitchen remodel", "Studio", 100L, 20L);
+        TopProject project = new TopProject(1L, "Kitchen remodel", "Studio", 100, 20);
         when(projectRepository.topProjects(any(Pageable.class))).thenReturn(List.of(project));
 
         assertThat(service.topProjects()).containsExactly(project);
