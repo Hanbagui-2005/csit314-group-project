@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('License verification')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+
+<div class="container" style="max-width: 960px;">
+
+    <a th:href="@{/admin/users}"
+       class="btn btn-sm btn-outline-secondary mb-3">
+        Back to users
+    </a>
+
+    <h4 class="mb-3">License verification</h4>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 th:text="${designer.company.name}">Company</h5>
+
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Contact name</dt>
+                <dd class="col-sm-8"
+                    th:text="${designer.contactName}">Name</dd>
+
+                <dt class="col-sm-4">Email</dt>
+                <dd class="col-sm-8"
+                    th:text="${designer.email}">Email</dd>
+
+                <dt class="col-sm-4">Phone</dt>
+                <dd class="col-sm-8"
+                    th:text="${designer.company.phone}">Phone</dd>
+
+                <dt class="col-sm-4">Company description</dt>
+                <dd class="col-sm-8"
+                    style="white-space: pre-wrap;"
+                    th:text="${designer.company.description}">
+                    Description
+                </dd>
+
+                <dt class="col-sm-4">License number</dt>
+                <dd class="col-sm-8"
+                    th:text="${#strings.isEmpty(designer.company.licenseNumber)
+                        ? 'Not provided'
+                        : designer.company.licenseNumber}">
+                    Number
+                </dd>
+
+                <dt class="col-sm-4">Account status</dt>
+                <dd class="col-sm-8"
+                    th:text="${designer.status.label}">Status</dd>
+
+                <dt class="col-sm-4">License verification</dt>
+                <dd class="col-sm-8">
+                    <span th:if="${designer.verified}"
+                          class="badge bg-success">Verified</span>
+                    <span th:unless="${designer.verified}"
+                          class="badge bg-secondary">Unverified</span>
+                </dd>
+            </dl>
+        </div>
+    </div>
+
+    <p class="text-muted">
+        Check official registration records and confirm that the number
+        belongs to this company. License verification is separate from
+        registration approval.
+    </p>
+
+    <div th:if="${not designer.verified
+            and #strings.isEmpty(designer.company.licenseNumber)}"
+         class="alert alert-warning">
+        No license number has been provided. The designer must add one
+        through Company profile before you can verify it.
+    </div>
+
+    <form th:if="${not designer.verified
+                  and not #strings.isEmpty(designer.company.licenseNumber)}"
+          method="post"
+          th:action="@{/admin/users/{id}/license/verify(id=${designer.id})}"
+          class="mb-4">
+
+        <input type="hidden"
+               name="licenseNumber"
+               th:value="${designer.company.licenseNumber}"/>
+
+        <label for="verificationNote" class="form-label">
+            Verification evidence
+        </label>
+
+        <textarea id="verificationNote"
+                  name="note"
+                  class="form-control mb-2"
+                  rows="4"
+                  maxlength="2000"
+                  required
+                  placeholder="Record the source checked and how the company details match."></textarea>
+
+        <button type="submit" class="btn btn-success">
+            Confirm verification
+        </button>
+    </form>
+
+    <form th:if="${designer.verified}"
+          method="post"
+          th:action="@{/admin/users/{id}/license/revoke(id=${designer.id})}"
+          class="mb-4">
+
+        <input type="hidden"
+               name="licenseNumber"
+               th:value="${designer.company.licenseNumber}"/>
+
+        <label for="revocationNote" class="form-label">
+            Reason for revoking verification
+        </label>
+
+        <textarea id="revocationNote"
+                  name="note"
+                  class="form-control mb-2"
+                  rows="4"
+                  maxlength="2000"
+                  required
+                  placeholder="Explain why this verification should be revoked."></textarea>
+
+        <button type="submit" class="btn btn-outline-danger">
+            Revoke verification
+        </button>
+    </form>
+
+    <h5 class="mb-3">Verification history</h5>
+
+    <p th:if="${#lists.isEmpty(history)}" class="text-muted">
+        No verification history is available.
+    </p>
+
+    <div th:unless="${#lists.isEmpty(history)}"
+         class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead>
+            <tr>
+                <th>Date</th>
+                <th>Action</th>
+                <th>License number</th>
+                <th>Performed by</th>
+                <th>Evidence or reason</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="entry : ${history}">
+                <td class="text-nowrap"
+                    th:text="${#temporals.format(
+                        entry.recordedAt, 'dd MMM yyyy HH:mm:ss')}">
+                    Date
+                </td>
+
+                <td th:text="${entry.action.name() == 'VERIFIED'
+                        ? 'Verified'
+                        : (entry.action.name() == 'REVOKED'
+                            ? 'Revoked' : 'License changed')}">
+                    Action
+                </td>
+
+                <td th:text="${#strings.isEmpty(entry.licenseNumber)
+                        ? 'Not provided' : entry.licenseNumber}">
+                    Number
+                </td>
+
+                <td th:text="${entry.actorEmail}">Email</td>
+
+                <td style="white-space: pre-wrap;"
+                    th:text="${entry.note}">
+                    Note
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>
