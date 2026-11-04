@@ -20,29 +20,27 @@ public class InteriorDesigner extends UserAccount {
     @JoinColumn(name = "company_id", nullable = false, unique = true)
     private Company company;
 
-    // filled in when an admin approves or rejects the registration
+    // Filled in when an admin approves or rejects the registration.
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
 
     @Column(name = "rejection_reason", length = 1000)
     private String rejectionReason;
 
-    // CUS-09 - true once an admin approves a registration that included a license
-    // number, or an admin manually toggles it later (ADM-05 - e.g. a designer added
-    // their license after approval, or admin found a reason to revoke it)
+    
     @Column(nullable = false)
     private boolean verified = false;
 
-    // PM-05 - Platform Management confirms the service area the designer declared in
-    // Company.serviceArea is actually accurate, separately from the license-based verified flag
+    // PM-05 - service-area verification is separate from license verification.
     @Column(name = "service_area_verified", nullable = false)
     private boolean serviceAreaVerified = false;
 
     protected InteriorDesigner() {
     }
 
-    // new designers wait for admin approval before they can log in
-    public InteriorDesigner(String contactName, String email, String passwordHash, Company company) {
+    // New designers wait for admin approval before they can log in.
+    public InteriorDesigner(String contactName, String email,
+                            String passwordHash, Company company) {
         super(Role.INTERIOR_DESIGNER, email, passwordHash, AccountStatus.PENDING);
         this.contactName = contactName;
         this.company = company;
@@ -52,7 +50,6 @@ public class InteriorDesigner extends UserAccount {
         setStatus(AccountStatus.ACTIVE);
         this.rejectionReason = null;
         this.reviewedAt = LocalDateTime.now();
-        this.verified = company.getLicenseNumber() != null && !company.getLicenseNumber().isBlank();
     }
 
     public void reject(String reason) {
@@ -61,7 +58,7 @@ public class InteriorDesigner extends UserAccount {
         this.reviewedAt = LocalDateTime.now();
     }
 
-    // the admin user list shows the studio name for designers
+    // The admin user list shows the studio name for designers.
     @Override
     public String getDisplayName() {
         return company.getName();

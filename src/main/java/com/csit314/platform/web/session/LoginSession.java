@@ -22,6 +22,17 @@ public class LoginSession {
         return sessionUser;
     }
 
+    // Anthony's review (PR #25) - SessionUser is a snapshot taken at login; nothing
+    // updated it after a profile edit changed the designer's display name, so the
+    // navbar kept showing the old company name until the next log in. Call this after
+    // any change to the logged-in user's own name/email/role so the session catches up
+    public void refresh(HttpServletRequest request, UserAccount user) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.setAttribute(CURRENT_USER, SessionUser.from(user));
+        }
+    }
+
     public Optional<SessionUser> current(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session == null) {

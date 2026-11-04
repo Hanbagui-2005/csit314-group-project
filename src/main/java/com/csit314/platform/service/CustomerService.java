@@ -33,17 +33,32 @@ public class CustomerService {
     // ADM-14 - ipAddress is optional (bulk/test data has none) and used to spot registration bursts
     @Transactional
     public Customer register(CustomerRegistrationForm form, String ipAddress) {
+        InputRules.checkNewPassword(form.password(), form.confirmPassword());
+        Customer customer = buildCustomer(form, passwordEncoder.encode(form.password()));
+        customer.setRegistrationIp(ipAddress);
+        return customerRepository.save(customer);
+    }
+
+    // Anthony's review on PR #25 - DemoDataImportService registers potentially
+    // thousands of synthetic accounts that all share one password on purpose; calling
+    // the normal register() still re-ran BCrypt (~100ms) once per account for a
+    // password that hashes to the same thing every time. This lets the caller hash the
+    // shared password once and pass the hash straight through. Package-private so nothing
+    // outside this package can save an account with an unverified "pre-encoded" string
+    @Transactional
+    Customer registerWithEncodedPassword(CustomerRegistrationForm form, String encodedPassword) {
+        return customerRepository.save(buildCustomer(form, encodedPassword));
+    }
+
+    private Customer buildCustomer(CustomerRegistrationForm form, String encodedPassword) {
         String name = InputRules.requireText(form.name(), "Full name", 100);
         String email = InputRules.requireEmail(form.email());
-        InputRules.checkNewPassword(form.password(), form.confirmPassword());
 
         if (userAccountRepository.existsByEmail(email)) {
             throw new ServiceException("An account with this email already exists.");
         }
 
-        Customer customer = new Customer(name, email, passwordEncoder.encode(form.password()));
-        customer.setRegistrationIp(ipAddress);
-        return customerRepository.save(customer);
+        return new Customer(name, email, encodedPassword);
     }
 
     // the logged-in customer resolved from their own session - should always exist

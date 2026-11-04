@@ -30,12 +30,45 @@ Customers and Interior Designers register themselves (`/register` and `/designer
 User Admin and Platform Management have no public sign-up — a default account for each is
 seeded on first start:
 
-| Role | Login page | Default email | Default password | Override via |
-|---|---|---|---|---|
-| User Admin | `/admin/login` | `admin@platform.local` | `Admin@12345` | `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
-| Platform Management | `/platform-manager/login` | `platform-manager@platform.local` | `Manager@12345` | `PLATFORM_MANAGER_EMAIL` / `PLATFORM_MANAGER_PASSWORD` |
+| Role | Login page | Default email | Override email via |
+|---|---|---|---|
+| User Admin | `/admin/login` | `admin@platform.local` | `ADMIN_EMAIL` |
+| Platform Management | `/platform-manager/login` | `platform-manager@platform.local` | `PLATFORM_MANAGER_EMAIL` |
+
+There's no fixed default password checked into the repo anymore. Set `ADMIN_PASSWORD` /
+`PLATFORM_MANAGER_PASSWORD` yourself, or leave them unset and a random password is
+generated and written to a file under `secrets/` (override with `SECRETS_DIR`) instead
+of the startup log — the log just tells you the file's path. That file is gitignored
+and meant to be deleted once you've copied the password out.
+
+If you're upgrading an instance that was already running before this change, your
+admin/platform-manager account may still be using the old hardcoded default - setting
+`ADMIN_PASSWORD`/`PLATFORM_MANAGER_PASSWORD` now won't change it, since those are only
+read the first time that account is created. Startup logs a loud `SECURITY WARNING` if
+your account is still on the old default; rotate its password directly in the database
+(or via `/forgot-password`, if that's open to this role) if you see it.
 
 There's no mail server yet, so password reset links are printed in the app log.
+
+## Demo data
+
+To populate a running instance (pointed at real MySQL, not the test H2 database) with a
+realistic set of customers, designers and companies instead of clicking through
+registration forms by hand, run:
+
+```
+mvn spring-boot:run -Dspring-boot.run.arguments="--app.demo-data.import=true --app.demo-data.count=50"
+```
+
+This reuses the same registration services the UI calls (so passwords are hashed the
+same way, and data stays consistent), and auto-approves the generated designers so
+there's something to browse right away. `count` defaults to 50 and is capped at 2000.
+Every demo account shares the password `DemoAccount!2026` (e.g. `demo.customer01@demo.example.test`).
+
+It's safe to run more than once, including with a bigger `count` than last time: each
+account is checked (and skipped) individually, so re-running only fills in whatever's
+missing instead of silently doing nothing. A failed import is logged and does not stop
+the application from starting.
 
 ## Tests
 

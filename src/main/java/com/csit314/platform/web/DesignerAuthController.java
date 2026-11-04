@@ -31,13 +31,28 @@ public class DesignerAuthController {
     }
 
     // IDR-01
-    @PostMapping("/register")
-    public String register(@ModelAttribute DesignerRegistrationForm form, HttpServletRequest request,
-                           RedirectAttributes redirect) {
+       @PostMapping("/register")
+    public String register(
+            @ModelAttribute DesignerRegistrationForm form,
+            HttpServletRequest request,
+            RedirectAttributes redirect) {
         try {
-            designerService.register(form, request.getRemoteAddr());
-            redirect.addFlashAttribute("successMessage",
-                    "Thanks for registering! We'll review your company details and you can log in once you're approved.");
+            var designer = designerService.register(
+                    form, request.getRemoteAddr());
+
+            String warning = designerService.licenseReuseWarning(
+                    designer.getId(),
+                    designer.getCompany().getLicenseNumber());
+
+            if (warning != null) {
+                redirect.addFlashAttribute("licenseWarning", warning);
+            }
+
+            redirect.addFlashAttribute(
+                    "successMessage",
+                    "Thanks for registering! We'll review your company "
+                            + "details and you can log in once you're approved.");
+
             return "redirect:/designer/login";
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());
