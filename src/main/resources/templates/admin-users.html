@@ -82,10 +82,11 @@
                         <form method="post" th:if="${user.locked}" th:action="@{'/admin/users/' + ${user.id} + '/unlock'}">
                             <button type="submit" class="btn btn-sm btn-outline-dark">Unlock</button>
                         </form>
-                        <form method="post" th:if="${user.verified != null}" th:action="@{'/admin/users/' + ${user.id} + '/toggle-verified'}">
-                            <button type="submit" class="btn btn-sm btn-outline-info"
-                                    th:text="${user.verified} ? 'Unverify' : 'Verify'">Verify</button>
-                        </form>
+                                              <a th:if="${user.verified != null}"
+                           th:href="@{/admin/users/{id}/license(id=${user.id})}"
+                           class="btn btn-sm btn-outline-info">
+                            Verification &amp; history
+                        </a>
                     </div>
                 </td>
             </tr>
