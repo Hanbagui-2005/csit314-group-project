@@ -48,6 +48,12 @@ public class ComplaintService {
         return complaintRepository.findAllByOrderByCreatedAtDesc();
     }
 
+    // ADM-10 - lets an admin review complaints against one specific designer (e.g. after
+    // spotting them on the quality page) instead of scanning every complaint in the system
+    public List<Complaint> forDesigner(Long designerId) {
+        return complaintRepository.findByDesignerIdOrderByCreatedAtDesc(designerId);
+    }
+
     @Transactional
     public void resolve(Long complaintId) {
         try {

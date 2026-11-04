@@ -6,7 +6,7 @@
 <div class="container" style="max-width: 720px;">
 
     <h4 class="mb-1">Portfolio analytics</h4>
-    <p class="text-muted small mb-4">Breakdown of your portfolio by category, plus who's been saving your work.</p>
+    <p class="text-muted small mb-4">Your categories, ranked by engagement (views + shortlists), plus who's been saving your work.</p>
 
     <div th:if="${#lists.isEmpty(breakdown)}" class="text-muted">
         Add a project to see your category breakdown here.
@@ -17,8 +17,12 @@
             <span th:text="${row.categoryName}">Category</span>
             <span th:text="${row.projectCount} + ' project(s) — ' + ${row.percentage} + '%'">0 — 0%</span>
         </div>
-        <div class="progress" style="height: 8px;">
+        <div class="progress mb-1" style="height: 8px;">
             <div class="progress-bar bg-dark" th:style="'width: ' + ${row.percentage} + '%'"></div>
+        </div>
+        <div class="text-muted small"
+             th:text="${#numbers.formatDecimal(row.averageViews, 1, 1)} + ' avg. view(s), ' + ${#numbers.formatDecimal(row.averageShortlists, 1, 1)} + ' avg. shortlist(s) per project'">
+            0.0 avg. views, 0.0 avg. shortlists per project
         </div>
     </div>
 

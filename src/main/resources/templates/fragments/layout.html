@@ -21,9 +21,21 @@
             <a class="nav-link" href="/privacy">Privacy</a>
             <a class="nav-link" th:if="${currentUser != null and currentUser.role.name() == 'INTERIOR_DESIGNER'}" href="/designer/dashboard">Designer dashboard</a>
             <div class="dropdown" th:if="${currentUser != null and currentUser.role.name() == 'ADMIN'}">
-                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Admin</a>
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    Admin
+                    <!-- ADM-12 - visible wherever the admin is, not just on /admin/users,
+                         so a waiting registration doesn't sit unanswered unnoticed -->
+                    <span th:if="${pendingDesignerNotificationCount != null and pendingDesignerNotificationCount > 0}"
+                          class="badge bg-warning text-dark" th:text="${pendingDesignerNotificationCount}">0</span>
+                </a>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="/admin/users">Users</a></li>
+                    <li>
+                        <a class="dropdown-item d-flex justify-content-between align-items-center" href="/admin/users">
+                            Users
+                            <span th:if="${pendingDesignerNotificationCount != null and pendingDesignerNotificationCount > 0}"
+                                  class="badge bg-warning text-dark" th:text="${pendingDesignerNotificationCount} + ' pending'">0 pending</span>
+                        </a>
+                    </li>
                     <li><a class="dropdown-item" href="/admin/complaints">Complaints</a></li>
                     <li><a class="dropdown-item" href="/admin/quality">Designer quality</a></li>
                     <li><a class="dropdown-item" href="/admin/security">Login security</a></li>

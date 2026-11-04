@@ -5,7 +5,15 @@
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
 <div class="container">
 
-    <h4 class="mb-3">Customer complaints</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Customer complaints</h4>
+        <a th:if="${designerFilter != null}" href="/admin/complaints" class="btn btn-sm btn-outline-secondary">
+            Clear filter &amp; show all complaints
+        </a>
+    </div>
+    <p th:if="${designerFilter != null and #lists.isEmpty(complaints)}" class="text-muted">
+        No complaints filed against this designer.
+    </p>
 
     <div class="list-group">
         <div class="list-group-item" th:each="complaint : ${complaints}">
@@ -36,7 +44,7 @@
         </div>
     </div>
 
-    <p th:if="${#lists.isEmpty(complaints)}" class="text-muted">No complaints have been filed.</p>
+    <p th:if="${designerFilter == null and #lists.isEmpty(complaints)}" class="text-muted">No complaints have been filed.</p>
 
 </div>
 </body>

@@ -35,9 +35,22 @@ public class UserManagementService {
 
     @Transactional(readOnly = true)
     public List<UserSummary> listAllUsers() {
+        return listAllUsers(null, null);
+    }
+
+    // ADM-08 - lets an admin narrow the table down to "accounts that match a filter"
+    // (e.g. Pending Interior Designers) before bulk-approving/suspending, instead of
+    // hunting through every account by hand. Filtered on the mapped label (what's shown
+    // and what the dropdown posts back), not the raw enum, so there's one source of truth
+    @Transactional(readOnly = true)
+    public List<UserSummary> listAllUsers(String statusFilter, String roleFilter) {
         return userAccountRepository.findAll(
                         Sort.by(Sort.Direction.DESC, "createdAt")).stream()
                 .map(this::toSummary)
+                .filter(user -> statusFilter == null || statusFilter.isBlank()
+                        || statusFilter.equals(user.status()))
+                .filter(user -> roleFilter == null || roleFilter.isBlank()
+                        || roleFilter.equals(user.role()))
                 .toList();
     }
 

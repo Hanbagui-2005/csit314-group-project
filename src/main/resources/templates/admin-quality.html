@@ -17,6 +17,7 @@
             <th>Cancelled</th>
             <th>Dispute rate</th>
             <th>Cancellation rate</th>
+            <th></th>
         </tr>
         </thead>
         <tbody>
@@ -27,6 +28,13 @@
             <td th:text="${summary.cancelledBookings}">0</td>
             <td th:text="${summary.disputeRate != null ? #numbers.formatDecimal(summary.disputeRate * 100, 1, 1) + '%' : '-'}">-</td>
             <td th:text="${summary.cancellationRate != null ? #numbers.formatDecimal(summary.cancellationRate * 100, 1, 1) + '%' : '-'}">-</td>
+            <td>
+                <!-- ADM-10 - jumps straight from "this designer has a high dispute rate"
+                     to reviewing their actual complaints, instead of scanning every one -->
+                <a th:if="${summary.complaintCount > 0}"
+                   th:href="@{/admin/complaints(designerId=${summary.designer.id})}"
+                   class="btn btn-sm btn-outline-dark">Review complaints</a>
+            </td>
         </tr>
         </tbody>
     </table>
