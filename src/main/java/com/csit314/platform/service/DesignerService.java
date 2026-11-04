@@ -179,6 +179,35 @@ public class DesignerService {
         return designer;
     }
 
+        @Transactional(readOnly = true)
+    public String licenseReuseWarning(
+            Long designerId, String licenseNumber) {
+        String number = InputRules.optionalText(
+                licenseNumber, 60, "License number");
+
+        if (number == null) {
+            return null;
+        }
+
+        List<String> companyNames = designerRepository
+                .findByCompanyLicenseNumberIgnoreCaseAndIdNot(
+                        number, designerId)
+                .stream()
+                .map(designer -> designer.getCompany().getName())
+                .distinct()
+                .sorted()
+                .toList();
+
+        if (companyNames.isEmpty()) {
+            return null;
+        }
+
+        return "This license number is also used by: "
+                + String.join(", ", companyNames)
+                + ". Please check company ownership before verification. "
+                + "Multiple designers may belong to the same company.";
+    }
+
     private String displayLicense(String licenseNumber) {
         return licenseNumber == null ? "not provided" : licenseNumber;
     }
