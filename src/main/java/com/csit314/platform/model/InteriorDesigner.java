@@ -27,9 +27,7 @@ public class InteriorDesigner extends UserAccount {
     @Column(name = "rejection_reason", length = 1000)
     private String rejectionReason;
 
-    // ADM-05 / CUS-09 - manually confirmed by an admin after checking
-    // the license number against the company's registration details.
-    // Approving a registration does not automatically verify its license.
+    
     @Column(nullable = false)
     private boolean verified = false;
 
