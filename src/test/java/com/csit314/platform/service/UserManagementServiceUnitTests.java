@@ -62,12 +62,16 @@ class UserManagementServiceUnitTests {
         service.approveDesigner(1L);
         assertThat(designer.isVerified()).isFalse();
     }
-    @Test void approvingWithALicenseNumberMarksDesignerVerified() {
+        @Test
+    void approvingWithALicenseNumberLeavesDesignerUnverified() {
         InteriorDesigner designer = pending();
         designer.getCompany().setLicenseNumber("LIC-12345");
         when(designers.findById(1L)).thenReturn(Optional.of(designer));
+
         service.approveDesigner(1L);
-        assertThat(designer.isVerified()).isTrue();
+
+        assertThat(designer.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+        assertThat(designer.isVerified()).isFalse();
     }
     @Test void missingDesignerCannotBeApprovedOrRejected() {
         when(designers.findById(42L)).thenReturn(Optional.empty());
@@ -185,13 +189,42 @@ class UserManagementServiceUnitTests {
     }
 
     // ADM-05
-    @Test void verificationCanBeToggledOnAndOff() {
+        @Test
+    void verificationCanBeToggledOnAndOff() {
         InteriorDesigner designer = pending();
+        designer.getCompany().setLicenseNumber("LIC-12345");
         when(designers.findById(1L)).thenReturn(Optional.of(designer));
-        assertThat(designer.isVerified()).isFalse();
+
         service.toggleVerified(1L);
         assertThat(designer.isVerified()).isTrue();
+
         service.toggleVerified(1L);
+        assertThat(designer.isVerified()).isFalse();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    void cannotVerifyWithoutALicenseNumber(String licenseNumber) {
+        InteriorDesigner designer = pending();
+        designer.getCompany().setLicenseNumber(licenseNumber);
+        when(designers.findById(1L)).thenReturn(Optional.of(designer));
+
+        assertThatThrownBy(() -> service.toggleVerified(1L))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("license number");
+
+        assertThat(designer.isVerified()).isFalse();
+    }
+
+    @Test
+    void canRevokeVerificationWithoutALicenseNumber() {
+        InteriorDesigner designer = pending();
+        designer.setVerified(true);
+        when(designers.findById(1L)).thenReturn(Optional.of(designer));
+
+        service.toggleVerified(1L);
+
         assertThat(designer.isVerified()).isFalse();
     }
 
