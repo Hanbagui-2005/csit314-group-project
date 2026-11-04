@@ -166,7 +166,7 @@ public class DesignerController {
     }
 
     // company profile editing - was previously set once at registration and never editable again
-       @GetMapping("/profile/edit")
+         @GetMapping("/profile/edit")
     public String editCompanyProfileForm(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
         InteriorDesigner designer = designerService.requireById(current.id());
@@ -178,6 +178,12 @@ public class DesignerController {
                 designer.getCompany().getPhone(),
                 designer.getCompany().getServiceArea(),
                 designer.getCompany().getLicenseNumber());
+
+        model.addAttribute(
+                "licenseWarning",
+                designerService.licenseReuseWarning(
+                        current.id(),
+                        designer.getCompany().getLicenseNumber()));
 
         return "designer-profile-edit";
     }
