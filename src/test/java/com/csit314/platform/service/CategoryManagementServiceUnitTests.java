@@ -74,6 +74,25 @@ class CategoryManagementServiceUnitTests {
         verify(categoryRepository, never()).save(any());
     }
 
+    // PM-03/PM-13 - Anthony's review: re-adding a name the nightly merge just
+    // deactivated (e.g. "Kitchens" after it got folded into "Kitchen") must NOT
+    // reactivate it - that would undo the merge until the next nightly run deactivates
+    // it again, so the category would appear and disappear every night
+    @Test
+    void addCategoryReusesTheMergeSurvivorInsteadOfReactivatingWhatTheNightlyMergeJustDeactivated() {
+        Category deactivatedKitchens = category(1L, "Kitchens");
+        deactivatedKitchens.deactivate();
+        Category survivorKitchen = category(2L, "Kitchen");
+        when(categoryRepository.findByNameIgnoreCase("Kitchens")).thenReturn(Optional.of(deactivatedKitchens));
+        when(categoryRepository.findByActiveTrue(any())).thenReturn(List.of(survivorKitchen));
+
+        Category result = service.addCategory("Kitchens");
+
+        assertThat(result).isSameAs(survivorKitchen);
+        assertThat(deactivatedKitchens.isActive()).isFalse();
+        verify(categoryRepository, never()).save(any());
+    }
+
     // PM-03 - a plural of an existing category reuses it instead of fragmenting the
     // taxonomy with a near-identical second one
     @Test

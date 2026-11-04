@@ -48,6 +48,16 @@ public class CategoryManagementService {
             if (category.isActive()) {
                 throw new ServiceException("A category with that name already exists.");
             }
+            // PM-03 - this exact name may have been deactivated by the nightly merge
+            // (e.g. "Kitchens" folded into "Kitchen"). Reactivating it here on an exact
+            // match, without checking for that survivor first, would undo the merge:
+            // the category comes back, gets used again, then the merge job deactivates
+            // it again next run, repeating every night. Check for an active
+            // near-duplicate first and reuse that instead, same as a brand new name would
+            Optional<Category> survivor = findNearDuplicate(trimmed, category.getId());
+            if (survivor.isPresent()) {
+                return survivor.get();
+            }
             category.activate();
             return category;
         }
