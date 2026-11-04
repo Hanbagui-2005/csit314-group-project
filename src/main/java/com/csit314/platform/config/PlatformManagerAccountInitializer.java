@@ -48,8 +48,17 @@ public class PlatformManagerAccountInitializer implements ApplicationRunner {
         String actualPassword = password.isBlank() ? GeneratedPassword.generate() : password;
         userAccountRepository.save(new PlatformManager(name, email, passwordEncoder.encode(actualPassword)));
         if (password.isBlank()) {
-            log.warn("No PLATFORM_MANAGER_PASSWORD set - created default platform manager account {} "
-                    + "with generated password: {}", email, actualPassword);
+            // Anthony's review - same as AdminAccountInitializer: the secret itself goes
+            // to stdout, not the app log, since the log tends to end up somewhere more
+            // people can read and never expires
+            log.warn("No PLATFORM_MANAGER_PASSWORD set - a random password was generated for {}. "
+                    + "It is printed once below, not in this log.", email);
+            System.out.println("================================================================");
+            System.out.println("Generated password for default platform manager account " + email + ":");
+            System.out.println(actualPassword);
+            System.out.println("This is shown once and is not stored anywhere else - copy it now.");
+            System.out.println("Set PLATFORM_MANAGER_PASSWORD to choose your own instead.");
+            System.out.println("================================================================");
         } else {
             log.info("Created default platform manager account {}", email);
         }

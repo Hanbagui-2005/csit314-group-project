@@ -97,8 +97,15 @@ public class DesignerService {
     // lets a designer keep their own company details current after registration -
     // the license number isn't editable here since that drives the verified badge
     // (CUS-09) and stays admin-controlled
+    //
+    // Anthony's review: takes the id and loads the entity itself (same as
+    // setServiceAreaVerified above), rather than taking an already-loaded designer -
+    // with spring.jpa.open-in-view=false, a designer fetched by a separate read-only
+    // call is detached by the time it gets here, so mutating it wouldn't have been
+    // flushed to the database at all
     @Transactional
-    public InteriorDesigner updateCompanyProfile(InteriorDesigner designer, CompanyProfileForm form) {
+    public InteriorDesigner updateCompanyProfile(Long designerId, CompanyProfileForm form) {
+        InteriorDesigner designer = requireById(designerId);
         String name = InputRules.requireText(form.companyName(), "Company name", 150);
         String description = InputRules.optionalText(form.companyDescription(), 5000, "Company description");
         String phone = InputRules.optionalText(form.companyPhone(), 30, "Contact phone");

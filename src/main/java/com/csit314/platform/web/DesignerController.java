@@ -180,8 +180,7 @@ public class DesignerController {
                                        RedirectAttributes redirect) {
         SessionUser current = loginSession.current(request).orElseThrow();
         try {
-            InteriorDesigner designer = designerService.requireById(current.id());
-            designerService.updateCompanyProfile(designer, form);
+            designerService.updateCompanyProfile(current.id(), form);
             redirect.addFlashAttribute("successMessage", "Your company profile has been updated.");
         } catch (ServiceException e) {
             redirect.addFlashAttribute("errorMessage", e.getMessage());

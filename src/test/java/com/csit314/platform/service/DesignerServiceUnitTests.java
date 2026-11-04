@@ -11,6 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -31,7 +34,9 @@ class DesignerServiceUnitTests {
         Company company = new Company("Studio Lume", "Original description", "+61 400 000 000");
         company.setServiceArea("Sydney Metro, NSW");
         designer = new InteriorDesigner("Jordan Lee", "jordan@example.test", "encoded", company);
+        ReflectionTestUtils.setField(designer, "id", 7L);
         designer.setServiceAreaVerified(true);
+        when(designerRepository.findById(7L)).thenReturn(Optional.of(designer));
     }
 
     @Test
@@ -39,18 +44,32 @@ class DesignerServiceUnitTests {
         CompanyProfileForm form = new CompanyProfileForm("New Studio Name", "New description",
                 "+61 400 111 222", "Sydney Metro, NSW");
 
-        service.updateCompanyProfile(designer, form);
+        service.updateCompanyProfile(7L, form);
 
         assertThat(designer.getCompany().getName()).isEqualTo("New Studio Name");
         assertThat(designer.getCompany().getDescription()).isEqualTo("New description");
         assertThat(designer.getCompany().getPhone()).isEqualTo("+61 400 111 222");
     }
 
+    // Anthony's review - with open-in-view off, a designer the caller already loaded
+    // (in its own now-closed transaction) is detached and mutating it never gets
+    // flushed. This is why the method takes an id and loads its own entity instead -
+    // this test is the proof: it never hands the service a designer object at all
+    @Test
+    void loadsTheDesignerItselfInsteadOfRelyingOnAnAlreadyLoadedOne() {
+        CompanyProfileForm form = new CompanyProfileForm("New Studio Name", "New description",
+                "+61 400 111 222", "Sydney Metro, NSW");
+
+        service.updateCompanyProfile(7L, form);
+
+        verify(designerRepository).findById(7L);
+    }
+
     @Test
     void rejectsABlankCompanyName() {
         CompanyProfileForm form = new CompanyProfileForm("   ", "Description", "phone", "area");
 
-        assertThatThrownBy(() -> service.updateCompanyProfile(designer, form))
+        assertThatThrownBy(() -> service.updateCompanyProfile(7L, form))
                 .isInstanceOf(ServiceException.class)
                 .hasMessageContaining("Company name");
     }
@@ -61,7 +80,7 @@ class DesignerServiceUnitTests {
         CompanyProfileForm form = new CompanyProfileForm("Studio Lume", "Original description",
                 "+61 400 000 000", "Sydney Metro, NSW");
 
-        service.updateCompanyProfile(designer, form);
+        service.updateCompanyProfile(7L, form);
 
         assertThat(designer.isServiceAreaVerified()).isTrue();
     }
@@ -71,7 +90,7 @@ class DesignerServiceUnitTests {
         CompanyProfileForm form = new CompanyProfileForm("Studio Lume", "Original description",
                 "+61 400 000 000", "Melbourne Metro, VIC");
 
-        service.updateCompanyProfile(designer, form);
+        service.updateCompanyProfile(7L, form);
 
         assertThat(designer.getCompany().getServiceArea()).isEqualTo("Melbourne Metro, VIC");
         assertThat(designer.isServiceAreaVerified()).isFalse();

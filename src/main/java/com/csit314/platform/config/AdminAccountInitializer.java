@@ -47,8 +47,19 @@ public class AdminAccountInitializer implements ApplicationRunner {
         String actualPassword = password.isBlank() ? GeneratedPassword.generate() : password;
         userAccountRepository.save(new Admin(name, email, passwordEncoder.encode(actualPassword)));
         if (password.isBlank()) {
-            log.warn("No ADMIN_PASSWORD set - created default admin account {} with generated password: {}",
-                    email, actualPassword);
+            // Anthony's review: the app log usually ends up in files, log shipping or
+            // aggregators that more people can read, and never expires - so the
+            // password itself goes straight to stdout instead, not through SLF4J. The
+            // log line says it happened (useful for anyone grepping logs later) without
+            // including the secret itself
+            log.warn("No ADMIN_PASSWORD set - a random password was generated for {}. "
+                    + "It is printed once below, not in this log.", email);
+            System.out.println("================================================================");
+            System.out.println("Generated password for default admin account " + email + ":");
+            System.out.println(actualPassword);
+            System.out.println("This is shown once and is not stored anywhere else - copy it now.");
+            System.out.println("Set ADMIN_PASSWORD to choose your own instead.");
+            System.out.println("================================================================");
         } else {
             log.info("Created default admin account {}", email);
         }
