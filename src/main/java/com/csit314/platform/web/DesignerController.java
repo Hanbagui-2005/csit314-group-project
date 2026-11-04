@@ -12,6 +12,7 @@ import com.csit314.platform.service.ProjectService;
 import com.csit314.platform.service.ServiceException;
 import com.csit314.platform.service.WeeklySummaryService;
 import com.csit314.platform.dto.CategorySuggestionResponse;
+import com.csit314.platform.dto.CompanyProfileForm;
 import com.csit314.platform.dto.ProjectForm;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
@@ -162,6 +163,30 @@ public class DesignerController {
             return new CategorySuggestionResponse(null, null);
         }
         return new CategorySuggestionResponse(suggestion.getId(), suggestion.getName());
+    }
+
+    // company profile editing - was previously set once at registration and never editable again
+    @GetMapping("/profile/edit")
+    public String editCompanyProfileForm(HttpServletRequest request, Model model) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        InteriorDesigner designer = designerService.requireById(current.id());
+        model.addAttribute("company", designer.getCompany());
+        return "designer-profile-edit";
+    }
+
+    @PostMapping("/profile")
+    public String updateCompanyProfile(@ModelAttribute CompanyProfileForm form,
+                                       HttpServletRequest request,
+                                       RedirectAttributes redirect) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        try {
+            InteriorDesigner designer = designerService.requireById(current.id());
+            designerService.updateCompanyProfile(designer, form);
+            redirect.addFlashAttribute("successMessage", "Your company profile has been updated.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/designer/profile/edit";
     }
 
     // IDR-04 / IDR-05

@@ -30,7 +30,7 @@ public class PlatformManagerAccountInitializer implements ApplicationRunner {
                                               PasswordEncoder passwordEncoder,
                                               @Value("${app.platform-manager.name}") String name,
                                               @Value("${app.platform-manager.email}") String email,
-                                              @Value("${app.platform-manager.password}") String password) {
+                                              @Value("${app.platform-manager.password:}") String password) {
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
         this.name = name;
@@ -43,7 +43,15 @@ public class PlatformManagerAccountInitializer implements ApplicationRunner {
         if (userAccountRepository.existsByRole(Role.PLATFORM_MANAGER)) {
             return;
         }
-        userAccountRepository.save(new PlatformManager(name, email, passwordEncoder.encode(password)));
-        log.info("Created default platform manager account {}", email);
+        // same reasoning as AdminAccountInitializer - don't fall back to a fixed,
+        // publicly-documented password when PLATFORM_MANAGER_PASSWORD isn't set
+        String actualPassword = password.isBlank() ? GeneratedPassword.generate() : password;
+        userAccountRepository.save(new PlatformManager(name, email, passwordEncoder.encode(actualPassword)));
+        if (password.isBlank()) {
+            log.warn("No PLATFORM_MANAGER_PASSWORD set - created default platform manager account {} "
+                    + "with generated password: {}", email, actualPassword);
+        } else {
+            log.info("Created default platform manager account {}", email);
+        }
     }
 }

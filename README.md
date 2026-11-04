@@ -30,12 +30,33 @@ Customers and Interior Designers register themselves (`/register` and `/designer
 User Admin and Platform Management have no public sign-up — a default account for each is
 seeded on first start:
 
-| Role | Login page | Default email | Default password | Override via |
-|---|---|---|---|---|
-| User Admin | `/admin/login` | `admin@platform.local` | `Admin@12345` | `ADMIN_EMAIL` / `ADMIN_PASSWORD` |
-| Platform Management | `/platform-manager/login` | `platform-manager@platform.local` | `Manager@12345` | `PLATFORM_MANAGER_EMAIL` / `PLATFORM_MANAGER_PASSWORD` |
+| Role | Login page | Default email | Override email via |
+|---|---|---|---|
+| User Admin | `/admin/login` | `admin@platform.local` | `ADMIN_EMAIL` |
+| Platform Management | `/platform-manager/login` | `platform-manager@platform.local` | `PLATFORM_MANAGER_EMAIL` |
+
+There's no fixed default password checked into the repo anymore. Set `ADMIN_PASSWORD` /
+`PLATFORM_MANAGER_PASSWORD` yourself, or leave them unset and a random password is
+generated and printed to the startup log once (`No ADMIN_PASSWORD set - created default
+admin account ... with generated password: ...`) — copy it from there before it scrolls
+past.
 
 There's no mail server yet, so password reset links are printed in the app log.
+
+## Demo data
+
+To populate a running instance (pointed at real MySQL, not the test H2 database) with a
+realistic set of customers, designers and companies instead of clicking through
+registration forms by hand, run:
+
+```
+mvn spring-boot:run -Dspring-boot.run.arguments="--app.demo-data.import=true --app.demo-data.count=50"
+```
+
+This reuses the same registration services the UI calls (so passwords are hashed the
+same way, and data stays consistent), and auto-approves the generated designers so
+there's something to browse right away. `count` defaults to 50 and is capped at 2000.
+It's safe to run more than once — it skips importing if demo accounts already exist.
 
 ## Tests
 

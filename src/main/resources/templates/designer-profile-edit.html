@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Edit company profile')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<div class="container" style="max-width: 480px;">
+
+    <h4 class="mb-1">Company profile</h4>
+    <p class="text-muted small mb-4">This is what customers see on your public designer profile.</p>
+
+    <form method="post" th:action="@{/designer/profile}">
+
+        <div class="mb-3">
+            <label class="form-label">Company name</label>
+            <input type="text" name="companyName" class="form-control" th:value="${company.name}"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Company description</label>
+            <textarea name="companyDescription" class="form-control" rows="3"
+                      th:text="${company.description}"></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Contact phone</label>
+            <input type="tel" name="companyPhone" class="form-control" th:value="${company.phone}"/>
+        </div>
+
+        <!-- PM-05 -->
+        <div class="mb-4">
+            <label class="form-label">Service area</label>
+            <input type="text" name="serviceArea" class="form-control" th:value="${company.serviceArea}"/>
+            <div class="form-text">Changing this clears your service-area verification until Platform Management re-checks it.</div>
+        </div>
+
+        <button type="submit" class="btn btn-dark w-100">Save changes</button>
+
+    </form>
+
+</div>
+</body>
+</html>

@@ -29,7 +29,7 @@ public class AdminAccountInitializer implements ApplicationRunner {
                                    PasswordEncoder passwordEncoder,
                                    @Value("${app.admin.name}") String name,
                                    @Value("${app.admin.email}") String email,
-                                   @Value("${app.admin.password}") String password) {
+                                   @Value("${app.admin.password:}") String password) {
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
         this.name = name;
@@ -42,7 +42,15 @@ public class AdminAccountInitializer implements ApplicationRunner {
         if (userAccountRepository.existsByRole(Role.ADMIN)) {
             return;
         }
-        userAccountRepository.save(new Admin(name, email, passwordEncoder.encode(password)));
-        log.info("Created default admin account {}", email);
+        // a fixed, publicly-documented fallback password would be a real risk if
+        // ADMIN_PASSWORD is never set, so generate one instead and only print it once
+        String actualPassword = password.isBlank() ? GeneratedPassword.generate() : password;
+        userAccountRepository.save(new Admin(name, email, passwordEncoder.encode(actualPassword)));
+        if (password.isBlank()) {
+            log.warn("No ADMIN_PASSWORD set - created default admin account {} with generated password: {}",
+                    email, actualPassword);
+        } else {
+            log.info("Created default admin account {}", email);
+        }
     }
 }
