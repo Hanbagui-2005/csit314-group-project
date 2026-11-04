@@ -19,9 +19,40 @@
            th:value="${_csrf.token}"/>
 </form>
 
-    <div class="d-flex gap-2 mb-2">
+    <!-- ADM-08 - narrows the table to "accounts that match a filter" before bulk-acting
+         on them; "Select all shown" then ticks every row the filter left on screen -->
+    <form method="get" class="row g-2 mb-2 align-items-center">
+        <div class="col-auto">
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All statuses</option>
+                <option value="Pending" th:selected="${statusFilter == 'Pending'}">Pending</option>
+                <option value="Active" th:selected="${statusFilter == 'Active'}">Active</option>
+                <option value="Suspended" th:selected="${statusFilter == 'Suspended'}">Suspended</option>
+                <option value="Rejected" th:selected="${statusFilter == 'Rejected'}">Rejected</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <select name="role" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All roles</option>
+                <option value="User Admin" th:selected="${roleFilter == 'User Admin'}">User Admin</option>
+                <option value="Interior Designer" th:selected="${roleFilter == 'Interior Designer'}">Interior Designer</option>
+                <option value="Customer" th:selected="${roleFilter == 'Customer'}">Customer</option>
+                <option value="Platform Management" th:selected="${roleFilter == 'Platform Management'}">Platform Management</option>
+            </select>
+        </div>
+        <div class="col-auto" th:if="${statusFilter != null or roleFilter != null}">
+            <a href="/admin/users" class="btn btn-sm btn-outline-secondary">Clear filters</a>
+        </div>
+    </form>
+
+    <div class="d-flex gap-2 mb-2 align-items-center">
         <button type="submit" form="bulkForm" formaction="/admin/users/bulk-approve" class="btn btn-sm btn-success">Approve selected</button>
         <button type="submit" form="bulkForm" formaction="/admin/users/bulk-suspend" class="btn btn-sm btn-outline-danger">Suspend selected</button>
+        <div class="form-check ms-2">
+            <input type="checkbox" id="selectAllShown" class="form-check-input"
+                   onclick="document.querySelectorAll('input[name=ids]').forEach(function(cb) { cb.checked = document.getElementById('selectAllShown').checked; })"/>
+            <label for="selectAllShown" class="form-check-label small">Select all shown</label>
+        </div>
     </div>
     <p class="text-muted small">
         Approving registration does not verify a license.

@@ -47,6 +47,74 @@ class UserManagementServiceUnitTests {
         assertThat(list.get(1).status()).isEqualTo("Pending");
         assertThat(list.toString()).doesNotContain("secret-hash");
     }
+    // ADM-08 - lets the admin narrow the table to "accounts that match a filter"
+    // before bulk-acting, instead of only whatever's been manually ticked
+    @Test void statusFilterKeepsOnlyMatchingAccounts() {
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(
+                new Customer("Client", "client@example.test", "secret-hash"), pending()));
+        var list = service.listAllUsers("Pending", null);
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).name()).isEqualTo("Studio");
+    }
+    @Test void roleFilterKeepsOnlyMatchingAccounts() {
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(
+                new Customer("Client", "client@example.test", "secret-hash"), pending()));
+        var list = service.listAllUsers(null, "Customer");
+        assertThat(list).hasSize(1);
+        assertThat(list.get(0).name()).isEqualTo("Client");
+    }
+    @Test void statusAndRoleFiltersCombine() {
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(
+                new Customer("Client", "client@example.test", "secret-hash"), pending()));
+        var list = service.listAllUsers("Pending", "Customer");
+        assertThat(list).isEmpty();
+    }
+    @Test void blankFiltersActLikeNoFilter() {
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(
+                new Customer("Client", "client@example.test", "secret-hash"), pending()));
+        assertThat(service.listAllUsers("", "  ")).hasSize(2);
+    }
+
+    // ADM-07 - risk score: 100 minus 25 per completeness/verification signal present
+    // (description, phone, license number, a full contact name)
+    @Test void aDesignerWithNoCompletenessSignalsScoresMaximumRisk() {
+        InteriorDesigner designer = new InteriorDesigner("Solo", "solo@example.test", "hash",
+                new Company("Studio", null, null));
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(designer));
+
+        assertThat(service.listAllUsers().get(0).riskScore()).isEqualTo(100);
+    }
+
+    @Test void aDesignerWithEveryCompletenessSignalScoresZeroRisk() {
+        Company company = new Company("Studio", "A full description", "+61 400 000 000");
+        company.setLicenseNumber("LIC-12345");
+        InteriorDesigner designer = new InteriorDesigner("Jordan Lee", "jordan@example.test", "hash", company);
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(designer));
+
+        assertThat(service.listAllUsers().get(0).riskScore()).isEqualTo(0);
+    }
+
+    @Test void aDesignerWithSomeCompletenessSignalsScoresInBetween() {
+        // description and phone present, no license number, single-word contact name
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(pending()));
+
+        assertThat(service.listAllUsers().get(0).riskScore()).isEqualTo(50);
+    }
+
+    @Test void blankDescriptionAndPhoneCountTheSameAsMissing() {
+        InteriorDesigner designer = new InteriorDesigner("Solo", "solo@example.test", "hash",
+                new Company("Studio", "   ", "   "));
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(designer));
+
+        assertThat(service.listAllUsers().get(0).riskScore()).isEqualTo(100);
+    }
+
+    @Test void nonDesignerAccountsHaveNoRiskScore() {
+        when(users.findAll(any(Sort.class))).thenReturn(List.of(
+                new Customer("Client", "client@example.test", "secret-hash")));
+
+        assertThat(service.listAllUsers().get(0).riskScore()).isNull();
+    }
     @Test void pendingDesignerIsApprovedAndTimestamped() {
         InteriorDesigner designer = pending();
         when(designers.findById(1L)).thenReturn(Optional.of(designer));

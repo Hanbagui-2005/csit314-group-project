@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 // ADM-10/11/13/14 - already behind AuthInterceptor's /admin/** protection
@@ -29,10 +30,13 @@ public class AdminInsightsController {
         this.userManagementService = userManagementService;
     }
 
-    // ADM-10
+    // ADM-10 - designerId is optional; when given, narrows the list down to just that
+    // designer's complaints instead of scanning every complaint in the system
     @GetMapping("/complaints")
-    public String complaints(Model model) {
-        model.addAttribute("complaints", complaintService.all());
+    public String complaints(@RequestParam(required = false) Long designerId, Model model) {
+        model.addAttribute("complaints",
+                designerId == null ? complaintService.all() : complaintService.forDesigner(designerId));
+        model.addAttribute("designerFilter", designerId);
         return "admin-complaints";
     }
 

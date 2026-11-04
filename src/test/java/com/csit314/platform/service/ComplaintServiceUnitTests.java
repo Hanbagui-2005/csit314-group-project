@@ -99,6 +99,17 @@ class ComplaintServiceUnitTests {
         verify(complaintRepository, never()).save(any());
     }
 
+    // ADM-10 - narrows the review down to one designer's complaints, e.g. after spotting
+    // them on the quality page, instead of scanning every complaint in the system
+    @Test
+    void forDesignerDelegatesToTheRepository() {
+        Complaint complaint = new Complaint(customer, designer, "Issue");
+        when(complaintRepository.findByDesignerIdOrderByCreatedAtDesc(2L))
+                .thenReturn(java.util.List.of(complaint));
+
+        assertThat(service.forDesigner(2L)).containsExactly(complaint);
+    }
+
     @Test
     void resolvingAnOpenComplaintMarksItResolved() {
         Complaint complaint = new Complaint(customer, designer, "Issue");

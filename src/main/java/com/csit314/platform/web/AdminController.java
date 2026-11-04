@@ -60,9 +60,16 @@ public class AdminController {
         }
     }
 
+    // ADM-08 - status/role are optional filters, so the bulk-approve/suspend buttons
+    // can act on "accounts that match a filter" instead of only whatever's manually ticked
     @GetMapping("/users")
-    public String users(Model model) {
-        model.addAttribute("users", userManagementService.listAllUsers());
+    public String users(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String role,
+            Model model) {
+        model.addAttribute("users", userManagementService.listAllUsers(status, role));
+        model.addAttribute("statusFilter", status);
+        model.addAttribute("roleFilter", role);
         model.addAttribute(
                 "pendingCount", userManagementService.pendingDesignerCount());
         return "admin-users";
