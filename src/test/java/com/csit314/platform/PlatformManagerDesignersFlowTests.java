@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 // PM-05 - Platform Management verifying a designer's declared service area
 @SpringBootTest
@@ -57,13 +58,13 @@ class PlatformManagerDesignersFlowTests {
         InteriorDesigner designer = newDesigner("area.toggle@test.local", "Area Toggle Studio", "Melbourne CBD");
         MockHttpSession session = loginPlatformManager();
 
-        mvc.perform(post("/platform-manager/designers/" + designer.getId() + "/verify-service-area")
+        mvc.perform(post("/platform-manager/designers/" + designer.getId() + "/verify-service-area").with(csrf())
                         .session(session))
                 .andExpect(redirectedUrl("/platform-manager/designers"))
                 .andExpect(flash().attribute("successMessage", "Service area marked as verified."));
         assertThat(designerRepository.findById(designer.getId()).orElseThrow().isServiceAreaVerified()).isTrue();
 
-        mvc.perform(post("/platform-manager/designers/" + designer.getId() + "/flag-service-area")
+        mvc.perform(post("/platform-manager/designers/" + designer.getId() + "/flag-service-area").with(csrf())
                         .session(session))
                 .andExpect(flash().attribute("successMessage", "Service area flagged as inaccurate."));
         assertThat(designerRepository.findById(designer.getId()).orElseThrow().isServiceAreaVerified()).isFalse();
@@ -76,7 +77,7 @@ class PlatformManagerDesignersFlowTests {
     }
 
     private MockHttpSession loginPlatformManager() throws Exception {
-        return (MockHttpSession) mvc.perform(post("/platform-manager/login")
+        return (MockHttpSession) mvc.perform(post("/platform-manager/login").with(csrf())
                         .param("email", PM_EMAIL).param("password", PM_PASSWORD))
                 .andExpect(redirectedUrl("/platform-manager/categories"))
                 .andReturn().getRequest().getSession(false);

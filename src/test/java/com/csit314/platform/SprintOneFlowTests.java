@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -65,12 +66,12 @@ class SprintOneFlowTests {
 
     @Test
     void wrongPasswordAndWrongPortalAreRejected() throws Exception {
-        mvc.perform(post("/admin/login").param("email", ADMIN_EMAIL).param("password", "nope"))
+       mvc.perform(post("/admin/login").with(csrf()).param("email", ADMIN_EMAIL).param("password", "nope"))
                 .andExpect(redirectedUrl("/admin/login"))
                 .andExpect(flash().attribute("errorMessage", "Invalid email or password."));
 
         // admin credentials don't work on the customer login
-        mvc.perform(post("/login").param("email", ADMIN_EMAIL).param("password", ADMIN_PASSWORD))
+       mvc.perform(post("/login").with(csrf()).param("email", ADMIN_EMAIL).param("password", ADMIN_PASSWORD))
                 .andExpect(redirectedUrl("/search"))
                 .andExpect(flash().attribute("errorMessage", "Invalid email or password."));
     }
@@ -91,13 +92,13 @@ class SprintOneFlowTests {
         assertThat(designer.getCompany().getName()).isEqualTo("Approve Studio");
         assertThat(designer.getCompany().getPhone()).isEqualTo("+61 400 000 000");
 
-        mvc.perform(post("/designer/login").param("email", "approve.me@studio.com").param("password", "password123"))
+       mvc.perform(post("/designer/login").with(csrf()).param("email", "approve.me@studio.com").param("password", "password123"))
                 .andExpect(redirectedUrl("/designer/login"))
                 .andExpect(flash().attribute("errorMessage",
                         org.hamcrest.Matchers.containsString("still being reviewed")));
 
         MockHttpSession admin = login("/admin/login", ADMIN_EMAIL, ADMIN_PASSWORD, "/admin/users");
-        mvc.perform(post("/admin/users/" + designer.getId() + "/approve").session(admin))
+       mvc.perform(post("/admin/users/" + designer.getId() + "/approve").with(csrf()).session(admin))
                 .andExpect(redirectedUrl("/admin/users"))
                 .andExpect(flash().attributeExists("successMessage"));
 
@@ -115,22 +116,22 @@ class SprintOneFlowTests {
         MockHttpSession admin = login("/admin/login", ADMIN_EMAIL, ADMIN_PASSWORD, "/admin/users");
 
         // a reason is required
-        mvc.perform(post("/admin/users/" + id + "/reject").session(admin).param("reason", " "))
+       mvc.perform(post("/admin/users/" + id + "/reject").with(csrf()).session(admin).param("reason", " "))
                 .andExpect(flash().attributeExists("errorMessage"));
 
-        mvc.perform(post("/admin/users/" + id + "/reject").session(admin).param("reason", "No portfolio provided"))
+       mvc.perform(post("/admin/users/" + id + "/reject").with(csrf()).session(admin).param("reason", "No portfolio provided"))
                 .andExpect(flash().attributeExists("successMessage"));
 
         InteriorDesigner designer = (InteriorDesigner) userAccountRepository.findById(id).orElseThrow();
         assertThat(designer.getStatus()).isEqualTo(AccountStatus.REJECTED);
         assertThat(designer.getRejectionReason()).isEqualTo("No portfolio provided");
 
-        mvc.perform(post("/designer/login").param("email", "reject.me@studio.com").param("password", "password123"))
+       mvc.perform(post("/designer/login").with(csrf()).param("email", "reject.me@studio.com").param("password", "password123"))
                 .andExpect(flash().attribute("errorMessage",
                         org.hamcrest.Matchers.containsString("No portfolio provided")));
 
         // can't review the same registration twice
-        mvc.perform(post("/admin/users/" + id + "/approve").session(admin))
+       mvc.perform(post("/admin/users/" + id + "/approve").with(csrf()).session(admin))
                 .andExpect(flash().attribute("errorMessage", "This registration has already been reviewed."));
     }
 
@@ -145,7 +146,7 @@ class SprintOneFlowTests {
         MockHttpSession session = login("/login", "jordan.lee@example.com", "password123", "/favourites");
         mvc.perform(get("/favourites").session(session)).andExpect(status().isOk());
 
-        mvc.perform(post("/logout").session(session)).andExpect(redirectedUrl("/search"));
+       mvc.perform(post("/logout").with(csrf()).session(session)).andExpect(redirectedUrl("/search"));
         assertThat(session.isInvalid()).isTrue();
     }
 
@@ -153,16 +154,16 @@ class SprintOneFlowTests {
     void customerRegistrationValidatesInput() throws Exception {
         registerCustomer("Dup", "dup@example.com", "password123");
 
-        mvc.perform(post("/register").param("name", "Dup Again").param("email", "dup@example.com")
+       mvc.perform(post("/register").with(csrf()).param("name", "Dup Again").param("email", "dup@example.com")
                         .param("password", "password123").param("confirmPassword", "password123"))
                 .andExpect(redirectedUrl("/register"))
                 .andExpect(flash().attribute("errorMessage", "An account with this email already exists."));
 
-        mvc.perform(post("/register").param("name", "Short").param("email", "short@example.com")
+       mvc.perform(post("/register").with(csrf()).param("name", "Short").param("email", "short@example.com")
                         .param("password", "abc").param("confirmPassword", "abc"))
                 .andExpect(flash().attribute("errorMessage", "Password must be at least 8 characters."));
 
-        mvc.perform(post("/register").param("name", "Mismatch").param("email", "mismatch@example.com")
+       mvc.perform(post("/register").with(csrf()).param("name", "Mismatch").param("email", "mismatch@example.com")
                         .param("password", "password123").param("confirmPassword", "password124"))
                 .andExpect(flash().attribute("errorMessage", "Passwords do not match."));
     }
@@ -172,19 +173,19 @@ class SprintOneFlowTests {
         registerCustomer("Forgetful", "forgetful@example.com", "oldpassword1");
 
         // unknown emails get the same response
-        mvc.perform(post("/forgot-password").param("email", "nobody@example.com"))
+       mvc.perform(post("/forgot-password").with(csrf()).param("email", "nobody@example.com"))
                 .andExpect(redirectedUrl("/forgot-password"))
                 .andExpect(flash().attributeExists("successMessage"));
 
         String token = passwordResetService.requestReset("forgetful@example.com").orElseThrow();
 
         mvc.perform(get("/reset-password").param("token", token)).andExpect(status().isOk());
-        mvc.perform(post("/reset-password").param("token", token)
+       mvc.perform(post("/reset-password").with(csrf()).param("token", token)
                         .param("password", "newpassword1").param("confirmPassword", "newpassword1"))
                 .andExpect(redirectedUrl("/search"));
 
         login("/login", "forgetful@example.com", "newpassword1", "/favourites");
-        mvc.perform(post("/login").param("email", "forgetful@example.com").param("password", "oldpassword1"))
+       mvc.perform(post("/login").with(csrf()).param("email", "forgetful@example.com").param("password", "oldpassword1"))
                 .andExpect(flash().attribute("errorMessage", "Invalid email or password."));
 
         // link is single-use
@@ -192,13 +193,13 @@ class SprintOneFlowTests {
     }
 
     private void registerCustomer(String name, String email, String password) throws Exception {
-        mvc.perform(post("/register").param("name", name).param("email", email)
+      mvc.perform(post("/register").with(csrf()).param("name", name).param("email", email)
                         .param("password", password).param("confirmPassword", password))
                 .andExpect(redirectedUrl("/search"));
     }
 
     private void registerDesigner(String email, String company) throws Exception {
-        mvc.perform(post("/designer/register")
+       mvc.perform(post("/designer/register").with(csrf())
                         .param("contactName", "Jordan Lee")
                         .param("email", email)
                         .param("password", "password123")
@@ -211,7 +212,7 @@ class SprintOneFlowTests {
     }
 
     private MockHttpSession login(String path, String email, String password, String expectedRedirect) throws Exception {
-        return (MockHttpSession) mvc.perform(post(path).param("email", email).param("password", password))
+       return (MockHttpSession) mvc.perform(post(path).with(csrf()).param("email", email).param("password", password))
                 .andExpect(redirectedUrl(expectedRedirect))
                 .andReturn().getRequest().getSession(false);
     }
