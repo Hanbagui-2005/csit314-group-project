@@ -166,46 +166,66 @@ public class DesignerController {
     }
 
     // company profile editing - was previously set once at registration and never editable again
-    @GetMapping("/profile/edit")
+       @GetMapping("/profile/edit")
     public String editCompanyProfileForm(HttpServletRequest request, Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
         InteriorDesigner designer = designerService.requireById(current.id());
-        addCompanyProfileFields(model, designer.getCompany().getName(), designer.getCompany().getDescription(),
-                designer.getCompany().getPhone(), designer.getCompany().getServiceArea());
+
+        addCompanyProfileFields(
+                model,
+                designer.getCompany().getName(),
+                designer.getCompany().getDescription(),
+                designer.getCompany().getPhone(),
+                designer.getCompany().getServiceArea(),
+                designer.getCompany().getLicenseNumber());
+
         return "designer-profile-edit";
     }
 
     @PostMapping("/profile")
-    public String updateCompanyProfile(@ModelAttribute CompanyProfileForm form,
-                                       HttpServletRequest request,
-                                       RedirectAttributes redirect,
-                                       Model model) {
+    public String updateCompanyProfile(
+            @ModelAttribute CompanyProfileForm form,
+            HttpServletRequest request,
+            RedirectAttributes redirect,
+            Model model) {
         SessionUser current = loginSession.current(request).orElseThrow();
+
         try {
-            InteriorDesigner designer = designerService.updateCompanyProfile(current.id(), form);
-            // Anthony's review - the navbar's name comes from the SessionUser snapshot
-            // taken at login, so without this a renamed company kept showing its old
-            // name there until the designer logged out and back in
+            InteriorDesigner designer =
+                    designerService.updateCompanyProfile(current.id(), form);
+
             loginSession.refresh(request, designer);
-            redirect.addFlashAttribute("successMessage", "Your company profile has been updated.");
+            redirect.addFlashAttribute(
+                    "successMessage", "Your company profile has been updated.");
+
             return "redirect:/designer/profile/edit";
         } catch (ServiceException e) {
-            // Anthony's review - renders the form again directly (same request)
-            // instead of redirecting, so a validation failure (e.g. a blank company
-            // name) doesn't throw away the other three fields the designer just typed
             model.addAttribute("errorMessage", e.getMessage());
-            addCompanyProfileFields(model, form.companyName(), form.companyDescription(), form.companyPhone(),
-                    form.serviceArea());
+
+            addCompanyProfileFields(
+                    model,
+                    form.companyName(),
+                    form.companyDescription(),
+                    form.companyPhone(),
+                    form.serviceArea(),
+                    form.licenseNumber());
+
             return "designer-profile-edit";
         }
     }
 
-    private void addCompanyProfileFields(Model model, String name, String description, String phone,
-                                         String serviceArea) {
+    private void addCompanyProfileFields(
+            Model model,
+            String name,
+            String description,
+            String phone,
+            String serviceArea,
+            String licenseNumber) {
         model.addAttribute("companyName", name);
         model.addAttribute("companyDescription", description);
         model.addAttribute("companyPhone", phone);
         model.addAttribute("companyServiceArea", serviceArea);
+        model.addAttribute("licenseNumber", licenseNumber);
     }
 
     // IDR-04 / IDR-05
