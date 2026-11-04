@@ -179,25 +179,7 @@ public class UserManagementService {
         return user;
     }
 
-    // ADM-05: verification is confirmed manually after checking company details.
-    @Transactional
-    public InteriorDesigner toggleVerified(Long designerId) {
-        InteriorDesigner designer = designerRepository.findById(designerId)
-                .orElseThrow(() ->
-                        new ServiceException("Interior Designer not found."));
-
-        if (!designer.isVerified()) {
-            String licenseNumber = designer.getCompany().getLicenseNumber();
-
-            if (licenseNumber == null || licenseNumber.isBlank()) {
-                throw new ServiceException(
-                        "A license number is required before verification.");
-            }
-        }
-
-        designer.setVerified(!designer.isVerified());
-        return designer;
-    }
+   
 
     @Transactional(readOnly = true)
     public long pendingDesignerCount() {
