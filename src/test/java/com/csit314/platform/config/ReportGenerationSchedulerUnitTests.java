@@ -21,11 +21,25 @@ class ReportGenerationSchedulerUnitTests {
 
     @Test
     void writesTheReportForTheGivenDate() {
-        when(platformReportService.exportYesterdayReportAsCsv()).thenReturn("Period,New Customers\nYesterday,3\n");
+        when(platformReportService.exportReportAsCsvFor(LocalDate.of(2026, 11, 3)))
+                .thenReturn("Period,New Customers\nYesterday,3\n");
         ReportGenerationScheduler scheduler = new ReportGenerationScheduler(platformReportService, generatedReportService);
 
         scheduler.generateReportFor(LocalDate.of(2026, 11, 3));
 
         verify(generatedReportService).write(LocalDate.of(2026, 11, 3), "Period,New Customers\nYesterday,3\n");
+    }
+
+    // Anthony's review - generateReportFor(date) used to always ask the service for
+    // "yesterday relative to right now", ignoring whatever date it was actually given
+    @Test
+    void asksTheServiceForTheExactDateItWasGiven() {
+        LocalDate olderDate = LocalDate.of(2026, 10, 20);
+        when(platformReportService.exportReportAsCsvFor(olderDate)).thenReturn("Period,New Customers\nYesterday,0\n");
+        ReportGenerationScheduler scheduler = new ReportGenerationScheduler(platformReportService, generatedReportService);
+
+        scheduler.generateReportFor(olderDate);
+
+        verify(platformReportService).exportReportAsCsvFor(olderDate);
     }
 }

@@ -63,8 +63,8 @@ public class FileStorageService {
     public String store(MultipartFile file) {
         validate(file);
         byte[] bytes;
-        try {
-            bytes = file.getInputStream().readAllBytes();
+        try (var in = file.getInputStream()) {
+            bytes = in.readAllBytes();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -78,9 +78,12 @@ public class FileStorageService {
         return "/uploads/projects/" + filename;
     }
 
+    // Anthony's review - ImageIO.read(InputStream) never closes the stream it's given,
+    // so without try-with-resources this leaked a file handle on every upload (and on
+    // Windows, left the multipart temp file undeletable for the rest of the request)
     private boolean decodesAsImage(MultipartFile file) {
-        try {
-            return ImageIO.read(file.getInputStream()) != null;
+        try (var in = file.getInputStream()) {
+            return ImageIO.read(in) != null;
         } catch (IOException e) {
             return false;
         }

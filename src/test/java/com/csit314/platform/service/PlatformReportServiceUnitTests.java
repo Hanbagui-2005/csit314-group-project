@@ -50,10 +50,11 @@ class PlatformReportServiceUnitTests {
 
     @Test
     void producesOneReportForEachOfTheThreePeriods() {
-        when(userAccountRepository.countByRoleAndCreatedAtAfter(any(), any(LocalDateTime.class))).thenReturn(1L);
-        when(projectRepository.countByCreatedAtAfter(any())).thenReturn(2L);
-        when(bookingRepository.countByCreatedAtAfter(any())).thenReturn(3L);
-        when(complaintRepository.countByCreatedAtAfter(any())).thenReturn(4L);
+        when(userAccountRepository.countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                any(), any(), any())).thenReturn(1L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(2L);
+        when(bookingRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(3L);
+        when(complaintRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(4L);
 
         List<PlatformReport> reports = service.reports();
 
@@ -66,8 +67,10 @@ class PlatformReportServiceUnitTests {
 
     @Test
     void countsCustomersAndDesignersSeparatelyByRole() {
-        when(userAccountRepository.countByRoleAndCreatedAtAfter(eq(Role.CUSTOMER), any())).thenReturn(5L);
-        when(userAccountRepository.countByRoleAndCreatedAtAfter(eq(Role.INTERIOR_DESIGNER), any())).thenReturn(7L);
+        when(userAccountRepository.countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                eq(Role.CUSTOMER), any(), any())).thenReturn(5L);
+        when(userAccountRepository.countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                eq(Role.INTERIOR_DESIGNER), any(), any())).thenReturn(7L);
 
         PlatformReport today = service.reports().get(0);
 
@@ -118,14 +121,15 @@ class PlatformReportServiceUnitTests {
     // since the 1st, not a rolling 24h/7d/30d window
     @Test
     void reportPeriodsUseCalendarBoundariesNotRollingWindows() {
-        when(projectRepository.countByCreatedAtAfter(any())).thenReturn(0L);
-        ArgumentCaptor<LocalDateTime> sinceCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(0L);
+        ArgumentCaptor<LocalDateTime> startCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
 
         service.reports();
 
-        verify(projectRepository, times(3)).countByCreatedAtAfter(sinceCaptor.capture());
+        verify(projectRepository, times(3))
+                .countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startCaptor.capture(), any());
         LocalDate today = LocalDate.now();
-        List<LocalDateTime> captured = sinceCaptor.getAllValues();
+        List<LocalDateTime> captured = startCaptor.getAllValues();
         assertThat(captured.get(0)).isEqualTo(today.atStartOfDay());
         assertThat(captured.get(1)).isEqualTo(today.with(DayOfWeek.MONDAY).atStartOfDay());
         assertThat(captured.get(2)).isEqualTo(today.withDayOfMonth(1).atStartOfDay());
@@ -169,8 +173,10 @@ class PlatformReportServiceUnitTests {
     // PM-02
     @Test
     void growthForecastAveragesTheLastThreeCompletedMonths() {
-        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(10L, 20L, 30L);
-        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(4L, 6L, 8L);
+        when(userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(10L, 20L, 30L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(4L, 6L, 8L);
 
         GrowthForecast forecast = service.growthForecast();
 
@@ -184,8 +190,10 @@ class PlatformReportServiceUnitTests {
     @Test
     void anomalyAlertsFlagsYesterdayMuchHigherThanTheRecentAverage() {
         // the 7 days before yesterday average to 2 new sign-ups/day, yesterday had 10 (a 5x spike)
-        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(10L, 2L, 2L, 2L, 2L, 2L, 2L, 2L);
-        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+        when(userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(10L, 2L, 2L, 2L, 2L, 2L, 2L, 2L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
 
         List<AnomalyAlert> alerts = service.anomalyAlerts();
 
@@ -196,8 +204,10 @@ class PlatformReportServiceUnitTests {
     @Test
     void anomalyAlertsFlagsYesterdayMuchLowerThanTheRecentAverage() {
         // the 7 days before yesterday average to 10 new sign-ups/day, yesterday had 0 (a total drop)
-        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 10L, 10L, 10L, 10L, 10L, 10L, 10L);
-        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+        when(userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(0L, 10L, 10L, 10L, 10L, 10L, 10L, 10L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
 
         List<AnomalyAlert> alerts = service.anomalyAlerts();
 
@@ -209,21 +219,24 @@ class PlatformReportServiceUnitTests {
     // the actual (unstubbed, so defaults to 0) activity - now it's never consulted at all
     @Test
     void anomalyAlertsNeverLooksAtTodayAtAll() {
-        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
-        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
+        when(userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(5L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(5L);
 
         service.anomalyAlerts();
 
         ArgumentCaptor<LocalDateTime> startCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(userAccountRepository, atLeastOnce()).countByCreatedAtBetween(startCaptor.capture(), any());
+        verify(userAccountRepository, atLeastOnce())
+                .countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startCaptor.capture(), any());
         LocalDateTime today = LocalDate.now().atStartOfDay();
         assertThat(startCaptor.getAllValues()).doesNotContain(today);
     }
 
     @Test
     void anomalyAlertsStaysQuietWhenNothingIsUnusual() {
-        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(3L);
-        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(1L);
+        when(userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(3L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(1L);
 
         assertThat(service.anomalyAlerts()).isEmpty();
     }
@@ -231,8 +244,9 @@ class PlatformReportServiceUnitTests {
     @Test
     void anomalyAlertsIgnoresASmallBaselineDroppingToZero() {
         // a baseline under 2/day dropping to zero isn't "significant" - it's noise
-        when(userAccountRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L);
-        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(0L);
+        when(userAccountRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
+                .thenReturn(0L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(0L);
 
         assertThat(service.anomalyAlerts()).isEmpty();
     }
@@ -240,10 +254,11 @@ class PlatformReportServiceUnitTests {
     // PM-09
     @Test
     void exportReportsAsCsvIncludesAHeaderAndOneRowPerPeriod() {
-        when(userAccountRepository.countByRoleAndCreatedAtAfter(any(), any(LocalDateTime.class))).thenReturn(1L);
-        when(projectRepository.countByCreatedAtAfter(any())).thenReturn(2L);
-        when(bookingRepository.countByCreatedAtAfter(any())).thenReturn(3L);
-        when(complaintRepository.countByCreatedAtAfter(any())).thenReturn(4L);
+        when(userAccountRepository.countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                any(), any(), any())).thenReturn(1L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(2L);
+        when(bookingRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(3L);
+        when(complaintRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(4L);
 
         String csv = service.exportReportsAsCsv();
 
@@ -256,19 +271,38 @@ class PlatformReportServiceUnitTests {
     // exportReportsAsCsv()'s "Today" row - that would make the scheduled job's 6am
     // output nearly empty
     @Test
-    void exportYesterdayReportAsCsvCoversExactlyYesterday() {
-        when(userAccountRepository.countByRoleAndCreatedAtBetween(any(), any(), any())).thenReturn(2L);
-        when(projectRepository.countByCreatedAtBetween(any(), any())).thenReturn(3L);
-        when(bookingRepository.countByCreatedAtBetween(any(), any())).thenReturn(4L);
-        when(complaintRepository.countByCreatedAtBetween(any(), any())).thenReturn(5L);
+    void exportReportAsCsvForCoversExactlyTheGivenDay() {
+        when(userAccountRepository.countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                any(), any(), any())).thenReturn(2L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(3L);
+        when(bookingRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(4L);
+        when(complaintRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(5L);
 
-        String csv = service.exportYesterdayReportAsCsv();
+        String csv = service.exportReportAsCsvFor(LocalDate.of(2026, 11, 3));
 
         assertThat(csv).isEqualTo("Period,New Customers,New Designers,New Projects,New Bookings,New Complaints\n"
                 + "Yesterday,2,2,3,4,5\n");
 
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime yesterdayStart = todayStart.minusDays(1);
-        verify(projectRepository).countByCreatedAtBetween(yesterdayStart, todayStart);
+        verify(projectRepository).countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                LocalDate.of(2026, 11, 3).atStartOfDay(), LocalDate.of(2026, 11, 4).atStartOfDay());
+    }
+
+    // Anthony's review - this used to always build the CSV from "yesterday relative to
+    // right now" no matter what date was passed in, so a backfill call for an older
+    // date silently produced today's-minus-one numbers in a file named after that
+    // older date instead
+    @Test
+    void exportReportAsCsvForUsesTheGivenDateNotTodayMinusOne() {
+        when(userAccountRepository.countByRoleAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                any(), any(), any())).thenReturn(0L);
+        when(projectRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(0L);
+        when(bookingRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(0L);
+        when(complaintRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(0L);
+
+        LocalDate someOlderDate = LocalDate.now().minusDays(10);
+        service.exportReportAsCsvFor(someOlderDate);
+
+        verify(projectRepository).countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                someOlderDate.atStartOfDay(), someOlderDate.plusDays(1).atStartOfDay());
     }
 }

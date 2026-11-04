@@ -9,7 +9,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -35,7 +39,7 @@ class SystemErrorLoggingAdviceUnitTests {
         request.setRequestURI("/designer/projects/new");
         RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
 
-        String view = advice.handleUnexpectedException(new NullPointerException("boom"), request, redirect);
+        Object view = advice.handleUnexpectedException(new NullPointerException("boom"), request, redirect);
 
         assertThat(view).isEqualTo("redirect:/search");
         assertThat(redirect.getFlashAttributes().get("errorMessage"))
@@ -75,5 +79,73 @@ class SystemErrorLoggingAdviceUnitTests {
                 .isSameAs(notFound);
 
         verifyNoInteractions(systemErrorLogRepository);
+    }
+
+    // Anthony's review - these are all "the client did something invalid" the same way
+    // a missing static file is, but none of them implement ErrorResponse, so they used
+    // to fall through to the "unexpected bug" branch and get logged + redirected
+    @Test
+    void rethrowsAnOversizedUploadInsteadOfLoggingItAsABug() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/designer/projects");
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        MaxUploadSizeExceededException tooLarge = new MaxUploadSizeExceededException(10_000_000L);
+
+        assertThatThrownBy(() -> advice.handleUnexpectedException(tooLarge, request, redirect))
+                .isSameAs(tooLarge);
+
+        verifyNoInteractions(systemErrorLogRepository);
+    }
+
+    @Test
+    void rethrowsAnUnreadableRequestBodyInsteadOfLoggingItAsABug() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        HttpMessageNotReadableException malformed = new HttpMessageNotReadableException("bad body", (Throwable) null);
+
+        assertThatThrownBy(() -> advice.handleUnexpectedException(malformed, request, redirect))
+                .isSameAs(malformed);
+
+        verifyNoInteractions(systemErrorLogRepository);
+    }
+
+    @Test
+    void rethrowsAMissingRequestPartInsteadOfLoggingItAsABug() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+        MissingServletRequestPartException missingPart = new MissingServletRequestPartException("photos");
+
+        assertThatThrownBy(() -> advice.handleUnexpectedException(missingPart, request, redirect))
+                .isSameAs(missingPart);
+
+        verifyNoInteractions(systemErrorLogRepository);
+    }
+
+    // Anthony's review - a download endpoint's caller (the CSV export / generated
+    // report download) expects a file or a plain status back, not a 302 to an HTML
+    // page with a flash message that request will never render
+    @Test
+    void returnsAPlainServerErrorInsteadOfRedirectingADownloadEndpoint() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/platform-manager/reports/export.csv");
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+
+        Object result = advice.handleUnexpectedException(new RuntimeException("boom"), request, redirect);
+
+        assertThat(result).isInstanceOf(ResponseEntity.class);
+        assertThat(((ResponseEntity<?>) result).getStatusCode().is5xxServerError()).isTrue();
+        assertThat(redirect.getFlashAttributes()).isEmpty();
+        verify(systemErrorLogRepository).save(any());
+    }
+
+    @Test
+    void returnsAPlainServerErrorForAGeneratedReportDownloadToo() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/platform-manager/reports/generated/platform-activity-2026-11-03.csv");
+        RedirectAttributesModelMap redirect = new RedirectAttributesModelMap();
+
+        Object result = advice.handleUnexpectedException(new RuntimeException("boom"), request, redirect);
+
+        assertThat(result).isInstanceOf(ResponseEntity.class);
     }
 }

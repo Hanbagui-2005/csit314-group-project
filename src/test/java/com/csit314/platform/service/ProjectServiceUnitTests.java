@@ -11,6 +11,7 @@ import com.csit314.platform.dto.ProjectForm;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
@@ -254,8 +255,11 @@ class ProjectServiceUnitTests {
 
         service.createProject(owner, form("Title"), List.of(photo), null);
 
-        verify(imageSimilarityService).checkAndRecord(any(Project.class), eq("/uploads/projects/a.png"),
-                eq("real-bytes".getBytes()));
+        ArgumentCaptor<List<byte[]>> bytesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(imageSimilarityService).checkAndRecord(any(Project.class), eq(List.of("/uploads/projects/a.png")),
+                bytesCaptor.capture());
+        assertThat(bytesCaptor.getValue()).hasSize(1);
+        assertThat(bytesCaptor.getValue().get(0)).isEqualTo("real-bytes".getBytes());
     }
 
     @Test
@@ -268,12 +272,15 @@ class ProjectServiceUnitTests {
 
         service.updateProject(owner, 100L, form("Title"), List.of(newPhoto), null);
 
-        verify(imageSimilarityService).checkAndRecord(eq(project), eq("/uploads/projects/b.png"),
-                eq("new-bytes".getBytes()));
-        verify(imageSimilarityService, never()).checkAndRecord(any(), eq("/uploads/projects/existing.png"), any());
+        ArgumentCaptor<List<byte[]>> bytesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(imageSimilarityService).checkAndRecord(eq(project), eq(List.of("/uploads/projects/b.png")),
+                bytesCaptor.capture());
+        assertThat(bytesCaptor.getValue().get(0)).isEqualTo("new-bytes".getBytes());
     }
 
-    // PM-04 - before photos can be plagiarised too, same as the "after" ones
+    // PM-04 - before photos can be plagiarised too, same as the "after" ones. Checked
+    // together with the after photos in one batch (Anthony's review), not two
+    // separate calls
     @Test
     void createChecksBeforePhotosForPlagiarismToo() {
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
@@ -285,8 +292,12 @@ class ProjectServiceUnitTests {
 
         service.createProject(owner, form("Title"), List.of(after), List.of(before));
 
-        verify(imageSimilarityService).checkAndRecord(any(Project.class), eq("/uploads/projects/before.png"),
-                eq("before-bytes".getBytes()));
+        ArgumentCaptor<List<byte[]>> bytesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(imageSimilarityService).checkAndRecord(any(Project.class),
+                eq(List.of("/uploads/projects/a.png", "/uploads/projects/before.png")), bytesCaptor.capture());
+        assertThat(bytesCaptor.getValue()).hasSize(2);
+        assertThat(bytesCaptor.getValue().get(0)).isEqualTo("after-bytes".getBytes());
+        assertThat(bytesCaptor.getValue().get(1)).isEqualTo("before-bytes".getBytes());
     }
 
     @Test
@@ -299,10 +310,10 @@ class ProjectServiceUnitTests {
 
         service.updateProject(owner, 100L, form("Title"), null, List.of(newBefore));
 
-        verify(imageSimilarityService).checkAndRecord(eq(project), eq("/uploads/projects/c.png"),
-                eq("new-before".getBytes()));
-        verify(imageSimilarityService, never())
-                .checkAndRecord(any(), eq("/uploads/projects/existing-before.png"), any());
+        ArgumentCaptor<List<byte[]>> bytesCaptor = ArgumentCaptor.forClass(List.class);
+        verify(imageSimilarityService).checkAndRecord(eq(project), eq(List.of("/uploads/projects/c.png")),
+                bytesCaptor.capture());
+        assertThat(bytesCaptor.getValue().get(0)).isEqualTo("new-before".getBytes());
     }
 
     // PM-13

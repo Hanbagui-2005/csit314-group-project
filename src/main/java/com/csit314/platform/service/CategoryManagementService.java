@@ -1,5 +1,6 @@
 package com.csit314.platform.service;
 
+import com.csit314.platform.dto.CategoryAddResult;
 import com.csit314.platform.model.Category;
 import com.csit314.platform.model.Project;
 import com.csit314.platform.repository.CategoryRepository;
@@ -40,7 +41,7 @@ public class CategoryManagementService {
     // there's no separate reactivate button, and the old projects pointing at it
     // immediately pick back up instead of ending up duplicated under a new row
     @Transactional
-    public Category addCategory(String name) {
+    public CategoryAddResult addCategory(String name) {
         String trimmed = InputRules.requireText(name, "Category name", 60);
         Optional<Category> existing = categoryRepository.findByNameIgnoreCase(trimmed);
         if (existing.isPresent()) {
@@ -56,16 +57,16 @@ public class CategoryManagementService {
             // near-duplicate first and reuse that instead, same as a brand new name would
             Optional<Category> survivor = findNearDuplicate(trimmed, category.getId());
             if (survivor.isPresent()) {
-                return survivor.get();
+                return CategoryAddResult.mergedIntoNearDuplicate(survivor.get());
             }
             category.activate();
-            return category;
+            return CategoryAddResult.addedOrReactivated(category);
         }
         Optional<Category> nearDuplicate = findNearDuplicate(trimmed, null);
         if (nearDuplicate.isPresent()) {
-            return nearDuplicate.get();
+            return CategoryAddResult.mergedIntoNearDuplicate(nearDuplicate.get());
         }
-        return categoryRepository.save(new Category(trimmed));
+        return CategoryAddResult.addedOrReactivated(categoryRepository.save(new Category(trimmed)));
     }
 
     // supports PM-01 - not its own tracked story (PM-03 is automatic duplicate-merging)
@@ -85,6 +86,17 @@ public class CategoryManagementService {
             }
             throw new ServiceException("A deactivated category already has that name. "
                     + "Add a new category with that name to reactivate it instead of renaming this one.");
+        }
+        // Anthony's review - an exact-name clash isn't the only way a rename can
+        // fragment the taxonomy; a near-duplicate (case/whitespace/plural difference,
+        // e.g. renaming "Bath" to "Kitchens" while "Kitchen" is active) does too, the
+        // same as addCategory already guards against. Renaming into another existing
+        // category isn't the same operation as merging into it, so this blocks the
+        // rename with a clear message rather than silently reusing that other row
+        Optional<Category> nearDuplicate = findNearDuplicate(trimmed, categoryId);
+        if (nearDuplicate.isPresent()) {
+            throw new ServiceException(
+                    "\"" + nearDuplicate.get().getName() + "\" is too similar to an existing category.");
         }
         category.rename(trimmed);
         return category;
