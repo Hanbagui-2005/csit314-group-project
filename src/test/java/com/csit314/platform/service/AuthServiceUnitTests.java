@@ -130,7 +130,8 @@ class AuthServiceUnitTests {
         assertThatThrownBy(() -> service.loginCustomer(user.getEmail(), "wrong", "127.0.0.1"))
                 .isInstanceOf(ServiceException.class);
         verify(failedLoginAttempts).save(any());
-        verify(users).updateFailedLoginState(user.getId(), 1, null);
+        verify(users).countFailedLogin(eq(user.getId()), any());
+        verify(users).lockIfOverLimit(eq(user.getId()), eq(UserAccount.MAX_FAILED_ATTEMPTS), any());
         assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
     }
 

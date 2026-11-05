@@ -94,9 +94,14 @@ public class AuthService {
     private void recordFailedAttempt(String email, String ipAddress, UserAccount user) {
         failedLoginAttemptRepository.save(new FailedLoginAttempt(email, ipAddress));
         if (user != null) {
+            // the in-memory copy only keeps this object consistent for the caller; the
+            // stored count comes from the two atomic updates below, never from this copy
             user.recordFailedLogin();
-            userAccountRepository.updateFailedLoginState(
-                    user.getId(), user.getFailedLoginAttempts(), user.getLockedAt());
+            LocalDateTime now = LocalDateTime.now();
+            userAccountRepository.countFailedLogin(
+                    user.getId(), now.minusMinutes(UserAccount.LOCK_DURATION_MINUTES));
+            userAccountRepository.lockIfOverLimit(
+                    user.getId(), UserAccount.MAX_FAILED_ATTEMPTS, now);
         }
     }
 

@@ -172,14 +172,23 @@ class LicenseVerificationFlowTests {
                         .param("licenseNumber", "LIC-12345"))
                 .andExpect(redirectedUrl("/designer/profile/edit"));
 
-        mvc.perform(post(licenseUrl(designer) + "/verify")
+        var rejected = mvc.perform(post(licenseUrl(designer) + "/verify")
                         .session(admin)
                         .with(csrf())
                         .param("licenseNumber", "LIC-12345")
                         .param("companyName", "Verification Test Studio")
                         .param("note", "Checked the old company's registration."))
+                .andExpect(redirectedUrl(licenseUrl(designer)))
                 .andExpect(flash().attribute(
-                        "errorMessage", containsString("company name has changed")));
+                        "errorMessage", containsString("company name has changed")))
+                .andReturn();
+
+        // the admin actually sees the reason on the page they land back on
+        mvc.perform(get(licenseUrl(designer))
+                        .session(admin)
+                        .flashAttrs(rejected.getFlashMap()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("company name has changed")));
 
         assertThat(reload(designer).isVerified()).isFalse();
         assertThat(history(designer)).isEmpty();
