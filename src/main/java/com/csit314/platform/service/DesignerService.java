@@ -160,6 +160,14 @@ public class DesignerService {
         // still covers it once a license number is actually entered
         boolean nameChanged = !Objects.equals(previousName, name) && designer.isVerified();
 
+        company.setLicenseNumber(licenseNumber);
+        company.setName(name);
+        company.setDescription(description);
+        company.setPhone(phone);
+
+        // recorded after the company fields are updated, so the history entry's company
+        // name (captured by LicenseVerification itself) is the new identity that now needs
+        // a fresh admin check, matching the license number it records
         if (licenseChanged || nameChanged) {
             String note = identityChangeNote(
                     previousLicenseNumber, licenseNumber, licenseChanged,
@@ -174,11 +182,6 @@ public class DesignerService {
 
             designer.setVerified(false);
         }
-
-        company.setLicenseNumber(licenseNumber);
-        company.setName(name);
-        company.setDescription(description);
-        company.setPhone(phone);
 
         if (!Objects.equals(company.getServiceArea(), serviceArea)) {
             company.setServiceArea(serviceArea);

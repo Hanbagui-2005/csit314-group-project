@@ -5,6 +5,7 @@ import com.csit314.platform.dto.TopProject;
 import com.csit314.platform.model.Project;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,6 +13,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ProjectRepository extends JpaRepository<Project, Long> {
+
+    // IDR-10 - incrementing Project.viewCount on the loaded entity made Hibernate write
+    // back every column of that row, so a page view landing while the designer saved a
+    // milestone or budget change could overwrite it with the values read before the edit
+    // (and two simultaneous views could lose one count). This only touches view_count and
+    // does the + 1 inside the database
+    @Modifying(flushAutomatically = true)
+    @Query("update Project p set p.viewCount = p.viewCount + 1 where p.id = :id")
+    int incrementViewCount(@Param("id") Long id);
 
     List<Project> findByDesignerIdOrderByCreatedAtDesc(Long designerId);
 

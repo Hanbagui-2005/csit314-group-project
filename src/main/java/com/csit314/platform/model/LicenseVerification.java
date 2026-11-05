@@ -41,6 +41,12 @@ public class LicenseVerification {
     @Column(name = "license_number", length = 60, updatable = false)
     private String licenseNumber;
 
+    // ADM-05 - the company name as it stood when this entry was recorded, so the history
+    // shows which legal identity (name + license number) an admin actually checked rather
+    // than only the number. Nullable so rows written before this column existed still load
+    @Column(name = "company_name", length = 150, updatable = false)
+    private String companyName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, updatable = false)
     private Action action;
@@ -66,6 +72,7 @@ public class LicenseVerification {
             String note) {
         this.designer = designer;
         this.licenseNumber = licenseNumber;
+        this.companyName = designer.getCompany() == null ? null : designer.getCompany().getName();
         this.action = action;
         this.actorEmail = actorEmail;
         this.note = note;
@@ -88,6 +95,10 @@ public class LicenseVerification {
 
     public String getLicenseNumber() {
         return licenseNumber;
+    }
+
+    public String getCompanyName() {
+        return companyName;
     }
 
     public Action getAction() {

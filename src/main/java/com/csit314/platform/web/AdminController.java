@@ -178,6 +178,7 @@ public class AdminController {
     public String verifyLicense(
             @PathVariable Long id,
             @RequestParam(required = false) String licenseNumber,
+            @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String note,
             HttpServletRequest request,
             RedirectAttributes redirect) {
@@ -185,7 +186,7 @@ public class AdminController {
 
         try {
             licenseVerificationService.verify(
-                    id, adminId, licenseNumber, note);
+                    id, adminId, licenseNumber, companyName, note);
             redirect.addFlashAttribute(
                     "successMessage", "License verification recorded.");
         } catch (ServiceException e) {
@@ -199,6 +200,7 @@ public class AdminController {
     public String revokeLicense(
             @PathVariable Long id,
             @RequestParam(required = false) String licenseNumber,
+            @RequestParam(required = false) String companyName,
             @RequestParam(required = false) String note,
             HttpServletRequest request,
             RedirectAttributes redirect) {
@@ -206,7 +208,7 @@ public class AdminController {
 
         try {
             licenseVerificationService.revoke(
-                    id, adminId, licenseNumber, note);
+                    id, adminId, licenseNumber, companyName, note);
             redirect.addFlashAttribute(
                     "successMessage", "License verification revoked.");
         } catch (ServiceException e) {

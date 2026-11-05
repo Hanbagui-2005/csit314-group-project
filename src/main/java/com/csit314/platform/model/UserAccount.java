@@ -116,11 +116,11 @@ public abstract class UserAccount {
         this.lastLoginAt = lastLoginAt;
     }
 
-    private static final int MAX_FAILED_ATTEMPTS = 5;
+    public static final int MAX_FAILED_ATTEMPTS = 5;
     // ADM-09/13 - a lock expires on its own after this long, so 5 wrong guesses at any
     // account (including the only admin) can't permanently lock it out with no recovery
     // path other than an admin manually unlocking it (or editing the database)
-    private static final long LOCK_DURATION_MINUTES = 15;
+    public static final long LOCK_DURATION_MINUTES = 15;
 
     public void recordFailedLogin() {
         if (lockedAt != null) {

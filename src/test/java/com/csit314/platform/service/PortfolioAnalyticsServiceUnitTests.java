@@ -43,9 +43,7 @@ class PortfolioAnalyticsServiceUnitTests {
 
     private Project projectWithEngagement(Category category, int views, int shortlists) {
         Project project = new Project("Title", "x", category, designer);
-        for (int i = 0; i < views; i++) {
-            project.incrementViewCount();
-        }
+        ReflectionTestUtils.setField(project, "viewCount", views);
         ReflectionTestUtils.setField(project, "shortlistCount", shortlists);
         return project;
     }

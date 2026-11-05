@@ -48,9 +48,11 @@ class BrowseServiceUnitTests {
     void viewingARealProjectBumpsTheCount() {
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
 
-        Project result = service.viewProject(100L, null, true);
+        service.viewProject(100L, null, true);
 
-        assertThat(result.getViewCount()).isEqualTo(1);
+        // done as an atomic "view_count + 1" in the database, not by dirtying the loaded
+        // entity - that full-row write could overwrite a concurrent milestone/budget edit
+        verify(projectRepository).incrementViewCount(100L);
     }
 
     @Test
@@ -60,7 +62,7 @@ class BrowseServiceUnitTests {
         service.viewProject(100L, null, true);
         service.viewProject(100L, null, true);
 
-        assertThat(project.getViewCount()).isEqualTo(2);
+        verify(projectRepository, times(2)).incrementViewCount(100L);
     }
 
     @Test
@@ -86,9 +88,9 @@ class BrowseServiceUnitTests {
         ReflectionTestUtils.setField(designer, "id", 50L);
         when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
 
-        Project result = service.viewProject(100L, 50L, true);
+        service.viewProject(100L, 50L, true);
 
-        assertThat(result.getViewCount()).isEqualTo(0);
+        verify(projectRepository, never()).incrementViewCount(any());
         verifyNoInteractions(projectViewRepository);
     }
 
@@ -99,7 +101,7 @@ class BrowseServiceUnitTests {
 
         service.viewProject(100L, null, false);
 
-        assertThat(project.getViewCount()).isEqualTo(0);
+        verify(projectRepository, never()).incrementViewCount(any());
         verifyNoInteractions(projectViewRepository);
     }
 
@@ -112,7 +114,7 @@ class BrowseServiceUnitTests {
 
         assertThatThrownBy(() -> service.viewProject(100L, null, true))
                 .isInstanceOf(ServiceException.class);
-        assertThat(project.getViewCount()).isEqualTo(0);
+        verify(projectRepository, never()).incrementViewCount(any());
         verifyNoInteractions(projectViewRepository);
     }
 

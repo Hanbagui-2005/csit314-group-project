@@ -53,6 +53,8 @@ class LicenseVerificationFlowTests {
         assertThat(history.get(0).getAction())
                 .isEqualTo(LicenseVerification.Action.VERIFIED);
         assertThat(history.get(0).getLicenseNumber()).isEqualTo("LIC-12345");
+        assertThat(history.get(0).getCompanyName())
+                .isEqualTo("Verification Test Studio");
         assertThat(history.get(0).getActorEmail())
                 .isEqualTo("admin@test.local");
         assertThat(history.get(0).getRecordedAt()).isNotNull();
@@ -66,6 +68,7 @@ class LicenseVerificationFlowTests {
                         .session(admin)
                         .with(csrf())
                         .param("licenseNumber", "LIC-12345")
+                        .param("companyName", "Verification Test Studio")
                         .param("note", "Company details no longer match."))
                 .andExpect(redirectedUrl(url))
                 .andExpect(flash().attributeExists("successMessage"));
@@ -135,12 +138,123 @@ class LicenseVerificationFlowTests {
                         .session(admin)
                         .with(csrf())
                         .param("licenseNumber", "LIC-12345")
+                        .param("companyName", "Verification Test Studio")
                         .param("note", "Using an outdated page."))
                 .andExpect(flash().attribute(
                         "errorMessage", containsString("changed")));
 
         assertThat(reload(designer).isVerified()).isFalse();
         assertThat(history(designer)).hasSize(2);
+    }
+
+    // ADM-05 / code review doc - an unverified designer renaming their company (same
+    // license number) between the admin opening the page and submitting it must not let
+    // the admin verify a company name they never saw
+    @Test
+    void adminCannotVerifyACompanyRenamedSinceThePageWasLoaded()
+            throws Exception {
+        InteriorDesigner designer = newDesigner("LIC-12345");
+        MockHttpSession admin = loginAdmin();
+
+        mvc.perform(get(licenseUrl(designer)).session(admin))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        containsString("name=\"companyName\"")));
+
+        MockHttpSession designerSession = loginDesigner(designer);
+        mvc.perform(post("/designer/profile")
+                        .session(designerSession)
+                        .with(csrf())
+                        .param("companyName", "Different Legal Entity")
+                        .param("companyDescription", "Testing company profile.")
+                        .param("companyPhone", "12345")
+                        .param("serviceArea", "Test Area")
+                        .param("licenseNumber", "LIC-12345"))
+                .andExpect(redirectedUrl("/designer/profile/edit"));
+
+        var rejected = mvc.perform(post(licenseUrl(designer) + "/verify")
+                        .session(admin)
+                        .with(csrf())
+                        .param("licenseNumber", "LIC-12345")
+                        .param("companyName", "Verification Test Studio")
+                        .param("note", "Checked the old company's registration."))
+                .andExpect(redirectedUrl(licenseUrl(designer)))
+                .andExpect(flash().attribute(
+                        "errorMessage", containsString("company name has changed")))
+                .andReturn();
+
+        // the admin actually sees the reason on the page they land back on
+        mvc.perform(get(licenseUrl(designer))
+                        .session(admin)
+                        .flashAttrs(rejected.getFlashMap()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("company name has changed")));
+
+        assertThat(reload(designer).isVerified()).isFalse();
+        assertThat(history(designer)).isEmpty();
+    }
+
+    // a verified company renamed with the same license number loses the badge, and the
+    // history entry records the new name that now needs checking
+    @Test
+    void renamingAVerifiedCompanyClearsVerificationAndRecordsTheNewName()
+            throws Exception {
+        InteriorDesigner designer = newDesigner("LIC-12345");
+        verifyLicense(designer, loginAdmin());
+
+        mvc.perform(post("/designer/profile")
+                        .session(loginDesigner(designer))
+                        .with(csrf())
+                        .param("companyName", "Different Legal Entity")
+                        .param("companyDescription", "Testing company profile.")
+                        .param("companyPhone", "12345")
+                        .param("serviceArea", "Test Area")
+                        .param("licenseNumber", "LIC-12345"))
+                .andExpect(redirectedUrl("/designer/profile/edit"));
+
+        assertThat(reload(designer).isVerified()).isFalse();
+        List<LicenseVerification> history = history(designer);
+        assertThat(history).hasSize(2);
+        assertThat(history.get(0).getAction())
+                .isEqualTo(LicenseVerification.Action.LICENSE_CHANGED);
+        assertThat(history.get(0).getCompanyName())
+                .isEqualTo("Different Legal Entity");
+        assertThat(history.get(1).getCompanyName())
+                .isEqualTo("Verification Test Studio");
+    }
+
+    // code review doc - login used to save() the whole account it loaded, which could
+    // write a stale verified flag/company back over an admin's change. A designer whose
+    // verification was revoked must stay revoked after logging in again
+    @Test
+    void designerLoginDoesNotRestoreARevokedVerification() throws Exception {
+        InteriorDesigner designer = newDesigner("LIC-12345");
+        MockHttpSession admin = loginAdmin();
+        verifyLicense(designer, admin);
+
+        mvc.perform(post(licenseUrl(designer) + "/revoke")
+                        .session(admin)
+                        .with(csrf())
+                        .param("licenseNumber", "LIC-12345")
+                        .param("companyName", "Verification Test Studio")
+                        .param("note", "Registration lapsed."))
+                .andExpect(flash().attributeExists("successMessage"));
+
+        loginDesigner(designer);
+
+        InteriorDesigner after = reload(designer);
+        assertThat(after.isVerified()).isFalse();
+        assertThat(after.getLastLoginAt()).isNotNull();
+        assertThat(after.getCompany().getName()).isEqualTo("Verification Test Studio");
+    }
+
+    private MockHttpSession loginDesigner(InteriorDesigner designer) throws Exception {
+        return (MockHttpSession) mvc.perform(post("/designer/login")
+                        .with(csrf())
+                        .param("email", designer.getEmail())
+                        .param("password", DESIGNER_PASSWORD))
+                .andExpect(redirectedUrl("/designer/dashboard"))
+                .andReturn().getRequest().getSession(false);
     }
 
     @Test
@@ -151,6 +265,7 @@ class LicenseVerificationFlowTests {
                         .session(loginAdmin())
                         .with(csrf())
                         .param("licenseNumber", "LIC-12345")
+                        .param("companyName", "Verification Test Studio")
                         .param("note", "   "))
                 .andExpect(flash().attributeExists("errorMessage"));
 
@@ -171,6 +286,7 @@ class LicenseVerificationFlowTests {
         mvc.perform(post(licenseUrl(designer) + "/verify")
                         .session(admin)
                         .with(csrf())
+                        .param("companyName", "Verification Test Studio")
                         .param("note", "Checked registration."))
                 .andExpect(flash().attribute(
                         "errorMessage", containsString("license number")));
@@ -218,6 +334,7 @@ class LicenseVerificationFlowTests {
                         .session(admin)
                         .with(csrf())
                         .param("licenseNumber", "LIC-12345")
+                        .param("companyName", "Verification Test Studio")
                         .param("note", "Checked official registration."))
                 .andExpect(redirectedUrl(licenseUrl(designer)))
                 .andExpect(flash().attributeExists("successMessage"));

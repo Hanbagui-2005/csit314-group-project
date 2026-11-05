@@ -36,14 +36,15 @@ public class LicenseVerificationService {
             Long designerId,
             Long adminId,
             String expectedLicenseNumber,
+            String expectedCompanyName,
             String note) {
         UserAccount admin = requireAdmin(adminId);
         String evidence = InputRules.requireText(
                 note, "Verification evidence", 2000);
 
         InteriorDesigner designer = requireLockedDesigner(designerId);
-        String licenseNumber = requireUnchangedLicense(
-                designer, expectedLicenseNumber);
+        String licenseNumber = requireUnchangedIdentity(
+                designer, expectedLicenseNumber, expectedCompanyName);
 
         if (licenseNumber == null) {
             throw new ServiceException(
@@ -71,14 +72,15 @@ public class LicenseVerificationService {
             Long designerId,
             Long adminId,
             String expectedLicenseNumber,
+            String expectedCompanyName,
             String note) {
         UserAccount admin = requireAdmin(adminId);
         String reason = InputRules.requireText(
                 note, "Reason for revoking verification", 2000);
 
         InteriorDesigner designer = requireLockedDesigner(designerId);
-        String licenseNumber = requireUnchangedLicense(
-                designer, expectedLicenseNumber);
+        String licenseNumber = requireUnchangedIdentity(
+                designer, expectedLicenseNumber, expectedCompanyName);
 
         if (!designer.isVerified()) {
             throw new ServiceException(
@@ -128,6 +130,29 @@ public class LicenseVerificationService {
 
         entityManager.refresh(designer);
         return designer;
+    }
+
+    // ADM-05 - the code review doc pointed out the admin forms only checked the license
+    // number: if an unverified designer renamed their company between the admin opening
+    // the page and submitting it, the admin would verify a company name they never saw.
+    // Both halves of the legal identity (name + number) the admin was shown now have to
+    // still match what's stored, checked under the same row lock the update itself takes
+    private String requireUnchangedIdentity(
+            InteriorDesigner designer,
+            String expectedLicenseNumber,
+            String expectedCompanyName) {
+        String currentName = InputRules.optionalText(
+                designer.getCompany().getName(), 150, "Company name");
+        String expectedName = InputRules.optionalText(
+                expectedCompanyName, 150, "Company name");
+
+        if (!Objects.equals(currentName, expectedName)) {
+            throw new ServiceException(
+                    "The company name has changed. "
+                            + "Refresh the page and review it again.");
+        }
+
+        return requireUnchangedLicense(designer, expectedLicenseNumber);
     }
 
     private String requireUnchangedLicense(

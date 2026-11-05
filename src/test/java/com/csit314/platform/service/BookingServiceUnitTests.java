@@ -126,7 +126,7 @@ class BookingServiceUnitTests {
     void ownerDesignerCanAcceptTheirOwnBooking() {
         Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
         ReflectionTestUtils.setField(booking, "id", 500L);
-        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(500L)).thenReturn(Optional.of(booking));
 
         service.accept(designer, 500L);
 
@@ -137,7 +137,7 @@ class BookingServiceUnitTests {
     void anotherDesignerCannotRespondToSomeoneElsesBooking() {
         Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
         ReflectionTestUtils.setField(booking, "id", 500L);
-        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(500L)).thenReturn(Optional.of(booking));
 
         assertThatThrownBy(() -> service.decline(otherDesigner, 500L))
                 .isInstanceOf(ServiceException.class)
@@ -150,7 +150,7 @@ class BookingServiceUnitTests {
     void anAlreadyAcceptedBookingCannotBeDeclined() {
         Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
         ReflectionTestUtils.setField(booking, "id", 500L);
-        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(500L)).thenReturn(Optional.of(booking));
         service.accept(designer, 500L);
 
         assertThatThrownBy(() -> service.decline(designer, 500L))
@@ -162,7 +162,7 @@ class BookingServiceUnitTests {
     void anAlreadyDeclinedBookingCannotBeAccepted() {
         Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
         ReflectionTestUtils.setField(booking, "id", 500L);
-        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(500L)).thenReturn(Optional.of(booking));
         service.decline(designer, 500L);
 
         assertThatThrownBy(() -> service.accept(designer, 500L))
@@ -175,7 +175,7 @@ class BookingServiceUnitTests {
     void customerCanCancelTheirOwnPendingBooking() {
         Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
         ReflectionTestUtils.setField(booking, "id", 500L);
-        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(500L)).thenReturn(Optional.of(booking));
 
         service.cancel(customer, 500L);
 
@@ -186,7 +186,7 @@ class BookingServiceUnitTests {
     void anotherCustomerCannotCancelSomeoneElsesBooking() {
         Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
         ReflectionTestUtils.setField(booking, "id", 500L);
-        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(500L)).thenReturn(Optional.of(booking));
 
         Customer otherCustomer = new Customer("Other", "other-customer@example.test", "encoded");
         ReflectionTestUtils.setField(otherCustomer, "id", 99L);
@@ -202,7 +202,7 @@ class BookingServiceUnitTests {
         Booking booking = new Booking(customer, designer, null, LocalDate.now().plusDays(1), null);
         ReflectionTestUtils.setField(booking, "id", 500L);
         booking.cancel();
-        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.findByIdForUpdate(500L)).thenReturn(Optional.of(booking));
 
         assertThatThrownBy(() -> service.cancel(customer, 500L))
                 .isInstanceOf(ServiceException.class);

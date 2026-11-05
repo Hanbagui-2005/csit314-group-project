@@ -59,7 +59,7 @@ public class BrowseService {
             throw new ServiceException("That project couldn't be found.");
         }
         if (countThisView && !isOwnProject) {
-            project.incrementViewCount();
+            projectRepository.incrementViewCount(project.getId());
             // IDR-08 - also logged as its own row so a weekly delta is possible later
             projectViewRepository.save(new ProjectView(project));
         }

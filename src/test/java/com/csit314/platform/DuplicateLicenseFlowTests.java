@@ -163,6 +163,7 @@ class DuplicateLicenseFlowTests {
                         .session(admin)
                         .with(csrf())
                         .param("licenseNumber", number)
+                        .param("companyName", "Reviewed Studio")
                         .param("note",
                                 "Checked official records and shared company ownership."))
                 .andExpect(redirectedUrl(url))
