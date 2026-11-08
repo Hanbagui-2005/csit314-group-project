@@ -67,6 +67,15 @@
     </div>
 </div>
 
+<!-- IDR-07 - see UploadSizeLimitFilter; keep these numbers in sync with
+     spring.servlet.multipart.max-file-size/max-request-size in application.properties -->
+<div class="container" th:if="${param.uploadTooLarge != null}">
+    <div class="alert alert-warning" role="alert">
+        That upload is too large. Each file must be 10MB or under, and everything in one
+        upload must add up to 50MB or under. Please remove or shrink some photos and try again.
+    </div>
+</div>
+
 <div class="container" th:if="${errorMessage != null or successMessage != null}">
     <div th:if="${errorMessage != null}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
     <div th:if="${successMessage != null}" class="alert alert-success" th:text="${successMessage}">Success</div>
