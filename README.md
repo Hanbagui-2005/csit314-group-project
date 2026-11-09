@@ -70,6 +70,21 @@ account is checked (and skipped) individually, so re-running only fills in whate
 missing instead of silently doing nothing. A failed import is logged and does not stop
 the application from starting.
 
+### Demo before/after photos
+
+The demo import creates accounts only. To also give it portfolio projects with before/after
+photos (IDR-07, IDR-09, IDR-14, CUS-04, and an auto-flagged copy for PM-04), run this with
+the app up and demo data imported (needs Python 3; Pillow only to regenerate the images):
+
+```
+python scripts/demo-photos/seed_projects.py            # uploads demo-photos/*.png via the real form
+python scripts/demo-photos/generate_photos.py          # optional: re-render demo-photos/*.png
+```
+
+It adds three projects for `demo.designer01` and one for the next active demo designer that
+reuses a designer01 photo, so it shows up under `/platform-manager/flagged-projects`.
+Re-running skips projects that already exist.
+
 ## Tests
 
 ```
