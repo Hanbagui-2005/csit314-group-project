@@ -22,8 +22,10 @@
 
     <div class="list-group">
         <div class="list-group-item d-flex align-items-center gap-3" th:each="project : ${projects}">
-            <img th:src="${project.photoUrls[0]}" alt="Project photo"
+            <img th:if="${not #lists.isEmpty(project.photoUrls)}" th:src="${project.photoUrls[0]}" alt="Project photo"
                  style="width:48px;height:48px;object-fit:cover;border-radius:6px;"/>
+            <div th:unless="${not #lists.isEmpty(project.photoUrls)}" class="bg-light text-muted d-flex align-items-center justify-content-center"
+                 style="width:48px;height:48px;border-radius:6px;font-size:0.7rem;">No photo</div>
             <div class="flex-grow-1">
                 <div th:text="${project.title}">Project title</div>
                 <div class="text-muted small d-flex align-items-center gap-3 mt-1">
