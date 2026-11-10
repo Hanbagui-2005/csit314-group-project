@@ -28,10 +28,21 @@
 
     <!-- IDR-12 -->
     <h5 class="mt-5 mb-3">Shortlists, last 30 days</h5>
-    <p class="text-muted small" th:if="${#lists.isEmpty(shortlistTrend) or shortlistTrend.?[count > 0].isEmpty()}">
+    <p class="text-muted small" th:if="${maxShortlistCount == 0}">
         No shortlist activity in the last 30 days.
     </p>
-    <div class="list-group" th:unless="${#lists.isEmpty(shortlistTrend) or shortlistTrend.?[count > 0].isEmpty()}">
+    <div th:if="${maxShortlistCount > 0}">
+        <div class="d-flex align-items-end" style="height: 80px; gap: 2px;">
+            <div th:each="point : ${shortlistTrend}" class="bg-dark"
+                 th:title="${#temporals.format(point.date, 'dd MMM')} + ': ' + ${point.count} + ' shortlist(s)'"
+                 th:style="'flex: 1 1 0; min-height: 2px; border-radius: 2px 2px 0 0; height: ' + (${point.count} * 100 / ${maxShortlistCount}) + '%;'"></div>
+        </div>
+        <div class="d-flex justify-content-between text-muted small mt-1">
+            <span th:text="${#temporals.format(shortlistTrend[0].date, 'dd MMM')}">start</span>
+            <span th:text="${#temporals.format(shortlistTrend[shortlistTrend.size() - 1].date, 'dd MMM')}">end</span>
+        </div>
+    </div>
+    <div class="list-group mt-3" th:unless="${#lists.isEmpty(shortlistTrend) or shortlistTrend.?[count > 0].isEmpty()}">
         <div class="list-group-item d-flex justify-content-between align-items-center py-2"
              th:each="point : ${shortlistTrend}" th:if="${point.count > 0}">
             <span th:text="${#temporals.format(point.date, 'dd MMM')}">date</span>
