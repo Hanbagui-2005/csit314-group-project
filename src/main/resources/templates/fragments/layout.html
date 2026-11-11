@@ -112,5 +112,21 @@
     </div>
 </div>
 </th:block>
+
+<!-- Shared project-photo thumbnails, so "no photos yet" degrades to a placeholder
+     everywhere instead of a template crashing on photoUrls[0] of an empty list -->
+<th:block th:fragment="projectThumb(project, sizePx)">
+    <img th:if="${not #lists.isEmpty(project.photoUrls)}" th:src="${project.photoUrls[0]}" alt="Project photo"
+         th:style="'width:' + ${sizePx} + 'px;height:' + ${sizePx} + 'px;object-fit:cover;border-radius:6px;'"/>
+    <div th:unless="${not #lists.isEmpty(project.photoUrls)}"
+         class="bg-light text-muted d-flex align-items-center justify-content-center"
+         th:style="'width:' + ${sizePx} + 'px;height:' + ${sizePx} + 'px;border-radius:6px;font-size:0.7rem;'">No photo</div>
+</th:block>
+
+<th:block th:fragment="projectCardImage(project)">
+    <img th:if="${not #lists.isEmpty(project.photoUrls)}" th:src="${project.photoUrls[0]}" class="card-img-top" alt="Project photo"/>
+    <div th:unless="${not #lists.isEmpty(project.photoUrls)}"
+         class="card-img-top bg-light text-muted d-flex align-items-center justify-content-center" style="height:160px;">No photo</div>
+</th:block>
 </body>
 </html>

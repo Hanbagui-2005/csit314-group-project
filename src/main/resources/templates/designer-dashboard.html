@@ -22,8 +22,7 @@
 
     <div class="list-group">
         <div class="list-group-item d-flex align-items-center gap-3" th:each="project : ${projects}">
-            <img th:src="${project.photoUrls[0]}" alt="Project photo"
-                 style="width:48px;height:48px;object-fit:cover;border-radius:6px;"/>
+            <th:block th:replace="~{fragments/layout :: projectThumb(${project}, 48)}"></th:block>
             <div class="flex-grow-1">
                 <div th:text="${project.title}">Project title</div>
                 <div class="text-muted small d-flex align-items-center gap-3 mt-1">

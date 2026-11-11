@@ -14,6 +14,7 @@ import com.csit314.platform.service.WeeklySummaryService;
 import com.csit314.platform.dto.CategorySuggestionResponse;
 import com.csit314.platform.dto.CompanyProfileForm;
 import com.csit314.platform.dto.ProjectForm;
+import com.csit314.platform.dto.ShortlistTrendPoint;
 import com.csit314.platform.web.session.LoginSession;
 import com.csit314.platform.web.session.SessionUser;
 import jakarta.servlet.http.HttpServletRequest;
@@ -140,7 +141,10 @@ public class DesignerController {
         InteriorDesigner designer = designerService.requireById(current.id());
         model.addAttribute("breakdown", portfolioAnalyticsService.categoryBreakdown(current.id()));
         model.addAttribute("shortlisters", favouriteService.shortlistersFor(designer));
-        model.addAttribute("shortlistTrend", favouriteService.shortlistTrend(designer));
+        List<ShortlistTrendPoint> shortlistTrend = favouriteService.shortlistTrend(designer);
+        model.addAttribute("shortlistTrend", shortlistTrend);
+        model.addAttribute("maxShortlistCount", shortlistTrend.stream()
+                .mapToLong(ShortlistTrendPoint::count).max().orElse(0L));
         return "designer-analytics";
     }
 
