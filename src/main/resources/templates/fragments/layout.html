@@ -52,6 +52,14 @@
                     <li><a class="dropdown-item" href="/platform-manager/error-log">Error log</a></li>
                 </ul>
             </div>
+            <div class="dropdown" th:if="${currentUser == null}">
+                <a class="nav-link dropdown-toggle small" href="#" role="button" data-bs-toggle="dropdown">Other logins</a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="/designer/login">Interior Designer</a></li>
+                    <li><a class="dropdown-item" href="/admin/login">Admin</a></li>
+                    <li><a class="dropdown-item" href="/platform-manager/login">Platform Manager</a></li>
+                </ul>
+            </div>
             <button th:if="${currentUser == null}" type="button" class="btn btn-outline-dark btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">Log in</button>
             <form th:if="${currentUser != null}" method="post" th:action="@{/logout}" class="d-flex gap-2 align-items-center mb-0">
                 <span class="text-muted small" th:text="${currentUser.name}">Name</span>
