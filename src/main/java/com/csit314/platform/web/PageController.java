@@ -45,6 +45,13 @@ public class PageController {
         this.loginSession = loginSession;
     }
 
+    // there was no mapping for "/" at all, so the bare root URL 404'd and every link
+    // in the navbar/README pointed at /search directly instead
+    @GetMapping("/")
+    public String home() {
+        return "redirect:/search";
+    }
+
     @GetMapping("/privacy")
     public String privacy() {
         return "privacy";
