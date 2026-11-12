@@ -1,6 +1,8 @@
 package com.csit314.platform.web;
 
 import com.csit314.platform.dto.CategoryAddResult;
+import com.csit314.platform.dto.CategoryViewRanking;
+import com.csit314.platform.dto.MonthlyGrowth;
 import com.csit314.platform.service.CategoryManagementService;
 import com.csit314.platform.service.DesignerService;
 import com.csit314.platform.service.GeneratedReportService;
@@ -111,16 +113,37 @@ public class PlatformManagerController {
     // (anomaly alerts) all surface here too since they're all report-page content
     @GetMapping("/reports")
     public String reports(Model model) {
+        var categoryCoverage = platformReportService.categoryDesignerCoverage();
+        var categoryViewRanking = platformReportService.categoryViewRanking();
+        var growthForecast = platformReportService.growthForecast();
+
         model.addAttribute("reports", platformReportService.reports());
-        model.addAttribute("categoryCoverage", platformReportService.categoryDesignerCoverage());
-        model.addAttribute("categoryViewRanking", platformReportService.categoryViewRanking());
-        model.addAttribute("growthForecast", platformReportService.growthForecast());
+        model.addAttribute("categoryCoverage", categoryCoverage);
+        model.addAttribute("categoryViewRanking", categoryViewRanking);
+        model.addAttribute("growthForecast", growthForecast);
         model.addAttribute("topDesigners", platformReportService.topDesigners());
         model.addAttribute("topProjects", platformReportService.topProjects());
         model.addAttribute("anomalyAlerts", platformReportService.anomalyAlerts());
         // PM-12 - so the scheduled job's output is reachable from the UI, not just the
         // server's local disk
         model.addAttribute("generatedReports", generatedReportService.listReportFilenames());
+
+        // scaling denominators for the bar charts on the reports page - view-only
+        // arithmetic, so it lives here rather than in PlatformReportService.
+        // Math.max(1, ...) rather than .orElse(1): when every count is genuinely 0
+        // (e.g. a fresh platform with no designers/bookings yet), the stream isn't
+        // empty - it's full of zeros - so orElse(1) never fires and the denominator
+        // would be 0, dividing by zero in the template's th:style expression.
+        model.addAttribute("maxCoverageCount", Math.max(1, categoryCoverage.stream()
+                .flatMapToLong(c -> java.util.stream.LongStream.of(c.activeDesignerCount(), c.demandCount()))
+                .max().orElse(0)));
+        model.addAttribute("maxCategoryViews", Math.max(1, categoryViewRanking.stream()
+                .mapToLong(CategoryViewRanking::totalViews).max().orElse(0)));
+        model.addAttribute("maxGrowthCount", Math.max(1, java.util.stream.Stream.concat(
+                        growthForecast.history().stream().mapToLong(MonthlyGrowth::newUsers).boxed(),
+                        java.util.stream.Stream.of(growthForecast.projectedNewUsers()))
+                .mapToLong(Long::longValue).max().orElse(0)));
+
         return "platform-manager-reports";
     }
 
