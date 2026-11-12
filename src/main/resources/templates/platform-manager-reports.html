@@ -48,16 +48,29 @@
         <thead>
         <tr>
             <th>Category</th>
-            <th>Active designers</th>
-            <th>Booking demand</th>
+            <th style="min-width: 160px;">Designers vs. demand</th>
             <th>Status</th>
         </tr>
         </thead>
         <tbody>
         <tr th:each="coverage : ${categoryCoverage}">
             <td th:text="${coverage.categoryName}">Category</td>
-            <td th:text="${coverage.activeDesignerCount}">0</td>
-            <td th:text="${coverage.demandCount}">0</td>
+            <td>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="progress" style="height: 6px; width: 120px;">
+                        <div class="progress-bar bg-dark"
+                             th:style="'width: ' + (${coverage.activeDesignerCount} * 100 / ${maxCoverageCount}) + '%;'"></div>
+                    </div>
+                    <span class="text-muted small" th:text="${coverage.activeDesignerCount} + ' designer(s)'">0 designers</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="progress" style="height: 6px; width: 120px;">
+                        <div class="progress-bar bg-warning"
+                             th:style="'width: ' + (${coverage.demandCount} * 100 / ${maxCoverageCount}) + '%;'"></div>
+                    </div>
+                    <span class="text-muted small" th:text="${coverage.demandCount} + ' booking(s)'">0 bookings</span>
+                </div>
+            </td>
             <td>
                 <span class="badge bg-warning text-dark" th:if="${coverage.shortage}">Short on designers</span>
                 <span class="badge bg-light" th:unless="${coverage.shortage}">Adequate</span>
@@ -70,20 +83,17 @@
     <p class="text-muted small mb-3">Categories ranked by total views across their projects, so
         PM can see what's popular with customers.</p>
 
-    <table class="table table-hover align-middle">
-        <thead>
-        <tr>
-            <th>Category</th>
-            <th>Total views</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="ranking : ${categoryViewRanking}">
-            <td th:text="${ranking.categoryName}">Category</td>
-            <td th:text="${ranking.totalViews}">0</td>
-        </tr>
-        </tbody>
-    </table>
+    <div th:each="ranking : ${categoryViewRanking}" class="mb-2">
+        <div class="d-flex justify-content-between small mb-1">
+            <span th:text="${ranking.categoryName}">Category</span>
+            <span class="text-muted" th:text="${ranking.totalViews} + ' view(s)'">0 views</span>
+        </div>
+        <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-dark"
+                 th:style="'width: ' + (${ranking.totalViews} * 100 / ${maxCategoryViews}) + '%;'"></div>
+        </div>
+    </div>
+    <p th:if="${#lists.isEmpty(categoryViewRanking)}" class="text-muted">No views recorded yet.</p>
 
     <h4 class="mb-3 mt-5">Top-performing designers and projects</h4>
     <p class="text-muted small mb-3">PM-10 - ranked by views + shortlists, so PM can consider featuring them.</p>
@@ -133,7 +143,20 @@
     <p class="text-muted small mb-3">PM-02 - next month's projection is the average of the last
         <span th:text="${#lists.size(growthForecast.history)}">3</span> completed months, for capacity planning.</p>
 
-    <table class="table table-hover align-middle">
+    <div class="d-flex align-items-end" style="height: 90px; gap: 6px;">
+        <div th:each="month : ${growthForecast.history}" class="bg-dark"
+             th:title="${month.monthLabel} + ': ' + ${month.newUsers} + ' new user(s)'"
+             th:style="'flex: 1 1 0; min-height: 2px; border-radius: 2px 2px 0 0; height: ' + (${month.newUsers} * 100 / ${maxGrowthCount}) + '%;'"></div>
+        <div class="bg-warning" style="flex: 1 1 0; border: 1px dashed #997404;"
+             th:title="'Projected: ' + ${growthForecast.projectedNewUsers} + ' new user(s)'"
+             th:style="'flex: 1 1 0; min-height: 2px; border-radius: 2px 2px 0 0; height: ' + (${growthForecast.projectedNewUsers} * 100 / ${maxGrowthCount}) + '%;'"></div>
+    </div>
+    <div class="d-flex text-muted small mt-1" style="gap: 6px;">
+        <span th:each="month : ${growthForecast.history}" style="flex: 1 1 0; text-align: center;" th:text="${month.monthLabel}">month</span>
+        <span style="flex: 1 1 0; text-align: center;"><strong>Projected</strong></span>
+    </div>
+
+    <table class="table table-hover align-middle mt-3">
         <thead>
         <tr>
             <th>Month</th>
