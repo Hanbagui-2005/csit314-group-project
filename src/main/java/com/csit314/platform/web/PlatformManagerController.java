@@ -129,16 +129,20 @@ public class PlatformManagerController {
         model.addAttribute("generatedReports", generatedReportService.listReportFilenames());
 
         // scaling denominators for the bar charts on the reports page - view-only
-        // arithmetic, so it lives here rather than in PlatformReportService
-        model.addAttribute("maxCoverageCount", categoryCoverage.stream()
+        // arithmetic, so it lives here rather than in PlatformReportService.
+        // Math.max(1, ...) rather than .orElse(1): when every count is genuinely 0
+        // (e.g. a fresh platform with no designers/bookings yet), the stream isn't
+        // empty - it's full of zeros - so orElse(1) never fires and the denominator
+        // would be 0, dividing by zero in the template's th:style expression.
+        model.addAttribute("maxCoverageCount", Math.max(1, categoryCoverage.stream()
                 .flatMapToLong(c -> java.util.stream.LongStream.of(c.activeDesignerCount(), c.demandCount()))
-                .max().orElse(1));
-        model.addAttribute("maxCategoryViews", categoryViewRanking.stream()
-                .mapToLong(CategoryViewRanking::totalViews).max().orElse(1));
-        model.addAttribute("maxGrowthCount", java.util.stream.Stream.concat(
+                .max().orElse(0)));
+        model.addAttribute("maxCategoryViews", Math.max(1, categoryViewRanking.stream()
+                .mapToLong(CategoryViewRanking::totalViews).max().orElse(0)));
+        model.addAttribute("maxGrowthCount", Math.max(1, java.util.stream.Stream.concat(
                         growthForecast.history().stream().mapToLong(MonthlyGrowth::newUsers).boxed(),
                         java.util.stream.Stream.of(growthForecast.projectedNewUsers()))
-                .mapToLong(Long::longValue).max().orElse(1));
+                .mapToLong(Long::longValue).max().orElse(0)));
 
         return "platform-manager-reports";
     }
