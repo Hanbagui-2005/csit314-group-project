@@ -78,6 +78,25 @@ public class FileStorageService {
         return "/uploads/projects/" + filename;
     }
 
+    // removes a photo file this service stored earlier. Best effort: a file that's
+    // already gone isn't an error, and only plain filenames under /uploads/projects/
+    // are touched, so a crafted url can't reach anything outside the upload folder
+    public void delete(String url) {
+        String prefix = "/uploads/projects/";
+        if (url == null || !url.startsWith(prefix)) {
+            return;
+        }
+        String filename = url.substring(prefix.length());
+        if (filename.isEmpty() || filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(uploadDir.resolve(filename));
+        } catch (IOException e) {
+            // leaving an orphaned file behind is harmless; failing the request isn't worth it
+        }
+    }
+
     // Anthony's review - ImageIO.read(InputStream) never closes the stream it's given,
     // so without try-with-resources this leaked a file handle on every upload (and on
     // Windows, left the multipart temp file undeletable for the rest of the request)

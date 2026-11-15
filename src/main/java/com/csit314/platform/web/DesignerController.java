@@ -119,6 +119,57 @@ public class DesignerController {
         }
     }
 
+    // designer removing a project from their portfolio entirely
+    @PostMapping("/projects/{id}/delete")
+    public String deleteProject(@PathVariable Long id, HttpServletRequest request, RedirectAttributes redirect) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        try {
+            InteriorDesigner designer = designerService.requireById(current.id());
+            String title = projectService.deleteProject(designer, id);
+            redirect.addFlashAttribute("successMessage", "\"" + title + "\" has been deleted.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/designer/dashboard";
+    }
+
+    // removing one photo from an existing project; kind is "after" (default) or "before"
+    @PostMapping("/projects/{id}/photos/delete")
+    public String deletePhoto(@PathVariable Long id,
+                              @RequestParam(value = "url", required = false) String url,
+                              @RequestParam(value = "kind", defaultValue = "after") String kind,
+                              HttpServletRequest request,
+                              RedirectAttributes redirect) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        try {
+            InteriorDesigner designer = designerService.requireById(current.id());
+            projectService.deletePhoto(designer, id, url, "before".equals(kind));
+            redirect.addFlashAttribute("successMessage", "Photo removed.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/designer/projects/{id}/edit";
+    }
+
+    // swapping one photo on an existing project for a new upload, keeping its position
+    @PostMapping("/projects/{id}/photos/replace")
+    public String replacePhoto(@PathVariable Long id,
+                               @RequestParam(value = "url", required = false) String url,
+                               @RequestParam(value = "kind", defaultValue = "after") String kind,
+                               @RequestParam(value = "photo", required = false) MultipartFile photo,
+                               HttpServletRequest request,
+                               RedirectAttributes redirect) {
+        SessionUser current = loginSession.current(request).orElseThrow();
+        try {
+            InteriorDesigner designer = designerService.requireById(current.id());
+            projectService.replacePhoto(designer, id, url, "before".equals(kind), photo);
+            redirect.addFlashAttribute("successMessage", "Photo replaced.");
+        } catch (ServiceException e) {
+            redirect.addFlashAttribute("errorMessage", e.getMessage());
+        }
+        return "redirect:/designer/projects/{id}/edit";
+    }
+
     // IDR-09
     @PostMapping("/projects/{id}/milestone/advance")
     public String advanceMilestone(@PathVariable Long id, HttpServletRequest request, RedirectAttributes redirect) {

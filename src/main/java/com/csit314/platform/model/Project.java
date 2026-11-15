@@ -130,6 +130,34 @@ public class Project {
         beforePhotoUrls.add(url);
     }
 
+    // designer removing a single photo from an existing project. Returns false when the
+    // url isn't one of this project's photos (stale page, hand-crafted POST)
+    public boolean removePhoto(String url) {
+        return photoUrls.remove(url);
+    }
+
+    public boolean removeBeforePhoto(String url) {
+        return beforePhotoUrls.remove(url);
+    }
+
+    // designer swapping one photo for a new upload - keeps its position in the gallery
+    public boolean replacePhoto(String oldUrl, String newUrl) {
+        return replaceIn(photoUrls, oldUrl, newUrl);
+    }
+
+    public boolean replaceBeforePhoto(String oldUrl, String newUrl) {
+        return replaceIn(beforePhotoUrls, oldUrl, newUrl);
+    }
+
+    private static boolean replaceIn(List<String> urls, String oldUrl, String newUrl) {
+        int index = urls.indexOf(oldUrl);
+        if (index < 0) {
+            return false;
+        }
+        urls.set(index, newUrl);
+        return true;
+    }
+
     public void updateDetails(String title, String description, Category category,
                               Integer budgetMin, Integer budgetMax, String estimatedTimeline,
                               Integer roomSizeSqm) {

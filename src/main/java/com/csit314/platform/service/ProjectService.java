@@ -9,6 +9,8 @@ import com.csit314.platform.dto.ProjectForm;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -188,6 +190,94 @@ public class ProjectService {
             throw new ServiceException(e.getMessage());
         }
         return project;
+    }
+
+    // designer deleting a whole project from their portfolio. Returns the title for the
+    // confirmation message, since the project itself is gone afterwards
+    @Transactional
+    public String deleteProject(InteriorDesigner designer, Long projectId) {
+        Project project = findOwnedProject(designer, projectId);
+        Long id = project.getId();
+        String title = project.getTitle();
+        List<String> files = concat(project.getPhotoUrls(), project.getBeforePhotoUrls());
+
+        projectRepository.deleteShortlistsFor(id);
+        projectRepository.deleteViewsFor(id);
+        projectRepository.deleteFlagsFor(id);
+        projectRepository.deletePhotoHashesFor(id);
+        projectRepository.unlinkBookingsFrom(id);
+        projectRepository.unlinkMessagesFrom(id);
+        projectRepository.delete(project);
+
+        deleteFilesAfterCommit(files);
+        return title;
+    }
+
+    // designer removing one photo (after or before) from an existing project
+    @Transactional
+    public Project deletePhoto(InteriorDesigner designer, Long projectId, String photoUrl, boolean beforePhoto) {
+        Project project = findOwnedProject(designer, projectId);
+        List<String> photos = beforePhoto ? project.getBeforePhotoUrls() : project.getPhotoUrls();
+        if (photoUrl == null || !photos.contains(photoUrl)) {
+            throw new ServiceException("That photo isn't part of this project.");
+        }
+        // IDR-04 - a project always needs at least one "after" photo, same rule as creating
+        // one; before-photos are optional so the last of those can go
+        if (!beforePhoto && photos.size() == 1) {
+            throw new ServiceException("A project needs at least one photo. Upload a replacement instead, "
+                    + "or delete the whole project.");
+        }
+        if (beforePhoto) {
+            project.removeBeforePhoto(photoUrl);
+        } else {
+            project.removePhoto(photoUrl);
+        }
+        projectRepository.deletePhotoHashByUrl(photoUrl);
+        deleteFilesAfterCommit(List.of(photoUrl));
+        return project;
+    }
+
+    // designer swapping one existing photo for a new upload, keeping its place in the gallery
+    @Transactional
+    public Project replacePhoto(InteriorDesigner designer, Long projectId, String photoUrl, boolean beforePhoto,
+                                MultipartFile newPhoto) {
+        Project project = findOwnedProject(designer, projectId);
+        List<String> photos = beforePhoto ? project.getBeforePhotoUrls() : project.getPhotoUrls();
+        if (photoUrl == null || !photos.contains(photoUrl)) {
+            throw new ServiceException("That photo isn't part of this project.");
+        }
+        if (newPhoto == null || newPhoto.isEmpty()) {
+            throw new ServiceException("Choose a new photo to upload.");
+        }
+        fileStorageService.validate(newPhoto);
+
+        String newUrl = fileStorageService.store(newPhoto);
+        if (beforePhoto) {
+            project.replaceBeforePhoto(photoUrl, newUrl);
+        } else {
+            project.replacePhoto(photoUrl, newUrl);
+        }
+        projectRepository.deletePhotoHashByUrl(photoUrl);
+        // PM-04 - the replacement is a new upload like any other, so it gets the same check
+        checkForPlagiarism(project, List.of(newPhoto), List.of(newUrl));
+        deleteFilesAfterCommit(List.of(photoUrl));
+        return project;
+    }
+
+    // files are only removed once the database change has actually committed - deleting
+    // them first and then rolling back would leave the project pointing at missing images
+    private void deleteFilesAfterCommit(List<String> urls) {
+        List<String> toDelete = List.copyOf(urls);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    toDelete.forEach(fileStorageService::delete);
+                }
+            });
+        } else {
+            toDelete.forEach(fileStorageService::delete);
+        }
     }
 
     private Project findOwnedProject(InteriorDesigner designer, Long projectId) {

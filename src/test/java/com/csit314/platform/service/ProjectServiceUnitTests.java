@@ -22,6 +22,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /** Taiga #19 / task 19.4 - project edit permission checks (IDR-07). */
@@ -378,5 +379,180 @@ class ProjectServiceUnitTests {
         List<Category> result = service.listCategoriesForEdit(project);
 
         assertThat(result).containsExactly(category);
+    }
+
+    // ---- deleting a project / editing its photos ----
+
+    @Test
+    void ownerCanDeleteTheirProjectAndItsPhotoFilesAreRemoved() {
+        project.addPhoto("/uploads/projects/a.jpg");
+        project.addBeforePhoto("/uploads/projects/b.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        String title = service.deleteProject(owner, 100L);
+
+        assertThat(title).isEqualTo("Original title");
+        verify(projectRepository).deleteShortlistsFor(100L);
+        verify(projectRepository).deleteViewsFor(100L);
+        verify(projectRepository).deleteFlagsFor(100L);
+        verify(projectRepository).deletePhotoHashesFor(100L);
+        verify(projectRepository).unlinkBookingsFrom(100L);
+        verify(projectRepository).unlinkMessagesFrom(100L);
+        verify(projectRepository).delete(project);
+        verify(fileStorageService).delete("/uploads/projects/a.jpg");
+        verify(fileStorageService).delete("/uploads/projects/b.jpg");
+    }
+
+    @Test
+    void anotherDesignerCannotDeleteSomeoneElsesProject() {
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        assertThatThrownBy(() -> service.deleteProject(someoneElse, 100L))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("your own projects");
+
+        verify(projectRepository, never()).delete(any(Project.class));
+        verify(fileStorageService, never()).delete(any());
+    }
+
+    @Test
+    void ownerCanDeleteOneOfSeveralAfterPhotos() {
+        project.addPhoto("/uploads/projects/a.jpg");
+        project.addPhoto("/uploads/projects/b.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        service.deletePhoto(owner, 100L, "/uploads/projects/a.jpg", false);
+
+        assertThat(project.getPhotoUrls()).containsExactly("/uploads/projects/b.jpg");
+        verify(projectRepository).deletePhotoHashByUrl("/uploads/projects/a.jpg");
+        verify(fileStorageService).delete("/uploads/projects/a.jpg");
+    }
+
+    @Test
+    void theLastAfterPhotoCannotBeDeleted() {
+        project.addPhoto("/uploads/projects/only.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        assertThatThrownBy(() -> service.deletePhoto(owner, 100L, "/uploads/projects/only.jpg", false))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("at least one photo");
+
+        assertThat(project.getPhotoUrls()).containsExactly("/uploads/projects/only.jpg");
+        verify(fileStorageService, never()).delete(any());
+    }
+
+    @Test
+    void theLastBeforePhotoCanBeDeletedSinceBeforePhotosAreOptional() {
+        project.addPhoto("/uploads/projects/after.jpg");
+        project.addBeforePhoto("/uploads/projects/before.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        service.deletePhoto(owner, 100L, "/uploads/projects/before.jpg", true);
+
+        assertThat(project.getBeforePhotoUrls()).isEmpty();
+        assertThat(project.getPhotoUrls()).containsExactly("/uploads/projects/after.jpg");
+    }
+
+    @Test
+    void deletingAPhotoThatIsNotOnTheProjectFails() {
+        project.addPhoto("/uploads/projects/a.jpg");
+        project.addPhoto("/uploads/projects/b.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        // an "after" url sent as a before-photo matches neither list
+        assertThatThrownBy(() -> service.deletePhoto(owner, 100L, "/uploads/projects/a.jpg", true))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("isn't part of this project");
+        assertThatThrownBy(() -> service.deletePhoto(owner, 100L, "/uploads/projects/other.jpg", false))
+                .isInstanceOf(ServiceException.class);
+
+        assertThat(project.getPhotoUrls()).hasSize(2);
+    }
+
+    @Test
+    void anotherDesignerCannotDeleteAPhoto() {
+        project.addPhoto("/uploads/projects/a.jpg");
+        project.addPhoto("/uploads/projects/b.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+
+        assertThatThrownBy(() -> service.deletePhoto(someoneElse, 100L, "/uploads/projects/a.jpg", false))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("your own projects");
+        assertThat(project.getPhotoUrls()).hasSize(2);
+    }
+
+    @Test
+    void replacingAPhotoKeepsItsPositionAndChecksTheNewUpload() {
+        project.addPhoto("/uploads/projects/a.jpg");
+        project.addPhoto("/uploads/projects/b.jpg");
+        project.addPhoto("/uploads/projects/c.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        MockMultipartFile replacement = new MockMultipartFile("photo", "new.png", "image/png", "z".getBytes());
+        when(fileStorageService.store(replacement)).thenReturn("/uploads/projects/new.png");
+
+        service.replacePhoto(owner, 100L, "/uploads/projects/b.jpg", false, replacement);
+
+        assertThat(project.getPhotoUrls()).containsExactly(
+                "/uploads/projects/a.jpg", "/uploads/projects/new.png", "/uploads/projects/c.jpg");
+        verify(fileStorageService).validate(replacement);
+        verify(projectRepository).deletePhotoHashByUrl("/uploads/projects/b.jpg");
+        verify(imageSimilarityService).checkAndRecord(eq(project), eq(List.of("/uploads/projects/new.png")), any());
+        verify(fileStorageService).delete("/uploads/projects/b.jpg");
+    }
+
+    @Test
+    void replacingABeforePhotoOnlyTouchesTheBeforeList() {
+        project.addPhoto("/uploads/projects/after.jpg");
+        project.addBeforePhoto("/uploads/projects/before.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        MockMultipartFile replacement = new MockMultipartFile("photo", "new.png", "image/png", "z".getBytes());
+        when(fileStorageService.store(replacement)).thenReturn("/uploads/projects/new-before.png");
+
+        service.replacePhoto(owner, 100L, "/uploads/projects/before.jpg", true, replacement);
+
+        assertThat(project.getBeforePhotoUrls()).containsExactly("/uploads/projects/new-before.png");
+        assertThat(project.getPhotoUrls()).containsExactly("/uploads/projects/after.jpg");
+    }
+
+    @Test
+    void replacingWithoutChoosingAFileFails() {
+        project.addPhoto("/uploads/projects/a.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        MockMultipartFile empty = new MockMultipartFile("photo", "", "image/png", new byte[0]);
+
+        assertThatThrownBy(() -> service.replacePhoto(owner, 100L, "/uploads/projects/a.jpg", false, empty))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("Choose a new photo");
+        assertThatThrownBy(() -> service.replacePhoto(owner, 100L, "/uploads/projects/a.jpg", false, null))
+                .isInstanceOf(ServiceException.class);
+
+        verify(fileStorageService, never()).store(any());
+    }
+
+    @Test
+    void anInvalidReplacementLeavesTheOriginalPhotoInPlace() {
+        project.addPhoto("/uploads/projects/a.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        MockMultipartFile bad = new MockMultipartFile("photo", "evil.html", "text/html", "<script>".getBytes());
+        doThrow(new ServiceException("not a supported image type")).when(fileStorageService).validate(bad);
+
+        assertThatThrownBy(() -> service.replacePhoto(owner, 100L, "/uploads/projects/a.jpg", false, bad))
+                .isInstanceOf(ServiceException.class);
+
+        assertThat(project.getPhotoUrls()).containsExactly("/uploads/projects/a.jpg");
+        verify(fileStorageService, never()).store(any());
+        verify(fileStorageService, never()).delete(any());
+    }
+
+    @Test
+    void anotherDesignerCannotReplaceAPhoto() {
+        project.addPhoto("/uploads/projects/a.jpg");
+        when(projectRepository.findById(100L)).thenReturn(Optional.of(project));
+        MockMultipartFile replacement = new MockMultipartFile("photo", "new.png", "image/png", "z".getBytes());
+
+        assertThatThrownBy(() -> service.replacePhoto(someoneElse, 100L, "/uploads/projects/a.jpg", false, replacement))
+                .isInstanceOf(ServiceException.class)
+                .hasMessageContaining("your own projects");
+        verify(fileStorageService, never()).store(any());
     }
 }
