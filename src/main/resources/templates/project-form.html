@@ -7,31 +7,29 @@
 
     <h4 class="mb-3" th:text="${isEdit} ? 'Edit project' : 'New project'">New project</h4>
 
+    <!-- existing photos can each be replaced or removed. These are their own small forms,
+         kept outside the main form below since HTML doesn't allow nested forms -->
+    <th:block th:if="${isEdit}">
+        <div class="mb-3">
+            <label class="form-label">Current photos</label>
+            <div th:replace="~{::photoGrid(${project.photoUrls}, 'after', 1)}"></div>
+            <div class="form-text">A project needs at least one photo, so the last one can only be replaced.</div>
+        </div>
+        <div class="mb-3" th:if="${not #lists.isEmpty(project.beforePhotoUrls)}">
+            <label class="form-label">Current before-photos</label>
+            <div th:replace="~{::photoGrid(${project.beforePhotoUrls}, 'before', 0)}"></div>
+        </div>
+        <hr/>
+    </th:block>
+
     <form method="post" enctype="multipart/form-data"
           th:action="${isEdit} ? @{/designer/projects/{id}(id=${projectId})} : @{/designer/projects}">
-
-        <!-- IDR-07 - existing photos are shown read-only; new uploads get appended to them -->
-        <div class="mb-3" th:if="${isEdit}">
-            <label class="form-label">Current photos</label>
-            <div class="d-flex flex-wrap gap-2">
-                <img th:each="url : ${project.photoUrls}" th:src="${url}" alt="Existing photo"
-                     style="width:64px;height:64px;object-fit:cover;border-radius:6px;"/>
-            </div>
-        </div>
 
         <div class="mb-3">
             <label class="form-label" th:text="${isEdit} ? 'Add more photos' : 'Photos'">Photos</label>
             <input type="file" name="photos" class="form-control" accept="image/*" multiple/>
             <div class="form-text" th:text="${isEdit} ? 'Optional, up to 10 total.' : 'Add at least one photo, up to 10.'">
                 Add at least one photo, up to 10.
-            </div>
-        </div>
-
-        <div class="mb-3" th:if="${isEdit and not #lists.isEmpty(project.beforePhotoUrls)}">
-            <label class="form-label">Current before-photos</label>
-            <div class="d-flex flex-wrap gap-2">
-                <img th:each="url : ${project.beforePhotoUrls}" th:src="${url}" alt="Existing before-photo"
-                     style="width:64px;height:64px;object-fit:cover;border-radius:6px;"/>
             </div>
         </div>
 
@@ -109,7 +107,45 @@
 
     </form>
 
+    <!-- deleting the whole project - separate form, so it can't be triggered by the Save button -->
+    <form th:if="${isEdit}" method="post" class="mt-4 pt-3 border-top"
+          th:action="@{/designer/projects/{id}/delete(id=${projectId})}"
+          onsubmit="return confirm('Delete this project and all of its photos? This cannot be undone.');">
+        <button type="submit" class="btn btn-outline-danger">Delete project</button>
+    </form>
+
 </div>
+
+<!-- one grid of existing photos (after or before), each with Replace and Delete. The
+     wrapper stops the definition itself rendering; it's only used via th:replace above -->
+<th:block th:if="${false}">
+<div th:fragment="photoGrid(urls, kind, minCount)" class="d-flex flex-wrap gap-2">
+    <div class="card" style="width: 120px;" th:each="url : ${urls}">
+        <img th:src="${url}" alt="Existing photo" class="card-img-top"
+             style="height: 90px; object-fit: cover;"/>
+        <div class="card-body p-1 d-grid gap-1">
+            <form method="post" enctype="multipart/form-data" class="mb-0"
+                  th:action="@{/designer/projects/{id}/photos/replace(id=${projectId})}">
+                <input type="hidden" name="url" th:value="${url}"/>
+                <input type="hidden" name="kind" th:value="${kind}"/>
+                <label class="btn btn-sm btn-outline-dark w-100 mb-0">
+                    Replace
+                    <input type="file" name="photo" accept="image/jpeg,image/png,image/gif" hidden
+                           onchange="if (this.files.length) this.form.submit();"/>
+                </label>
+            </form>
+            <form method="post" class="mb-0"
+                  th:action="@{/designer/projects/{id}/photos/delete(id=${projectId})}"
+                  onsubmit="return confirm('Remove this photo?');">
+                <input type="hidden" name="url" th:value="${url}"/>
+                <input type="hidden" name="kind" th:value="${kind}"/>
+                <button type="submit" class="btn btn-sm btn-outline-danger w-100"
+                        th:disabled="${#lists.size(urls) <= minCount}">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+</th:block>
 
 <script th:inline="javascript">
     // IDR-06 - as the designer types the title/description, ask the server for a

@@ -102,4 +102,40 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             + "where d.status = com.csit314.platform.model.AccountStatus.ACTIVE "
             + "order by p.viewCount + p.shortlistCount desc")
     List<TopProject> topProjects(Pageable limit);
+
+    // deleting a project - every row that points at it has to go (or be unlinked)
+    // first, or the foreign keys block the delete. Kept here rather than spread over
+    // six repositories since they only exist to clear the way for that one delete.
+    // Shortlists, views, flags and photo hashes are meaningless without the project;
+    // bookings and messages are real conversations with customers, so they're kept and
+    // just lose their (optional) project link
+    @Modifying(flushAutomatically = true)
+    @Query("delete from Shortlist s where s.project.id = :id")
+    void deleteShortlistsFor(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true)
+    @Query("delete from ProjectView v where v.project.id = :id")
+    void deleteViewsFor(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true)
+    @Query("delete from ProjectFlag f where f.project.id = :id")
+    void deleteFlagsFor(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true)
+    @Query("delete from PhotoHash h where h.project.id = :id")
+    void deletePhotoHashesFor(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true)
+    @Query("update Booking b set b.project = null where b.project.id = :id")
+    void unlinkBookingsFrom(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true)
+    @Query("update Message m set m.project = null where m.project.id = :id")
+    void unlinkMessagesFrom(@Param("id") Long id);
+
+    // PM-04 - a removed or replaced photo shouldn't keep matching later uploads as
+    // "plagiarised" from a photo that's no longer on the platform
+    @Modifying(flushAutomatically = true)
+    @Query("delete from PhotoHash h where h.photoUrl = :url")
+    void deletePhotoHashByUrl(@Param("url") String url);
 }

@@ -138,4 +138,33 @@ class FileStorageServiceUnitTests {
         ImageIO.write(image, "png", out);
         return out.toByteArray();
     }
+
+    @Test
+    void deleteRemovesAPhotoItStoredEarlier(@org.junit.jupiter.api.io.TempDir Path tempDir) throws Exception {
+        FileStorageService service = service(tempDir);
+        String url = service.store(new MockMultipartFile("photos", "a.png", "image/png", realPngBytes()));
+        Path stored = tempDir.resolve("projects").resolve(url.substring("/uploads/projects/".length()));
+        assertThat(stored).exists();
+
+        service.delete(url);
+
+        assertThat(stored).doesNotExist();
+    }
+
+    @Test
+    void deleteIgnoresMissingFilesAndUrlsOutsideTheUploadFolder(@org.junit.jupiter.api.io.TempDir Path tempDir)
+            throws Exception {
+        FileStorageService service = service(tempDir);
+        Path outside = Files.writeString(tempDir.resolve("keep-me.txt"), "important");
+
+        assertThatCode(() -> {
+            service.delete("/uploads/projects/never-existed.png");
+            service.delete("/uploads/projects/../keep-me.txt");
+            service.delete("/uploads/projects/..\\keep-me.txt");
+            service.delete("/static/images/sample.jpg");
+            service.delete(null);
+        }).doesNotThrowAnyException();
+
+        assertThat(outside).exists();
+    }
 }
